@@ -4,7 +4,7 @@
 
 ```bash
 cd "$HOME/Documents/Personal Agent Runtime"
-uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12 -m venv .venv && .venv/bin/pip install -e .
+uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12 -m venv .venv && .venv/bin/pip install -e .（如果这个 python3.12 本身是 `uv python install` 装的，plain venv 会被 PEP 668 挡住，用前一条 uv venv 命令即可）
 .venv/bin/par version
 ```
 

@@ -41,6 +41,7 @@
 ```bash
 cd "$HOME/Documents/Personal Agent Runtime"
 uv venv --python 3.12 .venv && uv pip install -e .     # 零第三方依赖；没有 uv 时：python3.12 -m venv .venv && .venv/bin/pip install -e .
+# 注意：如果你的 python3.12 本身就是用 `uv python install` 装的，plain venv 会因为 ensurepip 被 PEP 668 挡住而失败——这种情况就用上面那条 uv venv 命令
 python -B tests/tools/smoke_codex.py --self-test        # 全流程演示：真实 Codex 适配器 + 假 codex 程序 + 夹具项目，无模型无额度
 python -B tests/tools/smoke_agy.py --self-test          # 同上，Antigravity 版（真实 agy 适配器 + 假 agy 程序）
 ```

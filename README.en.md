@@ -30,7 +30,11 @@ Before setting up anything real, you can watch the whole pipeline â€” contract â
 
 ```bash
 cd personal-agent-runtime
-python3.12 -m venv .venv && .venv/bin/pip install -e .   # requires 3.11+; 3.12 is what's actually tested day to day
+uv venv --python 3.12 .venv && uv pip install -e .   # zero third-party deps; requires 3.11+, 3.12 is what's actually tested day to day
+# no uv? plain venv works too, UNLESS your python3.12 was itself installed by `uv python install` -
+# those builds block `ensurepip` (PEP 668), so `python3.12 -m venv` fails with an externally-managed-environment
+# error. Plain `python3 -m venv` (your system/distro Python) usually doesn't have that problem:
+#   python3.12 -m venv .venv && .venv/bin/pip install -e .
 python3 -B tests/tools/smoke_codex.py --self-test   # real Codex adapter code + a fake codex program + a throwaway fixture project
 python3 -B tests/tools/smoke_agy.py --self-test     # same idea, for the Antigravity adapter
 ```
