@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-agent-runtime"
+description = "Local multi-model scheduling runtime that reuses the existing AI Harness. Phase P2: task Kernel, SQLite ledger and a scripted-worker closed loop (no real model calls)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+dynamic = ["version"]
+
+[project.scripts]
+par = "par.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "par.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+par = ["schemas/*.json"]

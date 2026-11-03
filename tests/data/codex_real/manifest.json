@@ -1,0 +1,24 @@
+{
+  "samples": [
+    {
+      "file": "r1_success.jsonl",
+      "codex_version": "0.162.0-alpha.17.2",
+      "scenario": "read-only question on the fixture project, gpt-6-luna, R1",
+      "exit_code": 0,
+      "classified_as": null,
+      "known_other_types": [],
+      "has_reset_time": false,
+      "stderr_tail": ""
+    },
+    {
+      "file": "r2_success.jsonl",
+      "codex_version": "0.162.0-alpha.17.2",
+      "scenario": "one-line fix on the fixture project, workspace-write, gpt-6-luna, R2 (this run had a .git in its workspace: Codex added a trust entry to config.toml)",
+      "exit_code": 0,
+      "classified_as": null,
+      "known_other_types": [],
+      "has_reset_time": false,
+      "stderr_tail": ""
+    }
+  ]
+}

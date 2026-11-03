@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Periodic, read-only Harness patrol. A template: launchd does not expand ~ or $HOME, so install it
+  with the sed command in docs/OPERATIONS.md, which fills in __HOME__. Not resident (no KeepAlive,
+  no RunAtLoad): it starts only at the scheduled time and exits. If the Mac is asleep then, launchd
+  runs it on wake.
+
+  Schedule: every Monday 09:00 local time. Daily instead: delete the Weekday key.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.par-runtime.harness-patrol</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>__HOME__/Documents/Personal Agent Runtime/ops/par-harness-patrol.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>10</integer>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Application Support/PersonalAgentRuntime/harness/launchd.err</string>
+</dict>
+</plist>

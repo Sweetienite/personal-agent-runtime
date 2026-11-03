@@ -1,0 +1,12 @@
+# Harness discovery settings and, from P1, the project registry.
+# Copy to <data dir>/config/projects.toml to override.
+schema_version = 1
+
+[harness]
+core_path = "~/Documents/AI_Harness_Core"   # read-only for the Runtime: it is never written
+search_root = "~/Documents"                 # `par harness check` looks for Harness folders under here
+max_depth = 4
+
+# Reserved for P1 (project registration). Ignored in P0.
+# [projects.example]
+# path = "~/Documents/ExampleProject"

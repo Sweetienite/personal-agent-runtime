@@ -1,0 +1,52 @@
+{
+  "samples": [
+    {
+      "file": "write_denied_command.jsonl",
+      "agy_version": "1.3.5",
+      "scenario": "write smoke on the fixture (request-review, gemini-3.8-flash-medium, R2): the model read app/calc.py, tried to run the tests, headless mode auto-denied the command, the run ended with status SUCCESS, exit 0 and no output",
+      "exit_code": 0,
+      "mode": "request-review",
+      "classified_as": null,
+      "known_other_types": [
+        "user_input"
+      ],
+      "stderr_tail": "jetski: no output produced — a tool required the \"command\" permission that headless mode cannot prompt for, so it was auto-denied. Add an allow-rule under permissions.allow in settings.json (e.g. command(<target>)). Alternatively, re-run with --dangerously-skip-permissions to auto-approve all tools.\n",
+      "empty_answer": true,
+      "denied_actions": [
+        {
+          "action": "command",
+          "display_name": "RunCommand"
+        }
+      ]
+    },
+    {
+      "file": "write_ok_then_eof.jsonl",
+      "agy_version": "1.3.5",
+      "scenario": "write smoke 3: rules strategy; the edit succeeded, then the vendor dropped the connection (status ERROR)",
+      "exit_code": 1,
+      "mode": "request-review",
+      "classified_as": "TRANSIENT_ERROR",
+      "known_other_types": [
+        "error_message",
+        "user_input"
+      ],
+      "stderr_tail": "",
+      "empty_answer": false,
+      "denied_actions": []
+    },
+    {
+      "file": "write_success.jsonl",
+      "agy_version": "1.3.5",
+      "scenario": "write smoke 3b: one-line fix with write_file allow-rules (rules strategy), request-review, SUCCESS",
+      "exit_code": 0,
+      "mode": "request-review",
+      "classified_as": null,
+      "known_other_types": [
+        "user_input"
+      ],
+      "stderr_tail": "",
+      "empty_answer": false,
+      "denied_actions": []
+    }
+  ]
+}

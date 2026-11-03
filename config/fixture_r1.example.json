@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "project_id": "fixture",
+  "title": "Ask: what does add() return?",
+  "description": "Read app/calc.py. In ONE sentence, say what add(2, 3) returns as the code is written now, and whether that matches docs/spec.md. Do not change any file.",
+  "role": "code",
+  "risk": "R1",
+  "allowed_paths": [],
+  "acceptance": {"criteria": ["a one-sentence answer"], "checks": []},
+  "idempotency_key": "fixture-ask-add-1"
+}

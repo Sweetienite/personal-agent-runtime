@@ -1,0 +1,25 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Only checks that the package installs and its own CLI runs - not a substitute for the real
+  # suite. The full 1373-test suite only runs on the author's own Mac: several tests assume a
+  # single-user macOS machine (an adapter's "executable must not be group/world-writable" safety
+  # check correctly refuses GitHub's runner image, where Python is installed group-writable;
+  # others assume macOS-specific doctor checks or a larger ARG_MAX). Loosening any of those would
+  # be a safety-relevant change needing tests/tools/mutation_check.py coverage, not something to
+  # do just to turn this badge green - so it stays narrow instead.
+  install:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: par doctor
+      - run: par version

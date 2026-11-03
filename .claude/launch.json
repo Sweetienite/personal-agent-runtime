@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "par-console",
+      "runtimeExecutable": ".venv/bin/python3",
+      "runtimeArgs": ["-B", "-m", "par", "serve", "--port", "8765"],
+      "port": 8765
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "project_id": "fixture",
+  "title": "Fix add()",
+  "description": "add() in app/calc.py returns the wrong value. Fix it so that `python3 -m unittest -q` passes. Change only app/calc.py.",
+  "role": "code",
+  "risk": "R2",
+  "allowed_paths": ["app/"],
+  "acceptance": {
+    "criteria": ["the unit tests pass"],
+    "checks": [{"name": "unit", "argv": ["python3", "-m", "unittest", "-q"], "timeout": 120, "expect_exit": 0}]
+  },
+  "idempotency_key": "fixture-fix-add-1"
+}

@@ -1,0 +1,64 @@
+# Context Manifest：给 Worker 的上下文契约
+
+Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一份 **Context Manifest**：列出这次任务会看到什么、以什么形式、凭什么确认它没被改过。它由 `HarnessContextAdapter`（`src/par/context/harness.py`）只读生成，不写任何东西。
+
+查看：`par project show <id> [--manifest] [--json]`。
+
+## 规则
+
+1. `AGENTS.md` 是共享入口。唯一的 active 合同和**健康的** `STATE.md` 可以内联，其余一律是指针。
+2. 超过上限的东西变成指针（路径、大小、哈希），**绝不静默截断**。上限：单条 20,000 B，合计 60,000 B，`STATE.md` 15,000 B（与 Core 的 hygiene 一致）。
+3. 超大的 `STATE.md` 永远不内联，并且在它被对账之前拦住写入试运行。
+4. 每一条都带来源、大小和 sha256。读取内联内容时会重新校验，不一致就抛 `ContextChanged`，对应 Core 的 `CONCURRENT_MODIFICATION_DETECTED` 语义。
+5. 敏感路径只计数、不列名。事实源指针取自 `STATE.md` 的 `## Sources of Truth`；绝对路径、`..` 和符号链接逃逸一律标为 `outside_project` 并跳过。
+6. `digest` 只取决于内容，不含生成时间；相同输入得到相同 digest。
+7. 默认全新会话：清单不携带任何旧对话或工具记忆。
+
+## 一条 entry
+
+| 字段 | 含义 |
+|---|---|
+| `kind` | `rules`（AGENTS.md）、`bridge`（CLAUDE.md）、`state`、`contract`、`source` |
+| `mode` | `inline` 给内容；`pointer` 只给路径加大小加哈希，Worker 在权限允许时按需读取；`skip` 不给，并说明原因 |
+| `bytes` `sha256` | 生成清单时的大小与哈希 |
+| `reason` | 为什么不是 `inline` |
+| `topic` | 仅 `source`：STATE 里对该文件的称呼（已脱敏） |
+
+## 清单与任务登记的对应关系（总方案 4.1）
+
+| 任务字段 | 来自 |
+|---|---|
+| `parent_contract_ref` | `manifest.parent_contract_ref`：唯一 active 合同的路径加哈希；没有或多于一个时为 `None` |
+| `state_revision/hash` | `manifest.state_revision` |
+| `base_git_commit` | `manifest.base_git_commit`（完整 SHA） |
+| dirty manifest | `manifest.base.dirty` 计数加 `base.dirty_digest`（对未提交状态行取哈希，不泄露文件名） |
+
+任务执行前后各取一次清单，`digest` 或 `dirty_digest` 变了就是「基线漂移」，必须人工处置，不能覆盖（T23）。
+
+### P2 里 Kernel 怎么用它（`core/kernel.py`）
+
+- **提交时**取一次清单，把下面这些存进任务的 `base`：`commit`（完整 SHA）、`branch`、`dirty` 计数、`manifest_digest`、`state_revision`、`parent_contract_ref`，以及用于漂移判断的 `drift` 签名。
+- **漂移签名**只取真正会改变任务前提的东西：提交（`head`）、规则文件哈希（`rules`）、STATE 哈希（`state`）、父合同哈希（`contract`）；R2 任务另加 `dirty_digest`（写任务要求干净基线）。只读任务不因为你在项目里随手改了无关代码文件而被打断；Worker 看到的是**已提交**的基线克隆，不含未提交的修改。
+- **运行时**重新取清单与签名比对：不同 → `PERMISSION_WAIT` 加 `BASE_DRIFT`；你批准后以当前状态重写 `base`（记 `BASE_REFRESHED`），拒绝则取消任务。
+- **给 Worker 的提示词**里的「Project context」一节就是 `render(manifest)` 的输出：内联条目（规则、健康的 STATE、唯一合同）原文、其余指针。渲染时会重新校验哈希，文件在取清单与渲染之间变了就拒绝运行（`context_changed`）。
+- **父合同规则**：有且仅有一份 active 合同的项目，任务挂在它之下；没有 active 合同的项目只接受 `ad_hoc=true` 的 R0/R1 只读诊断；有多份则一律拒绝。Kernel 从不自己创建权威合同。
+
+## 写入就绪（`write_readiness`）
+
+返回 `allowed` 和一组 `blockers`。**对登记表里的真实项目，`allowed` 恒为假**（登记表不允许 `write_enabled = true`），所以 P2 提交写任务一定被拦；其余原因用来告诉你「还差什么」。测试夹具直接构造 `write_enabled=True` 的项目条目来演练写任务。
+
+| 代码 | 含义 |
+|---|---|
+| `WRITE_DISABLED` | 真实项目的写入要等 P8 的门禁 |
+| `STATE_OVERSIZED` | `STATE.md` 超过 15,000 B：先对账（Core 文档 06 §6），经你确认 |
+| `NO_ACTIVE_CONTRACT` / `MULTIPLE_ACTIVE_CONTRACTS` | 写任务需要唯一的已批准主合同，或你明确的临时流程 |
+| `SENSITIVE_VISIBLE` | git 能看到敏感路径：先补忽略规则 |
+| `DIRTY_BASE` | 有未提交改动：需要干净基线或显式的 dirty manifest |
+| `NO_VCS` / `VCS_MISMATCH` | 没有版本控制可回滚：需要显式的备份或快照流程 |
+| `NO_STATE` / `NO_PROJECT` | 缺 `STATE.md` / 项目目录不存在 |
+
+## 已知限制
+
+- 事实源指针只认英文标题 `## Sources of Truth`。用别的标题或别的语言的项目（例如毕业论文）没有指针，清单里只有规则、STATE 和合同。
+- 指针指向的文件只做 `stat`，不读内容。
+- 登记只记录「在哪」，不记录「里面有什么」，不构成第二份项目记忆。

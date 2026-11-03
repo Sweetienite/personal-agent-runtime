@@ -1,0 +1,44 @@
+# Profile example. Copy to <data dir>/config/profiles.toml to override.
+#
+# The user decides models and fallback chains; the Runtime never scores or picks models by itself.
+# "<RUN-TIME-VERIFIED-SLUG>" is a placeholder and marks the worker as not yet configured. For a Codex worker, pick a slug from
+# the list `par health --probe --json` prints under probes[0].facts.models_in_catalog (a local cache, so a slug missing from it
+# is only a note). Your global Codex settings (for example model_reasoning_effort) keep applying: V1 has no per-worker setting.
+# Do not hard-code example model names here.
+schema_version = 1
+active_profile = "claude_main"
+
+[profiles.claude_main]
+coordinator = "claude_desktop"                   # interactive host, not launched by the Kernel
+fallback_coordinator = "codex_manual_takeover"
+default_worker = "codex_light"
+max_parallel_workers = 1                         # 1 (default) or 2 attempts at once; the same project is never worked on twice at once
+worker_failure_policy = "ask"                    # ask | pause | safe_auto
+additional_paid_credits = false                  # V1 forbids anything else
+
+[profiles.claude_main.roles.code]
+primary = "codex_light"
+fallback = ["agy_flash"]
+
+[profiles.claude_main.roles.analysis]
+primary = "agy_flash"
+fallback = ["codex_light"]
+
+[profiles.claude_main.roles.review]
+primary = "codex_strong"
+fallback = []
+
+[workers.codex_light]
+provider = "codex"
+model = "<RUN-TIME-VERIFIED-SLUG>"
+capabilities = ["read", "edit"]
+
+[workers.codex_strong]
+provider = "codex"
+model = "<RUN-TIME-VERIFIED-SLUG>"
+capabilities = ["read", "edit", "review"]
+
+[workers.agy_flash]
+provider = "antigravity"
+model = "<RUN-TIME-VERIFIED-SLUG>"
+capabilities = ["read", "edit"]

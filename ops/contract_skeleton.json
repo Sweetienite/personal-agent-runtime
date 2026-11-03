@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "project_id": "par_runtime",
+  "title": "<short title - matches the .ai/tasks/active/TASK-0NN-*.md file's title>",
+  "role": "code",
+  "worker": "<agy_flash | agy_flash_high | omit this field entirely for a manual hand-off - see docs/OPERATIONS.md>",
+  "risk": "R2",
+  "timeouts": {
+    "total": "<seconds - optional, omit for the 1200s (20 min) default. The default fits a change that mirrors an existing pattern. It does not fit one that requires writing real new logic and its own tests from scratch - size this explicitly for those (TASK-008's Result has a real case that needed 3600s). Remove this whole 'timeouts' object if the default is enough.>"
+  },
+  "allowed_paths": [
+    "<exact files - must match the TASK-0NN.md file's Scope exactly, nothing more>"
+  ],
+  "acceptance": {
+    "criteria": [
+      "<one line per Acceptance checkbox in the .md file - keep the two in agreement>"
+    ],
+    "checks": [
+      {
+        "name": "full_suite",
+        "argv": ["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-t", "."],
+        "timeout": 600,
+        "expect_exit": 0
+      }
+    ]
+  },
+  "dependencies": [],
+  "idempotency_key": "<par_runtime-short-description-YYYYMMDD>",
+  "description": "Full contract is the TASK-0NN markdown file under .ai/tasks/active/ in this repository - read that file first, it governs this work. Summary: <one sentence - not a restatement of Goal/Scope/Forbidden/Stop Conditions, the Worker's own private clone already has .ai/ and can read those directly>."
+}

@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.DS_Store
+
+# Runtime data, databases and baselines never live in this repository.
+.par/
+*.sqlite3
+*.sqlite3-*
+
+# This folder also holds the construction package and the Harness candidate drafts.
+# They belong to the user's planning material, not to the Runtime source.
+Personal_Agent_Runtime_V1.0施工资料包/
+Harness_候选稿/
+Harness整改候选清单_*.md

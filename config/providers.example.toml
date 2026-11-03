@@ -1,0 +1,35 @@
+# Provider registry (example). Copy to <data dir>/config/providers.toml to override.
+#
+# Every external provider starts disabled. An adapter exists only for a provider that is enabled AND names its executable
+# (P3: codex; P4: antigravity). Enabling any other provider here only makes `par health` explain that tasks cannot run yet.
+# Credentials never go here: each vendor CLI keeps its own login, and the Runtime refuses config
+# files that contain secret-looking keys or values.
+schema_version = 1
+
+[providers.codex]
+kind = "codex"
+enabled = false
+# Absolute path of the Codex CLI to use. Never rely on PATH: the `codex` found on PATH is a broken install.
+# Use the SIGNED binary bundled in ChatGPT.app (verified in P3: OpenAI team 2DC432GLL2), not the `bin/codex` wrapper script
+# next to it (a script carries no signature and is refused):
+#   executable = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+# Then set enabled = true and run `par health --probe` (offline; no model is called, no quota is used).
+executable = ""
+
+[providers.antigravity]
+kind = "antigravity"
+enabled = false
+# The `agy` CLI. Verified in P4; it is not installed at P0.
+executable = ""
+
+[providers.claude_host]
+kind = "claude_host"
+enabled = false   # interactive coordinator hosted by Claude Desktop; the Kernel never launches it
+
+[providers.manual_handoff]
+kind = "manual_handoff"
+enabled = false   # manual relay node (e.g. WorkBuddy); not an automatic worker
+
+[providers.gemini_legacy]
+kind = "gemini_legacy"
+enabled = false   # stays installed but can never be enabled, and is never a fallback for agy
