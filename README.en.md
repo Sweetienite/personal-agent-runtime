@@ -27,11 +27,12 @@ By late 2026 a small cluster of "orchestrate CLI coding agents" tools had appear
   adapter capabilities are explicit, and an unproven capability is refused before a write run starts.
 - **An evidence-based compatibility matrix, not a support claim.** [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
   records each candidate's version, OS, official documentation, account/terms constraints, what was actually
-  probed and what was NOT tested. As of 2026-11-06 the research began static and was followed by two real
-  Codex re-validation attempts: the existing Codex path now carries **`GREEN (scoped)`** (no general GREEN;
-  PAR's default sandbox mode still needs a real run on a normal terminal), `agy` is RED (Google's FAQ
-  prohibits wrapping it in third-party coding agents under consumer plans), and Gemini CLI / Claude Code /
-  ACP / OpenCode are YELLOW. No new automatic provider was added.
+  probed and what was NOT tested. As of 2026-11-07 the research began static and was followed by three
+  real Codex re-validation attempts: the existing Codex path now carries **`GREEN`** (the product's
+  default sandbox mode also passed a real R1/R2 on a normal terminal; still only that version/OS/account
+  combination), `agy` is RED (Google's FAQ prohibits wrapping it in third-party coding agents under
+  consumer plans), and Gemini CLI / Claude Code / ACP / OpenCode are YELLOW. No new automatic provider
+  was added.
 - **Zero third-party dependencies**, standard library only. Easier to audit, nothing to update for CVEs in a dependency tree.
 
 If your need is "coordinate many agents across machines fast," this is probably the wrong tool. If your need is "let an LLM actually touch my code, but never *just believe* it," this is what PAR is built for.
@@ -88,15 +89,17 @@ From here: configure a provider (`config/providers.example.toml`), register a pr
 
 ## Release status
 
-As of 2026-11-06 the recommendation is **not to tag a new release yet**. A second real re-validation
-did produce a successful real R1/R2 and completed the section-12 version check for the bundled
-`codex-cli 0.166.0-alpha.6`, but the evidence is **`GREEN (scoped)`**: the host already provides an
-OS-level external sandbox, so the runs used the vendor-documented externally-sandboxed mode. PAR's
-default sandbox mode still needs a real run on a normal terminal. T14 remains closed as "no new
-automatic provider", and no general GREEN candidate exists. See
+As of 2026-11-07 the recommendation is still **not to tag a new release yet**. Three real re-validation
+attempts completed the section-12 version check for the bundled `codex-cli 0.166.0-alpha.6`; the final
+2026-11-07 run used the product's **default** `-s read-only|workspace-write` on a normal terminal and
+produced a successful real R1/R2, so the existing Codex path is now **`GREEN`** (still only that
+version/OS/account combination). The earlier scoped run used the vendor-documented externally-sandboxed
+mode and is recorded separately. T14 remains closed as "no new automatic provider", and no second
+general GREEN candidate exists. See
 [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md) and the
 [part 1](docs/reports/CODEX_REAL_REVALIDATION_20261106.md) /
-[part 2](docs/reports/CODEX_REVALIDATION_PART2_20261106.md) re-validation reports.
+[part 2](docs/reports/CODEX_REVALIDATION_PART2_20261106.md) /
+[part 3](docs/reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md) re-validation reports.
 Tagging needs a separate approval, and was explicitly deferred.
 
 ## What the CI badge means
@@ -104,9 +107,10 @@ Tagging needs a separate approval, and was explicitly deferred.
 Three named jobs: `smoke_install` (macOS install + doctor + version), `core_unittests`
 (macOS core state/contract/approval/hand-off/integration regressions) and `linux_security_core`
 (Ubuntu platform-independent security regressions). **The badge does not mean the full ~1561-test
-suite passes in CI**; the remaining modules run only on a developer's Mac, and four
-process-termination modules fail in the local sandbox with a failure set identical to the unmodified
-baseline. See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/SECURITY.md](docs/SECURITY.md).
+suite passes in CI**; the remaining modules run only on a developer's Mac. On a normal terminal the
+full 1561-test suite passes; in some restricted sandboxes four process-termination modules can fail
+because they cannot signal a child process group (those tests are not skipped for platform reasons).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/SECURITY.md](docs/SECURITY.md).
 `docs/reports/` are historical snapshots of the version that was tested then, not current support claims.
 
 ## What's here, in English, vs. what stays in Chinese

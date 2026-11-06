@@ -196,7 +196,7 @@ CLI 写诊断日志与续期令牌是它自己的行为；`par` 不碰这些，�
    **绝不要用提权参数把一次写测试「做绿」**：`codex_revalidate.py` 在这类宿主上会 exit 2、
    0 次模型调用，而不是绕过。§14 记录了唯一一次例外（宿主已由外部沙箱化，正是
    `codex exec --help` 写出的适用情形），它**只用于诊断、只改临时副本、不进主干配置**，
-   结论也标为 `GREEN (scoped)` 而非通用 GREEN。两次实测见 §13、§14。
+   当时结论标为 `GREEN (scoped)` 而非通用 GREEN。**2026-11-07 的普通终端默认沙箱复核成功后，等级已升为 `GREEN`，见 §15。** 三次实测见 §13–§15。
 
 ## 13. 2026-11-06 第一次真实复核（`0.166.0-alpha.6`，未完成）
 
@@ -284,7 +284,7 @@ sqlite / 缓存文件被改写（只记名称与大小，不读内容）。
 1. **默认 `-s read-only|workspace-write` 在本宿主无法运行**，本轮真实 R1/R2 **不是**默认模式。
    在允许嵌套沙箱的普通终端上用 `python -B tests/tools/codex_revalidate.py --yes-use-quota --model <slug>`
    重跑默认模式，才能把它也记为已验证。该脚本在本宿主会 **exit 2 / 0 次模型调用**并明确拒绝，
-   **不会**用提权参数把结果做绿。
+   **不会**用提权参数把结果做绿。**2026-11-07 已在普通终端补跑成功，见 §15。**
 2. 真实取消/超时/断线/额度事故**没有**人为制造；这部分是 153 项可控假样本 + 无登录 `exec` 的真实认证失败
    （trust 测试，不调用模型）。
 3. `spawn_agent` / `list_agents` 在 `--disable multi_agent` 后仍出现在基础工具列表；不宣称子代理已验证关闭。
@@ -293,3 +293,24 @@ sqlite / 缓存文件被改写（只记名称与大小，不读内容）。
 `TESTED_VERSION` 记录的是**被复核的 CLI build**，不是对所有部署矩阵的无条件承诺
 （`src/par/providers/codex.py` 常量上方写有同样的注释）。`pyproject.toml` / `__version__` 仍为 `1.0.0`，
 **未打 tag、未发 Release**；[发行清单](RELEASE_NOTES_2026-11.md) 的结论仍是「不建议现在打新版」。
+
+## 15. 2026-11-07 默认沙箱复核：`GREEN` 升级
+
+§14 的唯一限定（默认 `-s` 模式未复核）已补完。完整证据：
+[reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
+
+| 项 | 结果 |
+|---|---|
+| 宿主 | macOS 15.6.1 arm64；`sandbox_check = 0`（未被外部 Sandbox 约束）；`nested_sandbox_available: true` |
+| 命令 | `python -B tests/tools/codex_revalidate.py --yes-use-quota --model gpt-6-luna` |
+| 退出码 | **0**；offline 8/8、trust 3/3、real_smoke rc=0 |
+| 真实调用 | **2 次**（R1 + R2，ChatGPT 订阅额度） |
+| R1 | `REVIEW_REQUIRED`；模型正确答出 `add(2, 3) = -1`（与 spec 的 `5` 不符），0 文件变更 |
+| R2 | `MEASURED · boundary CLEAN · checks PASSED (1/1)`；补丁 1 文件 +1 −1；0 边界违规；未应用到项目 |
+| 沙箱模式 | 产品代码默认 `-s read-only\|workspace-write`；**未改适配器、未新增开关、未传任何提权参数** |
+| 副作用 | 夹具工作树 clean、真实数据目录未变、`~/.codex/config.toml` 未变 |
+| 等级 | 现有 Codex 从 `GREEN (scoped)` 升为 **`GREEN`**；仍只覆盖该版本/OS/账号组合，不是新增 Provider |
+
+仍未人为制造真实取消 / 超时 / 断线 / 额度耗尽事故；这部分仍由 153 项可控假样本与
+offline/trust 测试覆盖。`spawn_agent` / `list_agents` 仍出现在基础工具列表，不宣称子代理已验证关闭。
+没有打 tag / 发 Release，T14 的「不新增自动 Provider」结论不变。

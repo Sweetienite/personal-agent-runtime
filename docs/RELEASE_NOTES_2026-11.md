@@ -6,12 +6,13 @@
 
 理由（按重要性）：
 
-1. **仍没有跨环境通用 `GREEN` 的自动执行路径**。T14 原本是 `BLOCKED_BY_EVIDENCE`（Issue #16）：T13 是静态能力研究、无 GREEN。2026-11-06 用户授权解锁并选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」；同日用户追加授权后，第二次尝试在宿主已由外部 OS 沙箱化的限定条件下取得了**成功的真实 R1/R2**，但等级只能是 **`GREEN (scoped)`**——真实运行用了非默认沙箱模式，PAR 默认 `-s` 模式仍需在普通终端复核。T14 的「不新增自动 Provider」结论不变，P3 Gate 里「至少一条**新增**正式自动执行路径」**仍未达成**。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md) 与 [第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md)。
-2. **`codex-cli 0.166.0-alpha.6` 已完成 §12 版本复核（带限定）**：离线 8/8 PASS、trust 3/3 PASS、`par health --probe` AVAILABLE、可控分类样本 153/153 PASS、真实 R1/R2 成功；`TESTED_VERSION` 已更新为该版本，`untested version` 提示消除。**但**默认 `-s read-only|workspace-write` 在当前宿主无法叠加沙箱、未在本轮真实复核范围内，需在允许嵌套沙箱的普通终端用 `codex_revalidate.py` 补跑。见 [CODEX.md](CODEX.md) §12 / §14。
+1. **仍没有第二条通用 `GREEN` 的自动执行路径**。T14 原本是 `BLOCKED_BY_EVIDENCE`（Issue #16）：T13 是静态能力研究、无 GREEN。2026-11-06 用户授权解锁并选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」；同日第二次尝试在宿主已由外部 OS 沙箱化的限定条件下取得成功的真实 R1/R2。**2026-11-07 在普通终端补跑产品默认 `-s` 模式成功，现有 Codex 升为 `GREEN`**。T14 的「不新增自动 Provider」结论不变，P3 Gate 里「至少一条**新增**正式自动执行路径」**仍未达成**。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)、[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md) 与 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
+2. **`codex-cli 0.166.0-alpha.6` 已完成 §12 版本复核**：离线 8/8 PASS、trust 3/3 PASS、`par health --probe` AVAILABLE、可控分类样本 153/153 PASS、真实 R1/R2 成功；`TESTED_VERSION` 已更新为该版本，`untested version` 提示消除。**默认 `-s read-only|workspace-write` 已于 2026-11-07 在普通终端复核成功**（见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)）。见 [CODEX.md](CODEX.md) §12 / §14 / §15。
 3. **Antigravity 条款风险**：官方 FAQ 明确禁止第三方封装；现有 `agy` 适配器只能作为实验性、默认禁用的历史实现保留。
 4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（仅 CI 纯逻辑安全子集）、Windows `STATIC_GAP`。
-5. **本机全量套件不能声称全绿**：4 个进程终止类模块（7 个用例）因沙箱无法向子进程组投递信号而失败；
-   未修改基线失败集合完全相同。CI 只跑三个明确命名的作业，不是全量 1561 项。
+5. **全量套件仍不是 CI 的覆盖范围**：2026-11-06 的受限沙箱里曾有 4 个进程终止类模块（7 个用例）
+   因无法向子进程组投递信号而失败；**2026-11-07 在普通终端全量 1561 项通过（23 skipped）**。
+   CI 仍只跑三个明确命名的作业，不是全量 1561 项。
 
 因此本轮的成果是**文档与证据整理**，适合作为 `main` 上的持续交付；不适合对外宣布一个「P3 全部通过」的版本。
 `pyproject.toml` / `__version__` 保持 `1.0.0`，未改动版本号。
@@ -34,15 +35,15 @@
 | T11 候选整合 | #13 | `a79d87a` | 干净基线叠加、下游可见；M654–M666 |
 | T12 角色/厂商解耦 | #14 | `e21e109` | surface、能力闸门；M667–M671 |
 | T13 官方接口证据研究 | #15 | `e6b3e79` | 无 GREEN；`docs/COMPATIBILITY.md` |
-| T14 新增自动 Provider | — | Issue #16 | **收口：不新增自动 Provider**；两次真实复核后现有 Codex 取得 `GREEN (scoped)`（第二次有成功的真实 R1/R2），仍无跨环境通用 GREEN、无空实现 |
+| T14 新增自动 Provider | — | Issue #16 | **收口：不新增自动 Provider**；三次真实复核后现有 Codex 取得 `GREEN`（2026-11-07 默认沙箱成功 R1/R2），仍无第二条通用 GREEN、无空实现 |
 | T15 安全审计与平台分级 | #17 / #18 | `5f27cfb` / `fe3270d` | 独立安全修复 + 安全矩阵 + Linux CI |
 | T16 公开文档与发行审查 | 本 PR | — | QUICKSTART / MODES / 历史归档 / 本清单 |
 
 ## 解锁新版的条件
 
 1. ~~用户明确选定官方允许的账号路径并授权在非敏感夹具上做真实 R1/R2 样本~~ **已完成（2026-11-06）**：用户选定了 ChatGPT 订阅 + `codex exec`，两次真实 R1/R2 均已留档；第二次取得成功的真实 R2。
-2. ~~Codex 当前版本的真实复核与 `TESTED_VERSION` 更新~~ **已完成（带限定）**：§12 复核 8/8 + 3/3 + 153/153 + 真实 R1/R2，`TESTED_VERSION` = `0.166.0-alpha.6`。但等级为 `GREEN (scoped)`。
-3. **仍需要在允许创建嵌套 OS 沙箱的普通终端**用 `python -B tests/tools/codex_revalidate.py --yes-use-quota --model <slug>` 补跑 **PAR 默认 `-s` 模式**的真实 R1/R2，并把结果写入 [CODEX.md](CODEX.md) 与 [COMPATIBILITY.md](COMPATIBILITY.md)；之后才能把 `GREEN (scoped)` 升格。该脚本在沙箱阻塞宿主上 exit 2、0 次模型调用，不会用提权参数做绿。
+2. ~~Codex 当前版本的真实复核与 `TESTED_VERSION` 更新~~ **已完成**：§12 复核 8/8 + 3/3 + 153/153 + 真实 R1/R2，`TESTED_VERSION` = `0.166.0-alpha.6`。
+3. ~~在允许创建嵌套 OS 沙箱的普通终端补跑 PAR 默认 `-s` 模式~~ **已完成（2026-11-07）**：`codex_revalidate.py --yes-use-quota --model gpt-6-luna` exit 0，真实 R1/R2 均使用产品默认沙箱；结果已写入 [CODEX.md](CODEX.md) / [COMPATIBILITY.md](COMPATIBILITY.md)，等级从 `GREEN (scoped)` 升为 `GREEN`。见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
 4. 若要新增（而不是只复核）一个自动 Provider，仍需付费 Gemini API key / 企业许可等**官方允许**的账号路径，并按 [ADAPTERS.md](ADAPTERS.md) 清单实现 + 真实样本；本轮用户已明确决定不新增。
 5. 一个能在干净 Linux 环境跑通 fake CLI 全链路的记录（把 Linux 从 `CORE_EXPERIMENTAL` 升格）。
 6. 用户单独批准打 tag / 发 Release，并确认 `CHANGELOG.md` 的版本号与发行说明。用户本轮明确要求**先不打 tag**。
@@ -89,3 +90,16 @@
   [ADAPTERS.md](ADAPTERS.md)、[QUICKSTART.md](QUICKSTART.md)、[MODES.md](MODES.md)、
   [reports/README.md](reports/README.md)、`CHANGELOG.md`、`README.en.md` 与本清单。
   **仍未打 tag / 发 Release。**
+
+## 2026-11-07 追加：默认沙箱复核完成，Codex 升为 `GREEN`
+
+- 新增 [reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)：
+  普通终端（`sandbox_check=0`、`nested_sandbox_available: true`）上跑
+  `codex_revalidate.py --yes-use-quota --model gpt-6-luna`，exit 0；offline 8/8、trust 3/3、
+  2 次真实 R1/R2 全部使用**产品默认** `-s read-only|workspace-write`。
+- R1 正确答出 `add(2, 3) = -1`（与 spec 的 `5` 不符），0 文件变更；R2
+  `MEASURED · boundary CLEAN · checks PASSED (1/1)`、补丁 1 文件 +1 −1、0 违规、未应用到项目。
+- 夹具工作树 clean、真实数据目录未变、`~/.codex/config.toml` 未变。
+- 现有 Codex 的等级从 `GREEN (scoped)` 升为 **`GREEN`**；仍只覆盖该版本/OS/账号组合，
+  **不是**新增自动 Provider，也不是给其它 Provider 升格。T14 的「不新增自动 Provider」结论不变。
+- 仍未打 tag / 发 Release；`TESTED_VERSION` 仍为 `0.166.0-alpha.6`，版本号仍为 `1.0.0`。
