@@ -377,6 +377,7 @@ MUTATIONS = [
     ('M669', 'the runtime capability gate is skipped', 'src/par/core/attempt.py', '        if declared.can_headless != Tri.YES or (contract.writes and declared.can_write != Tri.YES):', '        if False:', T + 'test_role_provider_caps'),
     ('M670', 'reading a capability declaration instantiates the factory', 'src/par/providers/registry.py', '        declared = capabilities if capabilities is not None else getattr(factory, "declared_capabilities", None)', '        declared = self._factories[provider_id]().capabilities()', T + 'test_role_provider_caps'),
     ('M671', 'a worker surface is no longer derived from its provider', 'src/par/config.py', '        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps), providers[prov].surface)', '        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps))', T + 'test_role_provider_caps'),
+    ('M672', 'windows separators are not normalised so a sensitive path is missed', 'src/par/core/policy.py', '    raw = os.fspath(path).replace("\\\\", "/")', '    raw = os.fspath(path)', T + 'test_policy'),
 ]
 
 

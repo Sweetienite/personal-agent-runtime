@@ -51,8 +51,15 @@ _SEQS = tuple(tuple(_canon(p) for p in seq) for seq in _SENSITIVE_SEQUENCES)
 
 
 def is_sensitive_path(path: "str | os.PathLike[str]") -> bool:
-    """True when the path *name* looks like a credential / PII location. Never touches the file system."""
-    parts = [_canon(p) for p in PurePath(os.fspath(path)).parts if p not in ("/", "")]
+    """True when the path *name* looks like a credential / PII location. Never touches the file system.
+
+    Windows drive letters, UNC shares and backslashes are split too: on POSIX a backslash is a
+    legal *file name* character, so ``PurePath`` alone would see ``C:\\Users\\me\\.ssh\\id_rsa`` as
+    one harmless-looking name and let a sensitive path slip past. Denying by both separators is
+    deliberately conservative - a false positive only hides a path, never exposes one.
+    """
+    raw = os.fspath(path).replace("\\", "/")
+    parts = [_canon(p) for p in PurePath(raw).parts if p not in ("/", "")]
     if not parts:
         return False
     name = parts[-1]

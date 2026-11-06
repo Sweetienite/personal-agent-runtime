@@ -41,6 +41,12 @@ Documentation and metadata corrections only — no behavior change:
   no empty or untested adapter was added. `tests/tools/provider_probe.py` reproduces the offline probe and asserts
   it never runs a model, network call or credential read.
 
+- Security fix (independent PR): `is_sensitive_path` now splits Windows drive letters, UNC shares and
+  backslashes as path separators. On POSIX a backslash is a legal file-name character, so a path such as
+  `C:\Users\me\.ssh\id_rsa` was previously seen as one harmless-looking name and could slip past the
+  deny-by-name guard. The change is deliberately conservative (a false positive only hides a path) and
+  is covered by `test_policy` cases plus mutation `M672`. Windows itself remains an untested platform.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:
