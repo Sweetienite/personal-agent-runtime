@@ -124,6 +124,30 @@ class Basics(CliWorld):
         self.assertIn("ACCEPTED -> CLOSED", out)
         self.assertEqual(self.par("task", "status", "fixture-0001", "--json")[0], 0)
 
+    def test_task_handoff_prints_the_mode_the_paths_and_the_next_steps(self):
+        self.par("task", "submit", "--contract", str(self.write_contract()))
+        code, out, err = self.par("task", "handoff", "fixture-0001", "--to", "workbuddy")
+        self.assertEqual(code, 0, err)
+        self.assertIn("mode: text", out)
+        self.assertIn("PROMPT.md", out)
+        self.assertIn("par task import fixture-0001 --text", out)
+        answer = self.base / "answer.txt"
+        answer.write_text("add() subtracts\n")
+        code, out, err = self.par("task", "import", "fixture-0001", "--text", str(answer))
+        self.assertEqual(code, 0, err)
+        self.assertIn("REVIEW_REQUIRED", out)
+
+    def test_task_handoff_json_carries_the_absolute_paths_a_person_needs(self):
+        self.par("task", "submit", "--contract", str(self.write_contract(idempotency_key="handoff-json")))
+        code, out, err = self.par("task", "handoff", "fixture-0001", "--to", "workbuddy", "--json")
+        self.assertEqual(code, 0, err)
+        info = json.loads(out)
+        self.assertEqual(info["mode"], "text")
+        for key in ("workspace_absolute_path", "prompt_path", "manifest_path", "readme_path"):
+            self.assertTrue(Path(info[key]).is_absolute(), key)
+        self.assertTrue(info["next_actions"])
+        self.assertEqual(info["allowed_paths"], [])
+
     def test_list_waiting_shows_only_tasks_a_person_must_decide_on(self):
         self.par("task", "submit", "--contract", str(self.write_contract(idempotency_key="w-1")))
         self.par("task", "submit", "--contract", str(self.write_contract(idempotency_key="w-2")))

@@ -34,7 +34,7 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 | `par task accept T` `close T` | 接受 `REVIEW_REQUIRED` 的结果 / 归档。接受**不会**把补丁应用到项目 |
 | `par task cancel T` `pause T` `resume T` | 取消（会停掉运行中的 Worker）、暂停、恢复 |
 | `par task retry T [--worker ID] [--force] [--fresh]` | 新 attempt，采用当前配置；写文件的任务**默认接着上一次已验证的改动继续**（接力，见 [HANDOFF.md](HANDOFF.md)），`--fresh` 从基线重来；`--force` 清除健康记录 |
-| `par task handoff T [--to APP] [--note TEXT]` | 为人工交接（WorkBuddy、TRAE、Cursor、Windsurf、Cline、Aider 或任何没有脚本化接口的应用）准备交接包：`PROMPT.md`、`README.md`、`manifest.json`、私有副本 `workspace/`；`QUEUED` 的任务会被暂停，防止别的 Worker 抢跑 |
+| `par task handoff T [--to APP] [--note TEXT]` | 为人工交接（WorkBuddy、TRAE、Cursor、Windsurf、Cline、Aider 或任何没有脚本化接口的应用）准备交接包：`PROMPT.md`、`README.md`、`manifest.json`、私有副本 `workspace/`；输出 `mode`、`workspace_absolute_path`、`prompt_path`、`manifest_path`、`base_commit`、`allowed_paths` 与可照抄的 `next_actions`；`QUEUED` 的任务会被暂停，防止别的 Worker 抢跑 |
 | `par task import T --from DIR \| --patch FILE \| --text FILE [--worker APP]` | 把人带回来的结果交给 Kernel 验证（文件比对、边界、合同里的检查），结果和普通 Worker 一样进入 `REVIEW_REQUIRED` |
 | `par coordinator status\|list` / `use NAME [--note T]` / `kit NAME` / `prompt NAME` | 可选主控：看谁在主控与最近出现；`use` = 写接管包并记录切换（你敲命令就是确认）；`kit` 打印接入片段（只打印，不改任何应用的配置）；`prompt` 打印起手提示词。详见 [COORDINATORS.md](COORDINATORS.md) |
 | `par takeover export [--project ID]` / `confirm ID --as NAME` / `status` | 主控交接：只读接管包 → 显式确认（只有最新的包可确认）→ 同一时刻只有一个主控 |

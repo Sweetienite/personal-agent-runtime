@@ -27,7 +27,7 @@
 | `par task approve / reject / accept / close / cancel / pause / resume / retry / recover` | 逐项批准、验收、控制与崩溃恢复 | 台账 |
 | `par health [--probe] [clear PROVIDER]` | 哪些 Worker 现在能跑、为什么不能；`--probe` 让适配器报告自己：版本、签名、登录、模型目录、额度窗口（**不调用模型、不耗额度**） |
 | `par provider login antigravity [--print-only]` | 没有现成 Google 登录时才用：在 Runtime 自己的 HOME 里启动 `agy` 的官方交互登录（不碰 `~/.gemini`，不经手凭据） | 仅 Runtime 自己的 `agy_login_home/` | 清除时写台账；任何 `par task`/`health` 命令首次使用都会在数据目录里建一份空台账 |
-| `par task handoff T --to APP` / `par task import T --from DIR\|--patch F\|--text F` | **人工交接**：给 WorkBuddy / TRAE 这类只能人手操作的桌面应用准备一个包（提示词 + 私有副本 + 步骤），再把结果带回来由 Kernel 按普通 Worker 的标准验证（见 [docs/HANDOFF.md](docs/HANDOFF.md)） | 台账与 `tasks/…/handoff/` |
+| `par task handoff T --to APP` / `par task import T --from DIR\|--patch F\|--text F` | **人工交接**：给 WorkBuddy / TRAE 这类只能人手操作的桌面应用准备一个包（提示词 + 私有副本 + 步骤），结果回来仍按普通 Worker 的标准验证。导出带 `mode`（`workspace` 改文件 / `text` 只收文字答案）、绝对路径和照抄就能做的 `next_actions`；导入核对 task/export/base 与实际导出路径，旧包、副本、伪造标记都点名拒绝（见 [docs/HANDOFF.md](docs/HANDOFF.md)） | 台账与 `tasks/…/handoff/` |
 | `par coordinator status / use NAME / kit NAME / prompt NAME` | **可选主控（路线 A）**：谁在主控、谁最近出现、一条命令切换（写接管包 + 记录）、打印接入片段与起手提示词；候选：Claude、Codex（见 [docs/COORDINATORS.md](docs/COORDINATORS.md)） | 台账与 `takeover/`（`kit`/`prompt`/`status` 只读） |
 | `par takeover export / confirm ID --as NAME / status` | 主控交接：只读接管包（任务树与事实，不含对话和 Worker 的话）+ 显式确认；同一时刻只有一个主控 | 台账与 `takeover/` |
 | `par mcp serve` / `par mcp config` | Claude Desktop 的 MCP 桥（只暴露 17 个受限工具——含调度/恢复/审批/验收/查看 diff，从不暴露配置/健康相关操作；见 [docs/MCP.md](docs/MCP.md)）；`config` 只打印要粘贴的配置，不写任何文件 | 否 |

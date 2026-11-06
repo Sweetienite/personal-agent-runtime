@@ -9,10 +9,12 @@ from par.core.contract import Contract
 
 
 def build_prompt(contract: Contract, *, task_id: str, attempt: int, context_text: str, workspace_has_files: bool,
-                 handoff_text: "str | None" = None) -> str:
+                 handoff_text: "str | None" = None, preface: "str | None" = None) -> str:
     lines = [f"# Task {task_id} (attempt {attempt}): {contract.title}",
-             f"Project: {contract.project_id}    Risk tier: {contract.risk}", "",
-             "## What to do", contract.description.strip(), ""]
+             f"Project: {contract.project_id}    Risk tier: {contract.risk}", ""]
+    if preface:                                        # a manual hand-off: the folder check comes before any instruction
+        lines += [preface.rstrip(), ""]
+    lines += ["## What to do", contract.description.strip(), ""]
     if contract.criteria:
         lines += ["## Acceptance criteria", *[f"- {c}" for c in contract.criteria], ""]
     if contract.checks:

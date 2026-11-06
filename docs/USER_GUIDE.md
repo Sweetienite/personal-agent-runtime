@@ -217,9 +217,12 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 
 这类应用没有可用的程序接口，所以由你搬运，但结果仍然由 Runtime 量、查。同一套流程也适用于其他没有脚本化接口的 IDE/CLI 工具——Cursor、Windsurf、Cline、Aider 等（见 [HANDOFF.md](HANDOFF.md)）：
 
-1. 任务在排队、已暂停或已停下时：`par task handoff 编号 --to workbuddy`（`--to` 换成 `trae`/`cursor`/`windsurf`/`cline`/`aider` 或其他应用名，默认 `manual`）。Runtime 会写出一个文件夹：`PROMPT.md`（提示词）、`README.md`（中文步骤）、`workspace/`（项目的私有副本）。排队中的任务会先被暂停，避免别的 Worker 抢着做；命令会打印这个文件夹的路径。
-2. 在应用里专门打开这个新文件夹，不要在你已经开着的、那个项目本来的会话/空间里继续——哪怕看着是同一个项目，那边对着的是真实项目，Runtime 完全看不到也验证不了（具体怎么点，交接包自己的 README.md 里写了确切菜单路径）。
+1. 任务在排队、已暂停或已停下时：`par task handoff 编号 --to workbuddy`（`--to` 换成 `trae`/`cursor`/`windsurf`/`cline`/`aider` 或其他应用名，默认 `manual`）。Runtime 会写出一个文件夹：`PROMPT.md`（提示词）、`README.md`（中文步骤）、`manifest.json`（基线、允许路径、提示词哈希）、`workspace/`（项目的私有副本）。命令会打印**模式**（`workspace` 会改文件，只收文件夹或补丁；`text` 只收文字答案）、完整路径和接下来每一步；`--json` 里还有 `workspace_absolute_path`、`prompt_path`、`manifest_path`、`base_commit`、`allowed_paths` 和 `next_actions`。排队中的任务会先被暂停，避免别的 Worker 抢着做。
+2. 在应用里专门打开这个新文件夹，不要在你已经开着的、那个项目本来的会话/空间里继续——哪怕看着是同一个项目，那边对着的是真实项目，Runtime 完全看不到也验证不了。具体怎么点，交接包自己的 `README.md` 里写了确切菜单路径（WorkBuddy 那段按 2026-10 的界面记录，版本更新后可能改名；认准「打开本地文件夹」这个动作）。
 3. 做完：`par task import 编号 --from 那个 workspace 文件夹路径`。Runtime 会按当时的样子取走那个文件夹，和项目基线比对、强制允许的路径、自己跑检查；应用自己的说法一概不用。通过后进入「待验收」，和普通 Worker 的结果一样处理。
+   - 只读分析（`risk=R1`）是 `text` 模式：仍然给一份**只读副本**让它读，但只收文字答案（`--text 答案文件`），文件改动不会被采用；R0 文字任务连副本都没有。
+   - `--from` 必须是 Runtime 导出的那个文件夹本身：复制到别处的副本、更早的导出包、标记里的 task/export/base 与台账或包内 `manifest.json` 对不上，都会被**点名拒绝**，不会悄悄接收。已经有一个更新的导出包时，旧包会被判为陈旧；确实是在旧包里做的，可以把改动做成补丁用 `--patch` 交回。
+   - Runtime 不监视文件夹、也不猜应用是否结束：只有你运行 `par task import` 时才读取结果。
 4. **隐私提醒**：这些应用会把你打开的文件发给它们自己的云端模型。每个交接包的 README 都写了这一点，由你决定这个项目能不能交给那家厂商。
 
 ## 7. 出问题怎么办

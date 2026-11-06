@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e .
-      - name: State, approval, contract and policy regressions
+      - name: State, approval, contract, policy and hand-off regressions
         run: >-
           python -B -m unittest
           tests.unit.test_states
@@ -50,3 +50,4 @@ jobs:
           tests.unit.test_p1_compat
           tests.unit.test_task_draft
           tests.unit.test_mcp_prepare
+          tests.unit.test_manual_handoff
