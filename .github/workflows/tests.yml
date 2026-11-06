@@ -54,3 +54,4 @@ jobs:
           tests.unit.test_evidence_summary
           tests.unit.test_candidate_integration
           tests.unit.test_role_provider_caps
+          tests.unit.test_provider_probe

@@ -63,6 +63,8 @@ python -B tests/tools/parallel_tests.py                 # 同一套测试，按�
 
 详细用法、退出码与排障见 [docs/OPERATIONS.md](docs/OPERATIONS.md)。
 
+> **支持范围（2026-11-06 核对）**：正式自动执行路径只有已在配置中启用并写明绝对路径的 Codex；Antigravity 适配器是**实验性、默认禁用**，其官方条款明确禁止第三方封装；Gemini CLI / Claude Code CLI / ACP / OpenCode 尚未在 PAR 的隔离与授权模式下做过真实验证。人工交接（`par task handoff`）适用于 GUI-only 工具。证据等级与未测项见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)，本轮没有新增正式自动 Provider。
+
 ## 设计边界（来自已拍板的决策，配置与代码都在强制）
 
 - Worker 首批只有 **Codex** 与 **Antigravity（`agy`）**；Codex（P3）固定模型、固定沙箱、不含任何 API key，只接受 ChatGPT 订阅登录；Antigravity（P4）在 attempt 的私有 HOME 里运行（看不到你真实的 `~/.gemini`）、权限预设由 Runtime 写入（只读任务 `strict`）、不含任何 API key。旧 `gemini` CLI 保留安装，但配置校验**拒绝启用**，也不会成为 `agy` 的回退。Antigravity 走 Google 官方 `agy` CLI 的 headless 模式：该模式会随厂商版本变化，账号与条款风险由使用者自担；它默认不启用，也不是默认推荐的自动路径。
@@ -117,6 +119,7 @@ docs/          SECURITY  OPERATIONS  ROLLBACK  ADAPTERS  CONTEXT  KERNEL  CHANGE
 | [docs/CODEX.md](docs/CODEX.md) | Codex 适配器：版本兼容记录、命令行逐项依据、隔离配方、沙箱实测、失败分类、升级复核清单 |
 | [docs/AGY.md](docs/AGY.md) | Antigravity 适配器：版本兼容记录、私有 HOME 与权限预设、真实实测与官方文档的差异、未验证清单、升级复核清单 |
 | [docs/ADAPTERS.md](docs/ADAPTERS.md) | Provider 协议、失败分类、测试替身、接入清单 |
+| [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) | **兼容性证据矩阵**：候选工具的版本/OS、官方资料、账号与条款、实测方法与「没有测的内容」；本轮为静态研究，无 GREEN 候选 |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Context Manifest：给 Worker 的上下文契约、写入就绪 |
 | [CHANGELOG.md](CHANGELOG.md) | 面向用户的版本变化摘要 |
 | [docs/reports/](docs/reports/) | 各开发阶段的验证报告（历史记录，不是使用说明） |

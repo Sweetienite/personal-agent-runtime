@@ -32,6 +32,15 @@ Documentation and metadata corrections only — no behavior change:
   re-checks the real instance before an attempt: an unproven headless or write capability stops an automatic R2
   run before any process starts. `unknown` is never promoted to `yes`.
 
+- Added `docs/COMPATIBILITY.md`: a dated, evidence-graded compatibility matrix for Codex, Gemini CLI, Claude Code,
+  Antigravity CLI, ACP, OpenCode and the manual hand-off path. This round is explicitly **static research, with no
+  real tests**: only offline `--version`/`--help` probes and official documentation were consulted; no model call,
+  login, quota use or credential read occurred. Google's official notice (2026-06-18) ends Gemini CLI service for
+  free / Google AI Pro / Ultra users and its FAQ prohibits wrapping `agy` in third-party coding agents, so `agy` is
+  RED and stays experimental/disabled. There is **no GREEN candidate**, and T14 is marked `BLOCKED_BY_EVIDENCE` -
+  no empty or untested adapter was added. `tests/tools/provider_probe.py` reproduces the offline probe and asserts
+  it never runs a model, network call or credential read.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:
