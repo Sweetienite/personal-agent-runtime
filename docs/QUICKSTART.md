@@ -118,8 +118,8 @@ generic 项目没有父合同，用 `ad_hoc = true`。两种模式的规则见 [
 ## 7. 测试与贡献
 
 ```bash
-python3 -B tests/tools/parallel_tests.py       # 全量，按模块并行（本次 70 模块 / 1558 项）
-python3 -B tests/tools/mutation_check.py M70   # 单个变异检查；全部约 250 条
+python3 -B tests/tools/parallel_tests.py       # 全量，按模块并行（本次 70 模块 / 1561 项）
+python3 -B tests/tools/mutation_check.py M70   # 单个变异检查；全部约 340 条
 ```
 
 CI 只跑三个明确命名的作业（`smoke_install`、`core_unittests` 在 macOS，`linux_security_core` 在 Ubuntu），

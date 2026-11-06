@@ -71,6 +71,42 @@ class ViewFacts(Fx):
             (active / "notes.txt").write_text("x")
             self.assertEqual(self.adapter(ProjectEntry("proj", self.root)).view().contract_state, expect, names)
 
+    def test_a_symlinked_rule_state_or_bridge_is_never_read(self):
+        outside = self.base / "outside.md"
+        outside.write_text("# secret\n", encoding="utf-8")
+        self.project(agents=RULES)
+        (self.root / "AGENTS.md").unlink()
+        os.symlink(outside, self.root / "AGENTS.md")
+        (self.root / "CLAUDE.md").unlink()
+        os.symlink(outside, self.root / "CLAUDE.md")
+        (self.root / ".ai" / "STATE.md").unlink()
+        os.symlink(outside, self.root / ".ai" / "STATE.md")
+        os.chmod(outside, 0)
+        a = self.adapter(ProjectEntry("proj", self.root))
+        v = a.view()
+        self.assertEqual((v.rules, v.state, v.bridge), (None, None, None))
+        m = a.manifest(v)
+        self.assertNotIn(("rules", "AGENTS.md"), self.kinds(m))
+        self.assertNotIn(("bridge", "CLAUDE.md"), self.kinds(m))
+        self.assertNotIn(("state", ".ai/STATE.md"), self.kinds(m))
+        for name in ("AGENTS.md", "CLAUDE.md", "STATE.md"):
+            self.assertTrue(any(name in w and "not read" in w for w in m.warnings), name)
+        self.assertNotIn("secret", a.render(m))
+
+    def test_a_state_reached_through_a_symlinked_folder_is_never_read(self):
+        outside = self.base / "outside_ai"
+        (outside / "tasks" / "active").mkdir(parents=True)
+        (outside / "STATE.md").write_text("# secret\n", encoding="utf-8")
+        (outside / "tasks" / "active" / "T.md").write_text("# contract\n", encoding="utf-8")
+        self.project()
+        shutil.rmtree(self.root / ".ai")
+        os.symlink(outside, self.root / ".ai")
+        a = self.adapter(ProjectEntry("proj", self.root))
+        v = a.view()
+        self.assertIsNone(v.state)
+        self.assertEqual(v.contracts, ())
+        self.assertTrue(any("STATE.md" in w and "not read" in w for w in a.manifest(v).warnings))
+
     def test_a_missing_folder_is_a_view_not_a_crash(self):
         a = self.adapter(ProjectEntry("proj", self.base / "gone"))
         v = a.view()

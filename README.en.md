@@ -17,7 +17,7 @@ A local task runtime that lets **you** (or a coordinator LLM acting on your beha
 By late 2026 a small cluster of "orchestrate CLI coding agents" tools had appeared — `codex-orch`, `cc-orchestrator`, `codeswarm`, `orc`, `agent-orchestra`, and a few others, alongside more established multi-agent frameworks like AutoGen/AG2 and CrewAI. We looked at the public descriptions of several of these before writing this file. None of this is a knock on them — most are young, and several explicitly target a different problem (fan-out across many agents/machines, not safety under a single human's review). PAR's specific angles, each backed by a real mechanism in this repo, not just a design doc:
 
 - **Re-verification, not trust.** `acceptance.checks` are commands the *Kernel itself* runs in a scratch clone after the Worker is done — not a claim the Worker makes. A write task with no checks configured is a known, explicit edge case: the Kernel refuses to let an *automated* coordinator accept it blind, precisely because there is nothing of its own to measure. A human can still review the diff directly and accept it from the terminal. We found no comparable tool in our survey that enforces this at the orchestration-kernel level rather than leaving it as written guidance.
-- **Mutation-tested safety lines.** `tests/tools/mutation_check.py` deliberately breaks ~290 individual safety-relevant lines (permission checks, path policy, redaction, what a tool is allowed to do) one at a time and asserts a specific test catches each one. This is a different, stronger bar than "we have unit tests."
+- **Mutation-tested safety lines.** `tests/tools/mutation_check.py` deliberately breaks ~340 individual safety-relevant lines (permission checks, path policy, redaction, what a tool is allowed to do) one at a time and asserts a specific test catches each one. This is a different, stronger bar than "we have unit tests."
 - **A real audit trail with reasons, not just timestamps.** Every approve/reject/accept decision — whether made by you at the terminal or by a coordinator LLM through the MCP bridge — is written to an append-only ledger with a mandatory, non-blank explanation of *why*, not just *that* it happened.
 - **A generalized manual hand-off path**, not just automated adapters. `par task handoff TASK --to APP` accepts any GUI-only desktop tool by name (WorkBuddy and TRAE are documented with real field notes from actual use; Cursor, Windsurf, Cline and Aider are wired in but not yet exercised for real). The export names its `mode` (`workspace` for a file-changing task, `text` for a written answer), every absolute path, the base commit, the allowed paths and a copyable `next_actions` list; the import checks the marker against the ledger, the task's base and the packet the Runtime wrote - a stale export, a copy of the folder or a forged marker is refused by name. Results then go through the same verification pipeline as an automated Worker — no shortcut, no unverified trust extended just because a human was in the loop.
 - **Candidate integration without touching the project.** `par candidate create --task A` applies accepted R2 patches in dependency order to one clean baseline, re-runs their checks there and records the base, commit and per-patch hashes; a dependent task can then be submitted with `--candidate` (or rebased onto it) so it actually sees A's code. Accepted, candidate-integrated and applied stay three separate states, and the Runtime never writes your repository.
@@ -27,9 +27,11 @@ By late 2026 a small cluster of "orchestrate CLI coding agents" tools had appear
   adapter capabilities are explicit, and an unproven capability is refused before a write run starts.
 - **An evidence-based compatibility matrix, not a support claim.** [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
   records each candidate's version, OS, official documentation, account/terms constraints, what was actually
-  probed (offline `--version`/`--help` only) and what was NOT tested. As of 2026-11-06 that research is static:
-  **no GREEN candidate**, `agy` is RED (Google's FAQ prohibits wrapping it in third-party coding agents under
-  consumer plans), and Gemini CLI / Claude Code / ACP / OpenCode are YELLOW. No new automatic provider was added.
+  probed and what was NOT tested. As of 2026-11-06 the research began static and was followed by two real
+  Codex re-validation attempts: the existing Codex path now carries **`GREEN (scoped)`** (no general GREEN;
+  PAR's default sandbox mode still needs a real run on a normal terminal), `agy` is RED (Google's FAQ
+  prohibits wrapping it in third-party coding agents under consumer plans), and Gemini CLI / Claude Code /
+  ACP / OpenCode are YELLOW. No new automatic provider was added.
 - **Zero third-party dependencies**, standard library only. Easier to audit, nothing to update for CVEs in a dependency tree.
 
 If your need is "coordinate many agents across machines fast," this is probably the wrong tool. If your need is "let an LLM actually touch my code, but never *just believe* it," this is what PAR is built for.
@@ -68,7 +70,7 @@ cd personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .     # or: python3.12 -m venv .venv && .venv/bin/pip install -e .
 .venv/bin/par init                                      # creates its own data directory (mode 0700)
 .venv/bin/par doctor                                    # should be all PASS, providers disabled until you configure one
-python3 -B -m unittest discover -s tests -t .           # ~1558 tests, single process, ~6-9 min, no network, no model calls
+python3 -B -m unittest discover -s tests -t .           # ~1561 tests, single process, ~6-9 min, no network, no model calls
 python3 -B tests/tools/parallel_tests.py                # the same tests, parallelized across modules, ~1 min
 ```
 
@@ -101,7 +103,7 @@ Tagging needs a separate approval, and was explicitly deferred.
 
 Three named jobs: `smoke_install` (macOS install + doctor + version), `core_unittests`
 (macOS core state/contract/approval/hand-off/integration regressions) and `linux_security_core`
-(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1558-test
+(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1561-test
 suite passes in CI**; the remaining modules run only on a developer's Mac, and four
 process-termination modules fail in the local sandbox with a failure set identical to the unmodified
 baseline. See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/SECURITY.md](docs/SECURITY.md).

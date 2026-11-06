@@ -11,7 +11,7 @@
 3. **Antigravity 条款风险**：官方 FAQ 明确禁止第三方封装；现有 `agy` 适配器只能作为实验性、默认禁用的历史实现保留。
 4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（仅 CI 纯逻辑安全子集）、Windows `STATIC_GAP`。
 5. **本机全量套件不能声称全绿**：4 个进程终止类模块（7 个用例）因沙箱无法向子进程组投递信号而失败；
-   未修改基线失败集合完全相同。CI 只跑三个明确命名的作业，不是全量 1558 项。
+   未修改基线失败集合完全相同。CI 只跑三个明确命名的作业，不是全量 1561 项。
 
 因此本轮的成果是**文档与证据整理**，适合作为 `main` 上的持续交付；不适合对外宣布一个「P3 全部通过」的版本。
 `pyproject.toml` / `__version__` 保持 `1.0.0`，未改动版本号。
@@ -34,7 +34,7 @@
 | T11 候选整合 | #13 | `a79d87a` | 干净基线叠加、下游可见；M654–M666 |
 | T12 角色/厂商解耦 | #14 | `e21e109` | surface、能力闸门；M667–M671 |
 | T13 官方接口证据研究 | #15 | `e6b3e79` | 无 GREEN；`docs/COMPATIBILITY.md` |
-| T14 新增自动 Provider | — | Issue #16 | **收口：不新增自动 Provider**；真实复核已跑但无成功 R2，无 GREEN、无空实现 |
+| T14 新增自动 Provider | — | Issue #16 | **收口：不新增自动 Provider**；两次真实复核后现有 Codex 取得 `GREEN (scoped)`（第二次有成功的真实 R1/R2），仍无跨环境通用 GREEN、无空实现 |
 | T15 安全审计与平台分级 | #17 / #18 | `5f27cfb` / `fe3270d` | 独立安全修复 + 安全矩阵 + Linux CI |
 | T16 公开文档与发行审查 | 本 PR | — | QUICKSTART / MODES / 历史归档 / 本清单 |
 
@@ -60,7 +60,7 @@
   fake smoke R1+R2、普通 Git 仓库 generic 登记、手工交接包、以及两处真实摩擦点的诚实记录）。
 - 新增 [MODES.md](MODES.md)（三种角色、三种协作方式、状态词汇对照、不做什么）。
 - 新增 [docs/reports/README.md](reports/README.md)（历史快照归档说明、两套阶段编号的区分、当前证据入口）。
-- 中英 README / CONTRIBUTING / AGENTS / CHANGELOG 对齐：测试数更新为约 1558 项、明确 CI 三个作业、
+- 中英 README / CONTRIBUTING / AGENTS / CHANGELOG 对齐：测试数更新为约 1558 项（本轮新增回归后为 1561）、明确 CI 三个作业、
   明确徽章不代表全量、去过时数字、补新文档索引。
 
 ## 2026-11-06 追加：T14 解锁后的两次真实复核
