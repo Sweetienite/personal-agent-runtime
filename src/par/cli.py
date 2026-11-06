@@ -331,7 +331,12 @@ def _cmd_project_show(args: argparse.Namespace) -> int:
                "manifest": m.to_dict()}
         print(json.dumps(redact_obj(doc, home=home), ensure_ascii=False))
     else:
-        print(redact_text(_render_project(v, w, m, args.manifest, reg.projects[args.id].context_mode), home=home))
+        entry = reg.projects[args.id]
+        text = _render_project(v, w, m, args.manifest, entry.context_mode)
+        if entry.context_mode == "generic" and (entry.path / ".ai" / "STATE.md").is_file():
+            text += ("\nNote      .ai/STATE.md is present but ignored in generic mode "
+                     "(--context-mode harness uses it)")
+        print(redact_text(text, home=home))
     return 0
 
 
