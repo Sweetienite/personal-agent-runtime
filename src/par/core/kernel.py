@@ -24,7 +24,9 @@ from typing import Any, Callable, Mapping, Optional
 
 from par import coordinators as registry
 from par.config import ProjectEntry, RuntimeConfig
-from par.context.harness import ContextChanged, ContextManifest, HarnessContextAdapter
+from par.context.interface import Context
+from par.context.resolver import default_context
+from par.context.types import ContextChanged, ContextManifest
 from par.core import relay
 from par.core.attempt import AttemptOutcome, AttemptRunner, private_dirs, remove_scratch, write_private
 from par.core.clock import Clock, iso, parse_iso
@@ -120,7 +122,7 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
     def __init__(self, data_dir: "str | os.PathLike[str]", *, config: RuntimeConfig, projects: "Mapping[str, ProjectEntry]",
                  adapters: AdapterRegistry, clock: "Clock | None" = None, home: "str | os.PathLike[str] | None" = None,
                  settings: "KernelSettings | None" = None, kernel_id: "str | None" = None,
-                 context_factory: "Optional[Callable[[ProjectEntry], HarnessContextAdapter]]" = None) -> None:
+                 context_factory: "Optional[Callable[[ProjectEntry], Context]]" = None) -> None:
         self.data_dir = Path(data_dir)
         self.clock = clock or Clock()
         self.settings = settings or KernelSettings()
@@ -144,10 +146,12 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
 
     # ------------------------------------------------------------------------------------------------------
     # helpers
-    def _context(self, project: ProjectEntry) -> HarnessContextAdapter:
-        if self._context_factory:
-            return self._context_factory(project)
-        return HarnessContextAdapter(project, self.home)
+    def _context(self, project: ProjectEntry) -> Context:
+        context = self._context_factory(project) if self._context_factory else default_context(project, self.home)
+        if not isinstance(context, Context):
+            raise Refused("context_invalid",
+                          f"the context for {project.id!r} does not implement view/manifest/render/write_readiness")
+        return context
 
     def _require(self, task_id: str) -> "dict[str, Any]":
         task = self.store.get_task(task_id)

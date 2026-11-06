@@ -1,6 +1,6 @@
 # Context Manifest：给 Worker 的上下文契约
 
-Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一份 **Context Manifest**：列出这次任务会看到什么、以什么形式、凭什么确认它没被改过。它由 `HarnessContextAdapter`（`src/par/context/harness.py`）只读生成，不写任何东西。
+Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一份 **Context Manifest**：列出这次任务会看到什么、以什么形式、凭什么确认它没被改过。它由实现了 `par.context.interface.Context` 的适配器只读生成；当前默认实现仍是 `HarnessContextAdapter`（`src/par/context/harness.py`），由 `par.context.resolver.default_context` 选择，Kernel 只依赖接口，不直接构造具体适配器。整条路径只读，不写任何东西。
 
 查看：`par project show <id> [--manifest] [--json]`。
 
