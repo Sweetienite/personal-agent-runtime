@@ -35,6 +35,18 @@ class SensitivePathTests(unittest.TestCase):
         self.assertFalse(is_sensitive_path(""))
         self.assertFalse(is_sensitive_path("/"))
 
+    def test_windows_drives_unc_and_backslashes_are_not_a_bypass(self):
+        # On POSIX a backslash is a legal file-name character; PurePath alone would treat the whole
+        # string as one name and miss the credential-shaped components inside it.
+        for p in (r"C:\Users\me\.ssh\id_rsa", r"\\server\share\.env", r"D:\work\.aws\credentials",
+                  r"proj\runtime\accounts\acct_1.json", "D:/work/.env.local", r"x\id_ed25519"):
+            self.assertTrue(is_sensitive_path(p), p)
+
+    def test_separator_normalisation_does_not_create_false_positives(self):
+        for p in ("src/main.py", ".env.example", "docs/accounts_overview.md", "runtime/artifacts/x.json",
+                  "app/ÅGENTS.md", "keys.md"):
+            self.assertFalse(is_sensitive_path(p), p)
+
     def test_never_touches_the_filesystem(self):
         # A path that does not exist (and cannot be created) is classified purely by name.
         self.assertTrue(is_sensitive_path("/definitely/not/here/.env"))

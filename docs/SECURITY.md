@@ -18,6 +18,7 @@ Runtime 只写自己的数据目录；对**真实项目**默认只读：只有�
 | `~/.zshrc` 等 shell 与 git 用户配置、`~/.local/bin`、`Library/LaunchAgents` | **不能** | `protected_roots` |
 | 任何名字像凭据的路径（`.env`、`*.pem`、`auth.json`、`runtime/accounts/…`、`.deploy/` 等） | **不能** | `is_sensitive_path`，拒绝时不回显路径名 |
 | 通过符号链接、`..`、大小写或 NFC/NFD 差异绕过 | **不能** | 先 `realpath`，保护项比较用 NFC 加 casefold |
+| Windows 盘符 / UNC / 反斜杠形式的敏感路径 | **不能** | `normalise_allowed_path` 直接拒绝反斜杠；`is_sensitive_path` 同时按 `/` 与 `\` 拆分（POSIX 上反斜杠本是合法文件名字符），避免 `C:\Users\me\.ssh\id_rsa` 被当成一个无害名字 |
 | 真实项目里缺失的 `AGENTS.md` / `.ai/STATE.md`（仅 `par project add --scaffold-harness`） | 能，但只补缺失的那个 | `WriteGuard(allowed_roots=(项目根,), protected=protected_roots)`；`O_CREAT\|O_EXCL` 防并发覆盖，已存在的文件永远不碰 |
 
 数据目录已存在但属主、权限或类型不对时，**只报告、不修复**（它可能不是我们建的）。
