@@ -47,6 +47,16 @@ Documentation and metadata corrections only — no behavior change:
   deny-by-name guard. The change is deliberately conservative (a false positive only hides a path) and
   is covered by `test_policy` cases plus mutation `M672`. Windows itself remains an untested platform.
 
+- Security and portability audit (T15): `docs/SECURITY.md` now has a traceable
+  **protected / not-guaranteed / user-responsibility** matrix, backed by 21 runnable negative
+  cases in `tests/unit/test_p3_security_audit.py` (path escape, unauthorised writes, hostile
+  project rules / Worker messages, check-command side effects, unknown vendor events). A
+  platform grading table records macOS `E2E`, Linux `CORE_EXPERIMENTAL` and Windows
+  `STATIC_GAP` with their exact gaps. A new `linux_security_core` CI job installs, runs
+  `par doctor`/`version` and repeats the platform-independent security regressions on
+  Ubuntu, so a platform difference cannot silently skip a security behaviour. No new
+  OS-sandbox or full Windows support is claimed.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:
