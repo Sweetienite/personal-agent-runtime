@@ -238,6 +238,97 @@ class Retrying(KernelWorld):
         self.assertEqual([a["kind"] for a in self.kernel.describe(tid)["pending_approvals"]], ["WORKER_OVERRIDE"])
 
 
+    def test_retry_paused_permission_wait_reuses_pending_write_approval(self):
+        tid = self.submit().task_id
+        original = self.kernel.store.approvals(tid, "PENDING")[0]["id"]
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.retry(tid)["status"], "PERMISSION_WAIT")
+        self.assertEqual([a["id"] for a in self.kernel.store.approvals(tid, "PENDING")], [original])
+        self.assertEqual(self.event_types(tid).count("APPROVAL_REQUESTED"), 1)
+        self.assertEqual(self.kernel.approve(tid)["status"], "QUEUED")
+        self.assertEqual(self.event_types(tid).count("APPROVAL_DECIDED"), 1)
+
+    def test_retry_paused_permission_wait_reuses_worker_override(self):
+        tid = self.submit(r1_contract(), worker="w_flash", by="coordinator").task_id
+        original = self.kernel.store.approvals(tid, "PENDING")[0]["id"]
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.retry(tid)["status"], "PERMISSION_WAIT")
+        self.assertEqual([a["id"] for a in self.kernel.store.approvals(tid, "PENDING")], [original])
+        self.assertEqual(self.kernel.approve(tid)["status"], "QUEUED")
+
+    def test_retry_paused_with_two_distinct_pending_kinds_preserves_both(self):
+        tid = self.submit(sample_contract(role="code", worker="w_code"), by="coordinator").task_id
+        original = [(a["id"], a["kind"]) for a in self.kernel.store.approvals(tid, "PENDING")]
+        self.assertEqual([k for _, k in original], ["WRITE_PERMISSION", "WORKER_OVERRIDE"])
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.retry(tid)["status"], "PERMISSION_WAIT")
+        self.assertEqual([(a["id"], a["kind"]) for a in self.kernel.store.approvals(tid, "PENDING")], original)
+        self.assertEqual(self.event_types(tid).count("APPROVAL_REQUESTED"), 2)
+        self.assertEqual(self.kernel.approve(tid, original[0][0])["status"], "PERMISSION_WAIT")
+        self.assertEqual(self.kernel.approve(tid, original[1][0])["status"], "QUEUED")
+
+    def test_retry_paused_after_one_kind_approved_does_not_duplicate_other(self):
+        tid = self.submit(sample_contract(role="code", worker="w_code"), by="coordinator").task_id
+        pending = self.kernel.store.approvals(tid, "PENDING")
+        self.kernel.approve(tid, pending[0]["id"])
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.retry(tid)["status"], "PERMISSION_WAIT")
+        self.assertEqual([a["id"] for a in self.kernel.store.approvals(tid, "PENDING")], [pending[1]["id"]])
+        self.assertEqual(self.event_types(tid).count("APPROVAL_REQUESTED"), 2)
+        self.assertEqual(self.kernel.approve(tid)["status"], "QUEUED")
+
+    def test_cancel_then_retry_reissues_revoked_permission(self):
+        tid = self.submit().task_id
+        old_id = self.kernel.store.approvals(tid, "PENDING")[0]["id"]
+        self.kernel.cancel(tid)
+        self.assertEqual(self.kernel.retry(tid)["status"], "PERMISSION_WAIT")
+        approvals = self.kernel.store.approvals(tid)
+        self.assertEqual([(a["id"], a["status"]) for a in approvals],
+                         [(old_id, "REJECTED"), (approvals[1]["id"], "PENDING")])
+        self.assertNotEqual(old_id, approvals[1]["id"])
+        self.assertEqual(self.event_types(tid).count("APPROVAL_REQUESTED"), 2)
+
+    def test_pause_resume_path_unmodified(self):
+        tid = self.submit().task_id
+        original = self.kernel.store.approvals(tid, "PENDING")[0]["id"]
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.resume(tid)["status"], "PERMISSION_WAIT")
+        self.assertEqual([a["id"] for a in self.kernel.store.approvals(tid, "PENDING")], [original])
+
+    def test_retry_does_not_bypass_write_gate(self):
+        tid = self.submit().task_id
+        self.kernel.pause(tid)
+        self.kernel.retry(tid)
+        with self.assertRaises(NotAllowed):
+            self.kernel.run(tid)
+        self.assertEqual(self.kernel.describe(tid)["attempt_count"], 0)
+
+    def test_retry_with_different_worker_replaces_stale_override(self):
+        tid = self.submit(r1_contract(), worker="w_code", by="coordinator").task_id
+        old = self.kernel.store.approvals(tid, "PENDING")[0]
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.retry(tid, worker="w_flash")["status"], "PERMISSION_WAIT")
+        approvals = self.kernel.store.approvals(tid)
+        self.assertEqual(approvals[0]["status"], "REJECTED")
+        pending = self.kernel.store.approvals(tid, "PENDING")
+        self.assertEqual(len(pending), 1)
+        self.assertNotEqual(pending[0]["id"], old["id"])
+        self.assertEqual(pending[0]["payload"]["worker"], "w_flash")
+        self.assertEqual(self.kernel.approve(tid)["status"], "QUEUED")
+
+    def test_retry_changed_worker_does_not_reuse_old_approved_override(self):
+        tid = self.submit(r1_contract(), worker="w_code", by="coordinator").task_id
+        self.kernel.approve(tid)
+        self.kernel.pause(tid)
+        self.assertEqual(self.kernel.retry(tid, worker="w_flash")["status"], "PERMISSION_WAIT")
+        pending = self.kernel.store.approvals(tid, "PENDING")
+        self.assertEqual([(a["kind"], a["payload"]["worker"]) for a in pending],
+                         [("WORKER_OVERRIDE", "w_flash")])
+        with self.assertRaises(NotAllowed):
+            self.kernel.run(tid)
+        self.assertEqual(self.kernel.approve(tid)["status"], "QUEUED")
+
+
 class Approvals(KernelWorld):
     default_files = None
 
