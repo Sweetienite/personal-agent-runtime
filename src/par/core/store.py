@@ -53,6 +53,28 @@ class NotFound(LedgerError):
     pass
 
 
+# Additive, so an older build can still open this ledger: it ignores the table. Candidate rows are immutable
+# audit records (a failed or verified integration is never edited); `schema` lets a later shape be told apart.
+CANDIDATE_DDL = """
+CREATE TABLE IF NOT EXISTS candidates (
+  candidate_id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  base_commit TEXT NOT NULL,
+  commit_sha TEXT,
+  status TEXT NOT NULL CHECK (status IN ('VERIFIED','FAILED')),
+  tasks_json TEXT NOT NULL,
+  requested_json TEXT NOT NULL DEFAULT '[]',
+  checks_json TEXT NOT NULL,
+  artifact_dir TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  schema INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  verified_at TEXT
+);
+CREATE INDEX IF NOT EXISTS candidates_by_project ON candidates(project_id, created_at);
+"""
+
+
 DDL = f"""
 CREATE TABLE schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE transitions (
@@ -186,7 +208,7 @@ CREATE TRIGGER approvals_immutable_when_decided BEFORE UPDATE ON approvals WHEN 
 BEGIN SELECT RAISE(ABORT, 'a decided approval is immutable'); END;
 CREATE TRIGGER approvals_no_delete BEFORE DELETE ON approvals
 BEGIN SELECT RAISE(ABORT, 'approvals are never deleted'); END;
-"""
+""" + CANDIDATE_DDL
 
 
 def _dump(obj: Any, *, redact: bool = False) -> str:
@@ -246,6 +268,11 @@ class Store:
                     conn.execute(statement)
                 conn.execute("INSERT INTO schema_meta(key, value) VALUES ('created_at', ?)", (self.clock.iso(),))
                 conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            for statement in _split_statements(CANDIDATE_DDL):       # additive: a v1 ledger gains the table, no version bump
+                conn.execute(statement)
+            candidate_columns = {r[1] for r in conn.execute("PRAGMA table_info(candidates)")}
+            if "requested_json" not in candidate_columns:             # an intermediate build of this table had no requested set
+                conn.execute("ALTER TABLE candidates ADD COLUMN requested_json TEXT NOT NULL DEFAULT '[]'")
             conn.execute("CREATE INDEX IF NOT EXISTS events_by_type ON events(type, id)")     # additive: lets rare event types (coordinator switches) be found without a scan
             # The transitions table must equal the code's table, whatever the stored digest says: the triggers
             # trust this table, so an edited copy is repaired (and the repair is on the record).
@@ -392,6 +419,28 @@ class Store:
             sql += " AND project_id = ?"
             args.append(project_id)
         return [_decode_task(row_dict(r)) for r in self.conn.execute(sql + " ORDER BY created_at, task_id", args)]
+
+    # --- candidates (T11: read-only integration record) -------------------------------------------------
+    def insert_candidate(self, *, candidate_id: str, project_id: str, base_commit: str, commit_sha: "str | None",
+                         status: str, tasks: "list[dict[str, Any]]", checks: "list[dict[str, Any]]",
+                         artifact_dir: str, requested: "list[str]", reason: str = "") -> None:
+        self._need_tx()
+        now = self.clock.iso()
+        self.conn.execute(
+            "INSERT INTO candidates(candidate_id, project_id, base_commit, commit_sha, status, tasks_json, requested_json, "
+            "checks_json, artifact_dir, reason, schema, created_at, verified_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)",
+            (candidate_id, project_id, base_commit, commit_sha, status, _dump(tasks), _dump(requested), _dump(checks),
+             artifact_dir, reason[:500], now, now if status == "VERIFIED" else None))
+
+    def get_candidate(self, candidate_id: str) -> "dict[str, Any] | None":
+        return _decode_candidate(row_dict(self.conn.execute("SELECT * FROM candidates WHERE candidate_id = ?", (candidate_id,)).fetchone()))
+
+    def list_candidates(self, project_id: "str | None" = None) -> "list[dict[str, Any]]":
+        sql, args = "SELECT * FROM candidates WHERE 1=1", []
+        if project_id:
+            sql += " AND project_id = ?"
+            args.append(project_id)
+        return [_decode_candidate(row_dict(r)) for r in self.conn.execute(sql + " ORDER BY created_at, candidate_id", args)]
 
     def set_status(self, task_id: str, to_status: "TaskStatus | str", *, reason: str, attempt_n: "int | None" = None,
                    expected_version: "int | None" = None, columns: "dict[str, Any] | None" = None,
@@ -562,6 +611,15 @@ def _decode_task(d: "dict[str, Any] | None") -> "dict[str, Any] | None":
         return None
     for key in ("contract_json", "base_json", "profile_json"):
         d[key[:-5]] = json.loads(d.pop(key))
+    return d
+
+
+def _decode_candidate(d: "dict[str, Any] | None") -> "dict[str, Any] | None":
+    if d is None:
+        return None
+    d["tasks"] = json.loads(d.pop("tasks_json"))
+    d["requested"] = json.loads(d.pop("requested_json", "[]"))
+    d["checks"] = json.loads(d.pop("checks_json"))
     return d
 
 

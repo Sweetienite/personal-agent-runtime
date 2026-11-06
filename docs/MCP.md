@@ -28,8 +28,8 @@
 | 工具 | 作用 | 要点 |
 |---|---|---|
 | `prepare_task`（2026-11 新增） | 把最小草案编译成严格合同，或列出缺失项 | 只读、不提交；缺 `allowed_paths`/写任务的 `checks`、未知项目/worker/角色、Harness 项目没有唯一主合同时返回问题清单；不读项目文件，也不从 README 发现命令 |
-| `submit_task` | 提交任务合同并入队 | 提交者永远记为 `coordinator`，输入里说什么都不算；R2（改文件）任务要等写权限被批准（`approve_task`） |
-| `get_task_status` | 查看一个任务的状态、风险、尝试次数、待批准项 | 只读；`derived_state` 给出 `NEEDS_SCOPE`/`NEEDS_PERMISSION`/`READY_TO_RUN`/`NEEDS_REVIEW`/`RESULT_VERIFIED` 等派生视图；`agent_next` 列出协调者接下来可以调用的每一个工具 |
+| `submit_task` | 提交任务合同并入队 | 提交者永远记为 `coordinator`，输入里说什么都不算；R2（改文件）任务要等写权限被批准（`approve_task`）；可选 `candidate` 让任务跑在已验证的候选基线上（`par candidate create`） |
+| `get_task_status` | 查看一个任务的状态、风险、尝试次数、待批准项 | 只读；`candidate` 显示它跑在哪个候选基线上；`derived_state` 给出 `NEEDS_SCOPE`/`NEEDS_PERMISSION`/`READY_TO_RUN`/`NEEDS_REVIEW`/`RESULT_VERIFIED` 等派生视图；`agent_next` 列出协调者接下来可以调用的每一个工具 |
 | `get_task_result` | 查看最近一次（或指定的）尝试的结果 | 只读；Worker 的文字是**未经验证的数据**，带 `summary_verified: false` 与 `untrusted_worker_text: true`；`evidence_summary` 把 Kernel 实测、Worker 自述、审查与整合状态分开 |
 | `get_task_diff`（2026-11-03 新增） | 查看最近一次（或指定的）尝试的实际 diff 内容 | 只读；脱敏、限长（截断时 `truncated: true`）；`get_task_result` 只给 `diff_stat`（文件数/行数），这个工具才给真正的改动内容 |
 | `cancel_task` | 取消一个未完成的任务 | 正在运行的 Worker 会被停止；已验收的任务不能取消 |

@@ -56,7 +56,7 @@ par coordinator prompt codex     # 打印：起手提示词（它必须遵守的
 - `acceptance.checks`：写任务必填；程序必须是 Kernel 能解析的 `python`/`python3` 或可信目录里的程序；检查在私有副本里由 Kernel 自己跑。
 - `ad_hoc`：generic 项目必须为 `true`；Harness 项目在唯一主合同下为 `false`，没有主合同时 R0/R1 用 `true`。
 - `timeouts.total` 不写就是 1200 秒；需要写新逻辑和它自己的测试时显式调大。
-- `dependencies` 是任务 id 列表；前驱 `ACCEPTED`/`CLOSED` 后下游才会跑。
+- `dependencies` 是任务 id 列表；前驱 `ACCEPTED`/`CLOSED` 后下游才会跑。如果前驱改了文件（R2），验收还不够：先用 `par candidate create --task A` 做候选整合，再把 candidate id 传给 `submit_task` 的 `candidate` 参数（或让用户 `par task rebase B --candidate …`），否则下游会在运行前被拦住。
 - 幂等键：草案编译器按内容确定性生成；同一意图重提会得到同一个任务。
 
 `prepare_task` 返回 `READY` 后，把它给的 `contract` 原样交给 `submit_task`；返回 `NEEDS_DECISION` 时把问题问人，不要猜路径或命令。字段级 schema 与错误见 `docs/MCP.md` 和 `src/par/schemas/task.schema.json`。

@@ -109,7 +109,7 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
    - **改动**：几个文件、+几行 −几行（Runtime 量的）；
    - **检查**：每条检查通过还是未通过（Runtime 自己跑的）；`inputs_edited`/`test_files_changed` 会点出 Worker 改过哪些检查读到的文件；
    - **边界**：有没有越出允许路径；
-   - **审查与落地**：谁验收/拒绝了（`HUMAN_REVIEW`/`COORDINATOR_REVIEW`/`NOT_REVIEWED`）；`integration` 默认 `NOT_INTEGRATED`，`applied_to_project` 恒为 false——验收只记录结果，补丁仍要你自己 `git apply`；
+   - **审查与落地**：谁验收/拒绝了（`HUMAN_REVIEW`/`COORDINATOR_REVIEW`/`NOT_REVIEWED`）；`integration` 默认 `NOT_INTEGRATED`，候选整合后是 `CANDIDATE_READY`（只有失败记录时 `CANDIDATE_FAILED`），`applied_to_project` 恒为 false——验收只记录结果，补丁仍要你自己 `git apply`；
    - **Worker 自述（未经核实）**：Worker 自己写的摘要，只当参考；
    - 需要细看补丁：`par task diff 编号`。
 5. 满意：`par task accept 编号`；不满意：`par task reject 编号`（任务转为「失败」，补丁留作证据）。
@@ -148,6 +148,18 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 ```
 
 `par task draft --draft draft.json > /tmp/task.json` 只打印严格合同，**不提交**：role 默认 `code`，ad_hoc 按项目模式推导，幂等键由内容确定性生成。缺 `allowed_paths`、写任务缺 `checks`、项目/worker 不存在、Harness 项目没有唯一主合同时，命令以退出码 2 列出问题，不会猜一个路径，也不会从 README 里自动挑命令。确认 `allowed_paths` 与 `checks` 后再 `par task submit --contract /tmp/task.json`。
+
+### 3.6 跨任务候选整合（A→B，可选）
+
+A 改了文件、验收通过，B 依赖 A。**验收不等于 B 能看到 A 的代码**：先做一次候选整合。
+
+1. `par candidate create --task A`。Runtime 会从项目当前的干净 HEAD 建一个自己的仓库，把 A 的 `work.patch` 打上去、提交，再跑 A 的检查；全过才 `VERIFIED`。输出里有 candidate id、补丁哈希、提交和检查结果，并明确写着「nothing was applied to the real project」。项目必须干净且 HEAD 等于 A 的 base，否则会拒绝（先提交/清理，或换一个干净基线）。
+2. B 用这个基线：提交时 `par task submit --contract b.json --candidate cand-…`；B 已经排队但还没跑过时，用 `par task rebase B --candidate cand-…`。B 的补丁之后只包含 B 自己的改动。
+3. `par task run B`，结果照常待验收。`par task status B` 会有一行 `runs on candidate …`。
+4. 要放进真实仓库：先 `git apply` A 的补丁，再 `git apply` B 的——B 的补丁是按候选提交切的，顺序不能反。Runtime 不会 push、merge 或自动应用。
+5. 冲突、检查不过、补丁缺 provenance 都会让 candidate 变成 `FAILED` 并写明原因，真实项目一个字节都不动；用 `par candidate show ID` / `par candidate list` 查记录。重复整合会生成新的 candidate，旧记录保留。
+
+只读任务（R0/R1）之间不需要 candidate：它们没有补丁可整合。
 
 ## 3A. 第一次真实写入：完整走一遍
 

@@ -129,6 +129,17 @@ def ignored_among(git: Git, repo: "str | os.PathLike[str]", paths: "Iterable[str
     return {os.fsdecode(p) for p in out.split(b"\0") if p}
 
 
+def commit_all(git: Git, repo: "str | os.PathLike[str]", message: str, *, date: "str | None" = None) -> str:
+    """Stage everything (including deletions) and commit it in a Kernel-owned repository; returns the new commit.
+
+    ``date`` pins the author and committer time, so integrating the same base and the same patches again yields the
+    same commit - a dependent task's recorded base stays valid across re-integration."""
+    git.run(repo, "add", "-A", "--")
+    env = {"GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date} if date else None
+    git.run(repo, "commit", "--no-gpg-sign", "-q", "-m", message, env_extra=env)
+    return resolve_commit(git, repo)
+
+
 def add_intent(git: Git, repo: "str | os.PathLike[str]", paths: "list[str]") -> None:
     for i in range(0, len(paths), BATCH):
         git.run(repo, "add", "-N", "--", *paths[i:i + BATCH])

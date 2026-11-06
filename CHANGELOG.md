@@ -20,6 +20,8 @@ Documentation and metadata corrections only — no behavior change:
 
 - Results now carry a derived `evidence_summary` (CLI `par task result`, MCP `get_task_result`/`review_task`): a `level` (`MEASURED`, `MEASURED_WITH_EDITED_CHECKS`, `UNVERIFIED`, `FAILED`, `INCOMPLETE`, `UNKNOWN`), the Kernel's boundary and check results, whether the Worker edited a file a check reads, who reviewed the result, and `integration`/`applied_to_project` (always `NOT_INTEGRATED`/`false` until a separate integration step). The result envelope and its schema are unchanged: an old result without the newer sections comes back as `UNKNOWN`/`NOT_RUN`, never `PASS`.
 
+- Candidate integration (`par candidate create/show/list`): accepted R2 patches are applied in dependency order to one clean baseline in a Kernel-owned repository, their checks are re-run there, and only a `VERIFIED` candidate may be used by a dependent task (`par task submit --candidate`, `par task rebase`). The real project is never written: accepted, candidate-integrated and applied stay three separate states, and the person still applies the patches. New tasks with an R2 dependency now require that dependency to be integrated; tasks submitted before this change keep the old `ACCEPTED`-is-enough meaning. The `candidates` table is additive (no ledger schema bump), so older builds can still open the ledger.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:

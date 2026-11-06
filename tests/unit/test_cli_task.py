@@ -16,7 +16,7 @@ from par.providers.fake import ScenarioSequence, ops, scenarios
 from par.providers.registry import AdapterRegistry
 from tests import SRC
 from tests.helpers import run_cli
-from tests.kernel_fixture import KernelWorld, r1_contract
+from tests.kernel_fixture import FIXED_CALC, KernelWorld, r1_contract
 from tests.world import sample_contract
 
 PROFILES = '''schema_version = 1
@@ -351,6 +351,52 @@ class StoppingARun(KernelWorld):
         d = peek.describe(tid)
         self.assertEqual((d["status"], d["lock"], d["attempts"][0]["end_kind"]), ("INTERRUPTED", None, "INTERRUPTED"))
         self.assertFalse(sp.group_alive(pgid))
+
+
+class CandidateCli(CliWorld):
+    def test_candidate_create_show_and_submit_with_candidate(self):
+        self.assertEqual(self.par("project", "enable-write", "fixture")[0], 0)
+        self.assertEqual(self.par("project", "enable-write", "fixture", "--confirm", "fixture")[0], 0)
+        self.scripted = ScenarioSequence(scenarios.success({"app/calc.py": FIXED_CALC, "app/api.py": "VALUE = 42\n"}))
+        doc = sample_contract(role="code", allowed_paths=["app/"])
+        path = self.base / "a.json"
+        path.write_text(json.dumps(doc))
+        code, out, err = self.par("task", "submit", "--contract", str(path))
+        self.assertEqual(code, 0, err)
+        self.assertIn("fixture-0001", out)
+        self.assertEqual(self.par("task", "approve", "fixture-0001")[0], 0)
+        code, out, err = self.par("task", "run", "fixture-0001")
+        self.assertEqual(code, 0, err)
+        self.assertIn("REVIEW_REQUIRED", out)
+        self.assertEqual(self.par("task", "accept", "fixture-0001")[0], 0)
+
+        code, out, err = self.par("candidate", "create", "--task", "fixture-0001")
+        self.assertEqual(code, 0, err)
+        self.assertIn("VERIFIED", out)
+        self.assertIn("nothing was applied to the real project", out)
+        candidate_id = out.split()[0]
+        code, out, err = self.par("candidate", "show", candidate_id)
+        self.assertEqual(code, 0, err)
+        self.assertIn("fixture-0001#1", out)
+        self.assertIn("PASS", out)
+
+        b = sample_contract(role="code", allowed_paths=["app/"], dependencies=["fixture-0001"], idempotency_key="b-chain-1")
+        bpath = self.base / "b.json"
+        bpath.write_text(json.dumps(b))
+        code, out, err = self.par("task", "submit", "--contract", str(bpath), "--candidate", candidate_id)
+        self.assertEqual(code, 0, err)
+        code, out, err = self.par("task", "status", "fixture-0002", "--json")
+        self.assertEqual(code, 0, err)
+        status = json.loads(out)
+        self.assertEqual(status["base"]["candidate"], candidate_id)
+        self.assertEqual(status["base"]["commit"], self.kernel.store.get_candidate(candidate_id)["commit_sha"])
+
+    def test_candidate_list_and_unknown_show(self):
+        code, out, err = self.par("candidate", "list")
+        self.assertEqual((code, out.strip()), (0, "no candidates"), err)
+        code, out, err = self.par("candidate", "show", "cand-fixture-deadbeef")
+        self.assertEqual(code, 1)
+        self.assertIn("unknown_candidate", err)
 
 
 if __name__ == "__main__":

@@ -27,13 +27,16 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 | `par project list [--json]` | 已登记项目一览 |
 | `par project show ID [--manifest] [--json]` | 事实、写入就绪、Context Manifest |
 | `par task draft --draft FILE\|-` `[--json]` | 把最小草案（项目、目标、risk、allowed_paths、acceptance）编译成严格合同；**只打印，不提交**；缺安全关键字段时以退出码 2 返回问题清单，不产出合同 |
-| `par task submit --contract FILE\|-` `[--by user\|coordinator]` `[--check]` | 校验合同并入队；相同幂等键+相同合同返回原任务。`--check`：只做校验，**不入队**——不写任务、不写事件、不记批准，只报告合同是否通过以及会问你批准哪些事项（`WRITE_PERMISSION`/`WORKER_OVERRIDE`），拒绝时和不加 `--check` 报的原因完全一样 |
+| `par task submit --contract FILE\|-` `[--by user\|coordinator]` `[--check]` `[--candidate ID]` | 校验合同并入队；相同幂等键+相同合同返回原任务。`--check`：只做校验，**不入队**——不写任务、不写事件、不记批准，只报告合同是否通过以及会问你批准哪些事项（`WRITE_PERMISSION`/`WORKER_OVERRIDE`），拒绝时和不加 `--check` 报的原因完全一样 |
 | `par task list [--waiting]` `status T` `events T` `result T` `diff T` | 只读查看：状态与你下一步能做什么、事件日志、结果信封、补丁（不应用到任何地方）；`--waiting`（2026-11-03 新增）只列出需要你决定才能往下走的任务（待批准、待验收、待恢复、卡在额度/登录/限速/没有可用 Worker 上） |
 | `par task run T` / `par task run --next` | 前台跑**一次** attempt；Ctrl-C 或 SIGTERM 会停掉 Worker 并留下干净记录 |
 | `par task approve T [--id N]` `reject T [--id N]` | 逐项批准 / 拒绝待决事项；有多项时必须指定 `--id` |
 | `par task accept T` `close T` | 接受 `REVIEW_REQUIRED` 的结果 / 归档。接受**不会**把补丁应用到项目 |
 | `par task cancel T` `pause T` `resume T` | 取消（会停掉运行中的 Worker）、暂停、恢复 |
 | `par task retry T [--worker ID] [--force] [--fresh]` | 新 attempt，采用当前配置；写文件的任务**默认接着上一次已验证的改动继续**（接力，见 [HANDOFF.md](HANDOFF.md)），`--fresh` 从基线重来；`--force` 清除健康记录 |
+| `par candidate create --task A [--task B …] [--note TEXT]` | 候选整合：按依赖顺序把已验收 R2 任务的 `work.patch` 打到第一个任务的干净 base 上，提交到 `<数据目录>/candidates/<id>/repo`，再跑各任务的检查；记录补丁 sha256、提交、允许路径与检查结果。冲突/受保护路径/检查失败 → `FAILED`；真实项目不动 |
+| `par candidate show ID` / `par candidate list [--project ID]` | 只读查看候选：base、commit、任务/补丁、检查、失败原因 |
+| `par task rebase T --candidate ID` | 已排队、从未运行的任务改用候选基线；有 attempt 或 handoff 包时拒绝 |
 | `par task handoff T [--to APP] [--note TEXT]` | 为人工交接（WorkBuddy、TRAE、Cursor、Windsurf、Cline、Aider 或任何没有脚本化接口的应用）准备交接包：`PROMPT.md`、`README.md`、`manifest.json`、私有副本 `workspace/`；输出 `mode`、`workspace_absolute_path`、`prompt_path`、`manifest_path`、`base_commit`、`allowed_paths` 与可照抄的 `next_actions`；`QUEUED` 的任务会被暂停，防止别的 Worker 抢跑 |
 | `par task import T --from DIR \| --patch FILE \| --text FILE [--worker APP]` | 把人带回来的结果交给 Kernel 验证（文件比对、边界、合同里的检查），结果和普通 Worker 一样进入 `REVIEW_REQUIRED` |
 | `par coordinator status\|list` / `use NAME [--note T]` / `kit NAME` / `prompt NAME` | 可选主控：看谁在主控与最近出现；`use` = 写接管包并记录切换（你敲命令就是确认）；`kit` 打印接入片段（只打印，不改任何应用的配置）；`prompt` 打印起手提示词。详见 [COORDINATORS.md](COORDINATORS.md) |

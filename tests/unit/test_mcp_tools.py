@@ -279,9 +279,16 @@ class ToolsOnTheKernel(KernelWorld):
 
     def test_submit_returns_exactly_the_documented_fields_and_asks_for_the_write_permission(self):
         out = payload_of(self.ask("submit_task", contract=sample_contract(idempotency_key="w-1")))
-        self.assertEqual(set(out), {"task_id", "status", "deduplicated", "risk", "agent_next"})
+        self.assertEqual(set(out), {"task_id", "status", "deduplicated", "risk", "candidate", "agent_next"})
+        self.assertIsNone(out["candidate"])
         self.assertEqual((out["status"], out["risk"], out["deduplicated"]), ("PERMISSION_WAIT", "R2", False))
         self.assertIn("approve_task", out["agent_next"])
+
+    def test_submitting_on_an_unknown_candidate_is_a_tool_error(self):
+        out = self.ask("submit_task", contract=sample_contract(idempotency_key="cand-1"), candidate="cand-fixture-deadbeef")
+        self.assertTrue(out["isError"])
+        self.assertIn("unknown_candidate", text_of(out))
+        self.assertEqual(self.kernel.list_tasks(), [])
 
     def test_a_repeated_submission_is_deduplicated_and_recorded_once(self):
         first = payload_of(self.ask("submit_task", contract=r1_contract(idempotency_key="d-1")))
@@ -302,8 +309,9 @@ class ToolsOnTheKernel(KernelWorld):
         task_id = self.submit_r2("w-3")
         pending = self.kernel.describe(task_id)["pending_approvals"]
         out = payload_of(self.ask("get_task_status", task_id=task_id))
-        self.assertEqual(set(out), {"task_id", "title", "status", "derived_state", "risk", "attempts", "worker", "pending_approvals",
-                                    "agent_next", "last_problem"})
+        self.assertEqual(set(out), {"task_id", "title", "status", "derived_state", "risk", "attempts", "worker", "candidate",
+                                    "pending_approvals", "agent_next", "last_problem"})
+        self.assertIsNone(out["candidate"])
         self.assertEqual(out["pending_approvals"], [{"id": pending[0]["id"], "kind": "WRITE_PERMISSION"}])
         self.assertEqual(out["agent_next"], ["cancel_task", "approve_task", "reject_task"])
         self.assertIsNone(out["last_problem"])

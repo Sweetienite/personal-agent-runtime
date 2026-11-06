@@ -165,6 +165,20 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 
 真实 Worker 要能端到端演练，就得有一个**可以写**的项目——而真实项目在 P8 之前都不可写。`par fixture create` 在 `<数据目录>/fixtures/<id>/` 下造一个一次性的小项目（git 仓库、Harness 文件、`app/calc.py` 里一个故意的 bug、一个会失败的 unittest），登记为 `fixture = true` 与 `write_enabled = true`。它是**唯一**能被登记为可写的项目：加载器每次都独立核对「是 `fixtures/` 的直接子目录、文件夹名等于 id、带有合法的 `.par-fixture.json`、不是符号链接」，手工把真实项目改成可写、或把标记文件拷进真实项目，都会整条登记被丢弃（有测试）。
 
+## 候选整合（`par candidate`）
+
+三个词必须分开：**验收（accepted）**只记录结果；**候选整合（candidate integrated）**把已验收的补丁放到一条可追溯的基线上并重跑检查；**落地（applied）**是你自己对真实仓库 `git apply`。Runtime 不做第三步。
+
+- **创建**：`par candidate create --task A [--task B ...]`。只接受 `ACCEPTED`/`CLOSED` 的 **R2** 任务，每个任务都必须有 `acceptance.checks`；项目必须干净，且 HEAD 等于第一个任务的 base（否则 `dirty_project` / `project_moved`）。
+- **来源只有 Kernel 切出的补丁**：读 `attempts/<n>/work.patch`（不是 Worker 自述），记录每个补丁的 sha256、任务/尝试号、允许路径与提交。补丁若碰到 `.git`、`.ai/`、规则文件或敏感路径，直接拒绝。
+- **顺序**：按 `dependencies` 拓扑排序；后一个任务的 base 可以是项目 base（独立任务）或前一个任务产生的候选提交（A→B 链）。其它 base 一律 `base_mismatch`。
+- **产物**：`<数据目录>/candidates/<candidate_id>/repo` 是 Kernel 自己的 git 仓库；提交时间固定，所以同样的 base + 同样的补丁会得到同样的 commit（依赖它的任务不会因为重新整合而失效）。`verify/` 是跑检查的一次性副本；`checks/` 留日志。整个目录 0700，真实项目一个字节都不动。
+- **状态**：所有检查通过才是 `VERIFIED`；补丁冲突、受保护路径、缺补丁、检查失败都会留下 `FAILED` 记录与原因（缺补丁这类前置条件在创建记录前就 `Refused`）。失败/重复整合都不会改写旧 candidate 行。
+- **B 如何使用**：`par task submit --contract FILE --candidate ID`，或对已排队但从未运行的任务 `par task rebase TASK --candidate ID`。B 的 `base.commit` 变成候选提交，`candidate_repo` 指向候选仓库；B 的补丁因此只含 B 自己的改动，不重复 A 的。
+- **依赖语义**：本版本之后提交的任务（`base.integration = "candidate-v1"`）如果依赖一个**改过文件**（R2）的任务，必须有一个包含该依赖的 `VERIFIED` candidate 才能运行；只读依赖（R0/R1）不需要。此版本之前提交的任务保留旧语义（`ACCEPTED` 即可），不做历史改写。
+- **落地顺序**：B 的补丁是针对候选提交的；要把 A、B 放进真实项目，先应用 A 的补丁，再应用 B 的。Runtime 不 push、不 merge、不自动应用。
+- **项目漂移**：candidate 创建后项目 HEAD 再移动，不影响 B 在候选上运行（候选是不可变基线）；要让新链路基于新 HEAD，重新创建 candidate 并 rebase。候选绑定任务不会收到 `BASE_DRIFT` 审批，也不会被悄悄改回项目 HEAD。
+
 ## 证据分层（`par task result` 与 MCP）
 
 结果信封本身不变（`schema_version = 1`），`par task result`、`get_task_result` 和 `review_task` 额外给一份**派生**的 `evidence_summary`：
@@ -176,7 +190,7 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 | `boundary` | `CLEAN` / `VIOLATIONS` / `EXCLUSIONS`（有受保护文件被排除出副本，不是越界）/ `UNKNOWN` |
 | `checks` | `status`、通过/总数、失败的检查名、从未运行的检查名、`worker_editable`（写任务为真）、`inputs_edited`（检查命令直接读到的被改文件）、`test_files_changed`（补丁里像测试的文件） |
 | `review` | `NOT_REVIEWED` / `HUMAN_REVIEW` / `COORDINATOR_REVIEW` / `UNKNOWN`：谁验收或拒绝了这个结果 |
-| `integration` | 默认 `NOT_INTEGRATED`；候选整合是单独的问题，不由验收自动改变 |
+| `integration` | `NOT_INTEGRATED`（还没整合）/ `CANDIDATE_READY`（有 VERIFIED candidate 包含这个任务）/ `CANDIDATE_FAILED`（只有失败记录）/ `INTEGRATED`（预留给真正落地，Runtime 不设置）；验收不会自动改变它 |
 | `applied_to_project` | 恒为 `false`：验收只记录结果，从不把补丁应用进项目 |
 | `untested` | 从没跑过的检查名，或“合同没有 `acceptance.checks`”这句话 |
 

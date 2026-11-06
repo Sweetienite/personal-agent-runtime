@@ -112,8 +112,10 @@ _TOOLS: "list[tuple[str, str, dict[str, Any]]]" = [
      "submit_task.",
      _object({"draft": _DRAFT_SCHEMA}, ("draft",))),
     ("submit_task",
-     "Queue a task contract for a Worker. Recorded as submitted by the coordinator; a write permission waits for approval (approve_task).",
-     _object({"contract": {"type": "object", "description": "A task contract, at most 64 KB (see docs/MCP.md)."}}, ("contract",))),
+     "Queue a task contract. Recorded as the coordinator's; a write waits for approval (approve_task). `candidate` runs it on a verified baseline.",
+     _object({"contract": {"type": "object", "description": "A task contract, at most 64 KB (see docs/MCP.md)."},
+              "candidate": {"type": "string", "maxLength": 64, "pattern": "^cand-[a-z][a-z0-9_]*-[0-9a-f]{8}$",
+                            "description": "A verified candidate id from `par candidate list`."}}, ("contract",))),
     ("get_task_status",
      "State of one task: status, risk, attempts, pending approvals, and what can be done next.",
      _object({"task_id": _TASK_ID_SCHEMA}, ("task_id",))),
@@ -212,6 +214,12 @@ def _status(value: Any) -> str:
     return value
 
 
+def _candidate_id(value: Any) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"cand-[a-z][a-z0-9_]*-[0-9a-f]{8}", value):
+        raise ArgumentProblem("candidate must look like cand-fixture-1a2b3c4d")
+    return value
+
+
 def _worker_id(value: Any) -> str:
     if not isinstance(value, str) or not _WORKER_ID.fullmatch(value):
         raise ArgumentProblem("worker must be lowercase letters, digits and underscores, starting with a letter")
@@ -275,6 +283,7 @@ _VALIDATORS = {
     "reason": _reason,
     "limit": lambda v: _integer(v, "limit", 1, LIST_LIMIT_MAX),
     "worker": _worker_id,
+    "candidate": _candidate_id,
     "fresh": lambda v: _boolean(v, "fresh"),
     "terminate": lambda v: _boolean(v, "terminate"),
 }
@@ -527,11 +536,11 @@ class Tools:
                 "warnings": [self._t(w, PROBLEM_MAX) for w in result.warnings][:ISSUES_MAX],
                 "agent_next": ["submit_task"] if result.status == "READY" else []}
 
-    def _submit_task(self, contract: "dict[str, Any]") -> "dict[str, Any]":
-        res = self.kernel.submit(contract, submitted_by="coordinator", coordinator_id=self.coordinator)
+    def _submit_task(self, contract: "dict[str, Any]", candidate: "str | None" = None) -> "dict[str, Any]":
+        res = self.kernel.submit(contract, submitted_by="coordinator", coordinator_id=self.coordinator, candidate=candidate)
         d = self.kernel.describe(res.task_id)
         return {"task_id": res.task_id, "status": d["status"], "deduplicated": res.deduplicated, "risk": d["risk"],
-                "agent_next": self._agent_next(d)}
+                "candidate": d["base"].get("candidate"), "agent_next": self._agent_next(d)}
 
     def _get_task_status(self, task_id: str) -> "dict[str, Any]":
         d = self.kernel.describe(task_id)
@@ -543,6 +552,7 @@ class Tools:
             "risk": d["risk"],
             "attempts": d["attempt_count"],
             "worker": self._worker(d),
+            "candidate": d["base"].get("candidate"),
             "pending_approvals": [{"id": a["id"], "kind": a["kind"]} for a in d["pending_approvals"]],
             "agent_next": self._agent_next(d),
             "last_problem": self._t(d["last_failure"], PROBLEM_MAX) if d["last_failure"] else None,

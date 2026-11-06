@@ -108,6 +108,13 @@ python3 -B -I ~/Documents/AI_Harness_Core/scripts/sync_runtime_core.py --check  
 - 旧 `projects.toml` 没有 `context_mode` → `harness`；harness 的新注册也不写这一行。
 - 回退到 P1 之前的代码：先备份 `projects.toml`，再删除 generic 条目里的 `context_mode = "generic"`（旧版本会把它当未知字段、整条丢弃），或恢复 `projects.toml.par-backup-*`。不要删除项目目录或台账。
 
+## 候选整合（2026-11）
+
+- `candidates` 表是**增量**的（`CREATE TABLE IF NOT EXISTS`），没有提升台账 `user_version`：旧版本打开同一个台账不会报“schema 更新”，只是看不到候选记录。候选行是审计记录，回滚代码不需要删。
+- **回滚前**：取消或以原合同重新提交所有 `base.candidate` 已设置、但尚未完成的任务；旧版本不认识候选仓库，会拿候选提交去真实项目里 clone 而失败。已经 `ACCEPTED`/`CLOSED` 的任务不受影响。
+- `base.integration = "candidate-v1"` 只是 base JSON 里的一个字段，旧版本忽略它，因此依赖检查回到“上游 ACCEPTED 即可”的旧语义。
+- 不删除 `candidates/` 目录：删掉行或目录都不会影响项目，但会丢失补丁哈希、基线和检查记录这些审计事实。
+
 ## 没有改动的东西（回滚时不必担心）
 
 - 各项目的 `AGENTS.md`、`CLAUDE.md`、`.ai/STATE.md`、`.ai/tasks/`，哈希前后一致。
