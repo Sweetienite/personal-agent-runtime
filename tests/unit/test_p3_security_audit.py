@@ -70,6 +70,31 @@ class PathEscape(unittest.TestCase):
                 guard.check(home / ".codex" / "config.toml")
 
 
+class TestInfrastructure(unittest.TestCase):
+    def test_a_file_disappearing_during_a_digest_does_not_make_the_witness_flaky(self):
+        # git's background maintenance creates/removes .git/objects/maintenance.lock while a
+        # test is running; the digest must still be a stable "was the project changed?" witness.
+        from unittest import mock
+        from tests.helpers import tree_digest
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "stable.txt").write_text("unchanged")
+            (root / "vanishing.tmp").write_text("transient")
+            real_lstat = os.lstat
+            gone = str(root / "vanishing.tmp")
+
+            def flaky(path, *args, **kwargs):
+                if os.fspath(path) == gone:
+                    raise FileNotFoundError(gone)
+                return real_lstat(path, *args, **kwargs)
+
+            with mock.patch("tests.helpers.os.lstat", side_effect=flaky):
+                digest = tree_digest(root)
+            self.assertEqual(len(digest), 64)
+            (root / "vanishing.tmp").unlink()
+            self.assertNotEqual(tree_digest(root), digest)   # real content changes are still visible
+
+
 class UnauthorisedWrite(unittest.TestCase):
     def test_a_read_only_task_may_change_nothing_even_inside_allowed_paths(self):
         change = ws.Change("app/calc.py", "M", None, ws.Entry("file", 10, False, None))
