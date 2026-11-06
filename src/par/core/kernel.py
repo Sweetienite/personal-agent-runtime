@@ -190,7 +190,14 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
 
     def _missing_approvals(self, task: "dict[str, Any]", contract: Contract) -> "list[str]":
         """Permissions this task was submitted with that no person has granted (yet)."""
-        granted = {a["kind"] for a in self.store.approvals(task["task_id"], "APPROVED")}
+        granted = set()
+        for approval in self.store.approvals(task["task_id"], "APPROVED"):
+            if approval["kind"] == "WORKER_OVERRIDE":
+                # An approval for the requested worker cannot authorize a different pinned worker.
+                if approval["payload"].get("worker") == (task["pinned_worker"] or contract.worker):
+                    granted.add(approval["kind"])
+            else:
+                granted.add(approval["kind"])
         needed = []
         if contract.writes:
             needed.append("WRITE_PERMISSION")
@@ -867,13 +874,28 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
             self.store.update_task(task_id, "TASK_RETRIED", reason=f"retry requested by {by}", columns=columns,
                                    data={"worker": worker, "force": force})
             self.store.set_status(task_id, T.QUEUED, reason="queued for a new attempt")
-            missing = self._missing_approvals(self._require(task_id), self._contract_of(task))
-            if missing:                                                  # e.g. canceled while still waiting for permission
-                for kind in missing:
-                    payload = ({"allowed_paths": list(self._contract_of(task).allowed_paths)} if kind == "WRITE_PERMISSION"
-                               else {"worker": self._contract_of(task).worker})
+            current = self._require(task_id)
+            contract = self._contract_of(current)
+            expected_worker = current["pinned_worker"] or contract.worker
+            # A pending override for another worker must be withdrawn before checking what remains.
+            for approval in self._pending(task_id):
+                if approval["kind"] == "WORKER_OVERRIDE" and approval["payload"].get("worker") != expected_worker:
+                    self.store.decide_approval(approval["id"], "REJECTED", "kernel",
+                                               "superseded by a retry selecting a different worker")
+                    self.store.add_event("APPROVAL_DECIDED", task_id=task_id,
+                                         reason="WORKER_OVERRIDE superseded by changed worker",
+                                         data={"approval_id": approval["id"], "kind": "WORKER_OVERRIDE", "decision": "REJECTED"})
+            missing = self._missing_approvals(current, contract)
+            pending = {a["kind"] for a in self._pending(task_id)}
+            for kind in missing:
+                if kind not in pending:
+                    payload = ({"allowed_paths": list(contract.allowed_paths)} if kind == "WRITE_PERMISSION"
+                               else {"worker": expected_worker})
                     self.store.add_approval(task_id, kind, payload)
-                self.store.set_status(task_id, T.PERMISSION_WAIT, reason="the permission this task needs was never granted")
+                    pending.add(kind)
+            # Pending is never treated as granted: it only avoids another request for the same permission.
+            if self._pending(task_id) or missing:
+                self.store.set_status(task_id, T.PERMISSION_WAIT, reason="still waiting for required approval")
         return self.describe(task_id)
 
     def _retryable(self, task_id: str, status: T) -> bool:
