@@ -27,6 +27,32 @@ jobs:
       - run: par doctor
       - run: par version
 
+  # T15: the pure-logic security core is platform independent. Linux CI runs the same negative
+  # cases (path escape, contract allowlists, redaction, sensitive names, unknown vendor events)
+  # so a platform difference cannot silently skip a security behaviour. Real adapters and the
+  # process/signal-dependent modules stay on macOS only: they are explicitly untested on Linux.
+  linux_security_core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: par doctor            # reports WARN for an untested platform; must still exit 0
+      - run: par version
+      - name: Platform-independent security regressions
+        run: >-
+          python -B -m unittest
+          tests.unit.test_states
+          tests.unit.test_contract
+          tests.unit.test_policy
+          tests.unit.test_redact
+          tests.unit.test_paths
+          tests.unit.test_provider_probe
+          tests.unit.test_p3_security_audit
+
   core_unittests:
     runs-on: macos-latest
     timeout-minutes: 15
@@ -55,3 +81,4 @@ jobs:
           tests.unit.test_candidate_integration
           tests.unit.test_role_provider_caps
           tests.unit.test_provider_probe
+          tests.unit.test_p3_security_audit

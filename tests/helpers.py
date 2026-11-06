@@ -27,16 +27,25 @@ def run_cli(*argv):
 
 
 def tree_digest(root):
-    """Digest of every path, mode and byte below ``root`` (symlinks are not followed)."""
+    """Digest of every path, mode and byte below ``root`` (symlinks are not followed).
+
+    A path listed by ``rglob`` may disappear before it is stat'ed - git's background maintenance
+    creates and removes ``.git/objects/maintenance.lock`` while a test is running. Such a transient
+    file is not project content, so skipping it keeps the digest a stable "was the project changed?"
+    witness instead of making the whole test flaky on a busy CI runner.
+    """
     h = hashlib.sha256()
     root = Path(root)
     if not root.exists() and not root.is_symlink():
         return "absent"
     for p in sorted([root, *root.rglob("*")]):
-        st = os.lstat(p)
-        h.update(f"{p.relative_to(root)}|{st.st_mode:o}|{st.st_size}".encode())
-        if p.is_file() and not p.is_symlink():
-            h.update(p.read_bytes())
+        try:
+            st = os.lstat(p)
+            h.update(f"{p.relative_to(root)}|{st.st_mode:o}|{st.st_size}".encode())
+            if p.is_file() and not p.is_symlink():
+                h.update(p.read_bytes())
+        except (FileNotFoundError, NotADirectoryError, PermissionError):
+            continue
     return h.hexdigest()
 
 

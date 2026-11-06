@@ -4,6 +4,57 @@
 
 Runtime 只写自己的数据目录；对**真实项目**默认只读：只有你亲自 `par project enable-write` 打开、并且每个写任务逐项批准后，Worker 才会在**私有副本**里改文件，补丁不会自动应用到项目；唯一由 Runtime 直接写进项目的情况是 `par project add --scaffold-harness`（你显式加这个开关才会发生）：只为项目里缺失的 `AGENTS.md`/`.ai/STATE.md` 各补一份极简通用模板，绝不覆盖已存在的文件，仍受同一套 `WriteGuard`/`protected_roots` 保护；启动的外部程序只有：git（只在它自己建的目录里、干净环境）、进程运行器启动的 Worker 与验收检查（Worker 是 Codex 官方 CLI 或脚本化的测试替身；**真实模型调用只发生在你逐项批准之后**）、Codex 的几个不调用模型的探测子命令与 `codesign`、Core 自带的检查脚本；不读、不复制任何凭据；输出一律先脱敏。
 
+## 受保护 / 不保证 / 由你负责（P3/T15 审计矩阵，2026-11-06）
+
+> 这张表只描述**Runtime 自己能保证的事**。第三方 CLI 的行为、操作系统隔离、账号条款都不在「受保护」一列里。每条承诺都能追到代码或测试；找不到证据的一律写进「不保证」。证据索引：`tests/unit/test_p3_security_audit.py`（22 项集中负面测试）、`tests/unit/test_policy.py`、`test_contract.py`、`test_workspace.py`、`test_generic_context.py`、`test_providers_fake.py`、`test_redact.py`、`docs/COMPATIBILITY.md`（外部工具的版本/条款）。
+
+### A. 受保护（Runtime 自己执行、有回归测试）
+
+| 承诺 | 机制 | 负面证据 |
+|---|---|---|
+| 路径不能越出合同 `allowed_paths` | `normalise_allowed_path` + `path_allowed` + `classify` | `PathEscape.test_dotdot_absolute_tilde_backslash_and_control_characters_are_refused`、`test_normalised_dotdot_cannot_escape_the_allowed_prefix`、`UnauthorisedWrite.test_a_change_outside_allowed_paths_is_a_violation` |
+| `.git/`、`.ai/`、`AGENTS.md`、`CLAUDE.md`、疑似凭据路径永远不可改 | `forbidden_reason`；`is_sensitive_path` 同时按 `/` 与 `\` 拆分（含 Windows 盘符/UNC，2026-11 加固，PR #17 / M672） | `PathEscape.test_protected_and_sensitive_names_win_over_an_allowed_prefix`、`test_windows_style_sensitive_paths_are_denied_by_name`、`test_policy.py::test_windows_drives_unc_and_backslashes_are_not_a_bypass` |
+| 符号链接、`..`、同前缀兄弟目录、受保护根不能绕过写入 | `WriteGuard` 先 `realpath`，NFC + casefold 比较 | `PathEscape.test_a_write_guard_refuses_a_sibling_with_the_same_prefix_and_a_symlink_escape`、`test_a_protected_root_is_never_writable_even_inside_an_allowed_root` |
+| 只读任务不允许任何改动；符号链接/特殊文件不算成果 | `classify(writes=False)`；`classify` 拒绝非 file 条目 | `UnauthorisedWrite.test_a_read_only_task_may_change_nothing_even_inside_allowed_paths`、`test_a_symlink_or_special_file_is_never_accepted_as_work` |
+| 验收检查不拼 shell、不查用户 PATH、不带凭据、不跑安装/发布/内联代码 | 合同 argv 白名单 + `resolve_executable` + `check_env` | `CheckSideEffects.test_shell_install_publish_and_inline_code_are_not_check_programs`、`test_the_check_environment_has_no_secrets_and_a_fixed_path`、`test_python_is_resolved_to_the_kernel_interpreter_not_the_users_path` |
+| 合同里的疑似凭据、终端控制字符、重复键、未知字段被拒绝 | `parse_contract` 与配置校验器 | `HostileProjectData.test_a_contract_cannot_contain_a_secret_or_terminal_control_characters`、`test_contract.py` |
+| Worker 的自述永远是「未核实」，项目规则文本不能扩大权限 | `evidence_summary.claim.verified = False`；清单内容只是数据 | `HostileProjectData.test_worker_words_are_never_verified_in_a_result_envelope`、`test_project_rule_text_cannot_widen_the_task_scope`、`test_generic_context.py::test_instructions_in_agents_md_are_context_not_authority` |
+| 未知厂商事件、退出码 0 但无终态、截断输出都不能变成成功 | 适配器 `parse_event` 只保留结构化字段；`classify_failure` 要求 `turn.completed` | `UnknownProviderEvents`（4 项）、`test_codex_adapter.py`、`test_providers_fake.py` |
+| 写权限/换 Worker/漂移确认都要逐项批准，重试不复用旧批准 | Kernel 审批闸门（Issue #1 修复） | `test_kernel_control.py`、`M70` / `M627`–`M630` |
+| 补丁不会自动应用到真实项目；`ACCEPTED` ≠ `APPLIED` | Kernel 只保存 `work.patch` | `test_kernel_run.py`、`test_candidate_integration.py` |
+| 台账只增、attempt 不可变、数据目录 0600/0700 | SQLite 触发器 + `WriteGuard` | `test_store.py`、`assert_private_layout` |
+
+### B. 不保证（Runtime 明确做不到，不要误读为承诺）
+
+| 事实 | 为什么 |
+|---|---|
+| **不是操作系统沙箱**：私有克隆不阻止外部 CLI 以同一用户身份读取磁盘上任何可读文件，也不阻止它主动联网 | 进程隔离由各厂商 CLI 自己的沙箱提供（Codex 的 sandbox 管写与网络，**不管读**）；`test_workspace.py` 只验证 Kernel 自己的副本 |
+| 验收检查**会执行 Worker 补丁里的代码**（测试的本质），可启动子进程、读写其他路径 | 只有一次性副本、干净环境、固定可执行文件、独立进程组与超时；没有 `sandbox-exec`/容器。T14 之前真实项目不可提交写任务，风险限于夹具 |
+| 脱敏是尽力而为，不保证识别所有形态的机密 | 首要原则是不去读机密；`test_redact_perf.py` 保证线性时间 |
+| 私有 HOME / 干净环境不等于「零持久化」 | 厂商 CLI 仍可能写自己的诊断日志或续期令牌；`--ephemeral` 只是不写会话文件 |
+| 恢复判断依赖心跳与时钟；跨睡眠可能误标 `RECOVERY_REQUIRED` | 不丢数据，也不会启动第二个写入者 |
+| Worker 自行 `setsid` 脱离进程组后无法追踪/终止 | Kernel 只杀自己确认身份的进程组 |
+| **账号与条款合规** | 见下方「由你负责」；技术隔离不能让被厂商条款禁止的用法变得合规 |
+| Windows / Linux 的完整功能 | 见「平台验证分级」：目前只有 macOS 端到端，Linux 核心 experimental，Windows 仅有静态缺口清单 |
+
+### C. 由你负责（Runtime 不替你决定）
+
+- 选择账号/模型/额度，确认该厂商的服务条款允许这种用法。**Google Antigravity 官方 FAQ 明确禁止把 `agy` 封装在第三方编码 Agent 中**（消费者订阅不支持），Gemini CLI 自 2026-06-18 起停止为免费层 / AI Pro / Ultra 服务——见 [COMPATIBILITY.md](COMPATIBILITY.md)。PAR 的 `agy` 适配器因此实验性、默认禁用。
+- 决定项目里哪些文件可以给外部模型看、是否允许联网、是否接受第三方 CLI 的读范围。
+- 亲自 `par project enable-write` 打开写入、逐项批准每个写任务、审阅 diff 后才 `git apply`。
+- 手工交接时决定能否把项目文件交给那个 GUI 应用的云端模型（每个交接包 README 都写了数据去向）。
+- 在收紧读范围并做真实调用验证之前，不要对含敏感文件的真实项目开放写入。
+
+## 平台验证分级（2026-11-06）
+
+| 平台 | 证据等级 | 已验证 | 已知缺口 |
+|---|---|---|---|
+| **macOS 15.6.1 / arm64** | `E2E`（本机 + CI） | 安装、`par doctor/version`、CI 核心子集（16 个模块）、fake CLI 全链路、通用 Git 项目、人工交接包、候选整合、证据分层；历史真实 Codex / `agy` 烟测记录见 [CODEX.md](CODEX.md) / [AGY.md](AGY.md) | 内置 codex 二进制当前是 `0.166.0-alpha.6`（alpha）；真实 R1/R2 需按版本升级复核清单重跑。WorkBuddy 手工流程是历史 macOS 实测，版本需重核。CI 里 4 个进程终止类模块在本沙箱失败（无法向子进程组投递信号），失败集合与未修改基线完全一致 |
+| **Linux (ubuntu-latest, GitHub Actions)** | `CORE_EXPERIMENTAL`（**CI 实跑纯逻辑核心**） | 新增 `linux_security_core` 作业：`pip install -e .`、`par doctor`（对未测平台明确报 WARN 但退出 0）、`par version`，以及 125 项平台无关回归（状态机、合同、路径策略、脱敏、数据目录、离线 probe、21 项 T15 安全审计） | 真实适配器（`codesign` 签名校验、Seatbelt/bwrap 沙箱、钥匙串链接）是 macOS 实现，**不能据此宣布 Linux 支持真实 Provider**；进程/信号相关模块仍只在 macOS 跑。`TRUSTED_DIRS` 含 `/opt/homebrew/bin`，Linux 上需重核可执行文件解析。CI 日志以具体 run 为准 |
+| **Windows** | `STATIC_GAP`（仅静态缺口） | 2026-11 已加固：Windows 盘符 / UNC / 反斜杠形式的敏感路径不再漏判（PR #17） | 进程组与信号（`os.setsid`、SIGKILL）、文件权限位（0600/0700）、`codesign` 签名、`realpath` 与大小写/Unicode 规范化、盘符/UNC 在项目路径中的语义、`protected_roots` 的 `Library/…` 布局、`git` 行为、检查可执行文件白名单，全部**未验证**。不宣布 Windows 支持，也不为「全平台」放宽安全行为 |
+
+CI 有三个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含审批/状态机/交接/候选整合等）、`linux_security_core`（Linux，纯逻辑安全子集）。关键安全行为（路径策略、合同白名单、脱敏、敏感名、未知事件）**没有**因为平台差异被 `skip`，且在 Linux 上重复实跑一遍；宿主 macOS 特定假设写在适配器与 `paths.py` 里，作为上面的已知缺口列出。要把 Linux 升到 `CORE_EXPERIMENTAL` 之上，仍需要在 Linux 上真实跑一次 fake CLI 全链路与真实 Provider 的隔离/权限样本。
+
 ## 它能写什么、不能写什么
 
 > **第三方条款不是 Runtime 能替你承担的风险**：外部 CLI 的服务条款由你与该厂商决定。2026-11-06 核对到 Google Antigravity 官方 FAQ 明确禁止把 `agy` 封装在第三方编码 Agent/应用中（消费者订阅不支持），以及 Gemini CLI 自 2026-06-18 起停止为免费层 / Google AI Pro / Ultra 提供服务。PAR 的 `agy` 适配器因此保持实验性、默认禁用；启用任何外部 Provider 前请看 [COMPATIBILITY.md](COMPATIBILITY.md) 的账号/条款列。Runtime 的技术隔离（私有 HOME、干净环境、文件比对）不能让一种被厂商条款禁止的用法变得合规。

@@ -118,6 +118,10 @@
 
 `par task handoff --to APP` 与 `par task import` 已在 T09 落实：导出包给出模式、`workspace_absolute_path`、marker、目标、允许路径、检查与导入指引；导入核对 task/export/base 与真实导出路径，旧包、副本、伪造标记都点名拒绝。见 [HANDOFF.md](HANDOFF.md)。它不依赖任何 UI 自动化或厂商接口，因此不受上述账号/条款变化影响；但**它是人工路径，不是自动 Provider**，也不能用来宣称 P3 的自动执行 Gate 已通过。作者曾在 macOS 上做过一次真实 WorkBuddy 交接（见 [HANDOFF.md](HANDOFF.md) 的实测教训），版本需重核。
 
+## 与平台证据的关系
+
+本文的 `GREEN/YELLOW/RED` 描述的是**工具/协议与账号路径**，不是操作系统支持。同一候选在不同 OS 上的可执行风险、进程组/信号、文件权限与签名校验另见 [SECURITY.md 的平台验证分级](SECURITY.md)：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（CI 只实跑纯逻辑安全子集）、Windows `STATIC_GAP`。即使某天某个工具取得 `GREEN`，也只代表**当时记录的版本 + OS + 账号类型**下通过，不能跨版本或跨平台外推。
+
 ## 对现有文档的影响
 
 - [AGY.md](AGY.md) 记录的是 2026-10-15 的 `agy` 1.3.5 真实烟测（技术可行性证据）。**技术可行 ≠ 条款许可**：官方 FAQ 现已明确禁止第三方封装。该适配器必须保持「实验/风险、默认禁用」，且文档中不得把它写成正式支持，也不得指导规避使用限制。
