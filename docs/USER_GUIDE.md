@@ -44,8 +44,8 @@
 
 **你可以放心做的**：让主控对已登记的真实项目做**只读分析**（风险 R1）；在夹具项目或你自己打开了写入的项目上做**改文件**（风险 R2）并走完批准、验收、自己应用补丁；用人工交接把任务交给 WorkBuddy / TRAE。
 
-> 下面所有 `par` 指 `~/Documents/Personal Agent Runtime/.venv/bin/par`。每次写全路径很烦，可以把这一行加进你的 shell 配置（`~/.zshrc` 或等效文件）：
-> `alias par='"$HOME/Documents/Personal Agent Runtime/.venv/bin/par"'`
+> 下面所有 `par` 指你的 clone 目录下的 `.venv/bin/par`（下文用 `personal-agent-runtime/` 代指 clone 目录）。每次写全路径很烦，可以把这一行加进你的 shell 配置（`~/.zshrc` 或等效文件），把路径换成你的实际位置：
+> `alias par='/path/to/personal-agent-runtime/.venv/bin/par'`
 
 ## 2. 第一次接通主控
 
@@ -54,7 +54,7 @@
 ### 2.1 Codex
 
 1. 完全退出并重新打开 Codex（ChatGPT 应用里的 Codex，或终端里的 `codex`）。检查：`codex mcp list` 里有 `par`。
-   （终端里请用 ChatGPT 应用自带的那个程序：`/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex mcp list`；PATH 上的 `codex` 是坏的。）
+   （如果你通过 ChatGPT 桌面应用安装 Codex，可执行文件在应用包内，例如 macOS 上：`/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`。先运行 `par doctor` / `par health --probe` 确认你配置的那个路径；不要假定 PATH 上的 `codex` 一定是同一个程序。）
 2. 新开一个 Codex 会话，第一条消息贴起手提示词：`par coordinator prompt codex | pbcopy`（复制到剪贴板），再粘贴。
 3. 让它「调用 par 的 list_tasks 看一下」。然后在终端运行 `par coordinator status`：Codex 的「最近出现」应是刚刚。
 
@@ -64,7 +64,7 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 
 1. 在终端里运行（Claude Desktop 里自带的那个终端也行，工具会脱离终端在后台等）：
    ```bash
-   cd "$HOME/Documents/Personal Agent Runtime"
+   cd /path/to/personal-agent-runtime
    .venv/bin/python ops/connect_claude_desktop.py --apply --background --reopen
    ```
 2. 然后**完全退出 Claude Desktop**（菜单栏 Claude > 退出，或 ⌘Q）。这会结束你当前在 Claude Desktop 里的所有会话。
@@ -202,12 +202,12 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 | 主控应用里看不到 par 的工具 | 同上；新开一个聊天；片段里的 Python 路径必须真实存在 |
 | 想手动试桥有没有问题 | 在终端运行片段里那条命令（`… -m par mcp serve --data-dir … --coordinator codex`）：它应当**安静地等待输入**（Ctrl-D 退出）；一启动就报错说明路径或数据目录不对 |
 | `par task run 编号` 说「现在不能开始运行：已有 N 个任务在运行」或「这个项目里正在运行 …」 | 同时在跑的任务数到了上限（见第 8 节的 `max_parallel_workers`），或这个项目里已经有一个任务在跑。等它们结束 |
-| 任务「没有可用 Worker」 | 工作台的 Worker 区会逐条写原因（没启用、没适配器、模型是占位符、冷却中…）；`par health --probe` 重新检测；登录问题去对应应用登录 |
+| 任务「没有可用 Worker」 | `par health`（加 `--probe` 重新检测）和 `par task status 编号` 会逐条写原因（没启用、没适配器、模型是占位符、冷却中…）；登录问题去对应应用登录 |
 | 任务「需要登录」 | 去 Codex / agy 对应的应用里登录；然后重试 |
 | 任务「额度用完 / 被限速」 | 见第 5 节 |
-| 任务「需要恢复」 | 上一次运行没有正常收尾。任务页点「恢复」；Worker 进程还在跑的话勾「同时终止仍在运行的 Worker 进程」 |
+| 任务「需要恢复」 | 上一次运行没有正常收尾。先 `par task status 编号` 看原因，再 `par task recover 编号`；Worker 进程还在跑时用 `par task recover 编号 --terminate`（它只终止能核实的进程） |
 | 操作被拒绝，说任务被改动过（`version_conflict`） | 主控或别的命令刚改过这个任务；`par task status 编号` 看一眼最新状态再操作 |
-| `par` 命令找不到 | 用全路径 `~/Documents/Personal Agent Runtime/.venv/bin/par`，或加 1 节里的 alias |
+| `par` 命令找不到 | 用全路径 `<你的 clone 目录>/.venv/bin/par`，或加 1 节里的 alias |
 | 不知道出了什么事 | `par doctor`（只读自检）、`par health`、`par task status 任务编号`（会写原因和你能做的下一步） |
 
 ## 8. 想改配置的时候
@@ -261,7 +261,7 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 
 | 东西 | 位置 |
 |---|---|
-| 代码 | `~/Documents/Personal Agent Runtime/` |
+| 代码 | 你的 clone 目录（下文用 `personal-agent-runtime/` 代指） |
 | 数据目录 | `~/Library/Application Support/PersonalAgentRuntime/`（`PAR_DATA_DIR` 或 `--data-dir` 可改） |
 | 配置 | 数据目录下 `config/`（`profiles.toml` `providers.toml` `projects.toml`） |
 | 任务台账 | 数据目录下 `runtime.sqlite3`（只追加；不要手动改） |
@@ -274,7 +274,7 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 | 想做什么 | 怎么做 |
 |---|---|
 | 重启 | 主控应用：完全退出再打开，新开一个聊天。没有常驻进程，也没有 LaunchAgent；MCP 桥由 Claude / Codex 在需要时自己启动，应用退出它就退出 |
-| 升级 | `cd "$HOME/Documents/Personal Agent Runtime" && git pull && uv pip install -e .`（没有 uv 就 `.venv/bin/pip install -e .`），再运行 `par version`、`par doctor`、`par health --probe`。升级 Codex 或 agy 之后也要 `par health --probe`（版本变了会提示）。台账只会向前加东西，旧数据照常能读 |
+| 升级 | `cd /path/to/personal-agent-runtime && git pull && uv pip install -e .`（没有 uv 就 `.venv/bin/pip install -e .`），再运行 `par version`、`par doctor`、`par health --probe`。升级 Codex 或 agy 之后也要 `par health --probe`（版本变了会提示）。台账只会向前加东西，旧数据照常能读 |
 | 重新登录 | Codex：在 ChatGPT / Codex 应用里登录（订阅登录，不要用 API key）。agy：`par provider login antigravity`（在 Runtime 自己的目录里登录一次，不碰 `~/.gemini`）。之后运行 `par health --probe` |
 | 额度、恢复任务 | 第 5 节、第 7 节 |
 | 审计记录在哪 | 台账 `runtime.sqlite3` 里每个动作都有事件（谁、何时、为什么）；`logs/project_writes.jsonl`（写入开关）、`logs/connect_claude_desktop.log`（接入小工具）。这些只追加，重启不丢，全部脱敏 |

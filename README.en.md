@@ -29,6 +29,7 @@ If your need is "coordinate many agents across machines fast," this is probably 
 Before setting up anything real, you can watch the whole pipeline — contract → Worker → private clone → Kernel re-verification → result — run end to end against **scripted fake CLIs**, no vendor account needed:
 
 ```bash
+git clone https://github.com/Sweetienite/personal-agent-runtime.git
 cd personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .   # zero third-party deps; requires 3.11+, 3.12 is what's actually tested day to day
 # no uv? plain venv works too, UNLESS your python3.12 was itself installed by `uv python install` -
@@ -69,7 +70,7 @@ This file and this project's commit messages are English. The deep reference doc
 ## Honesty about where this stands
 
 - Used daily by one person, on their own projects, with a single-digit-task sample size tracked honestly in `ops/reliability_report.py`'s output — not "battle-tested at scale."
-- Two automated Worker adapters exist and are real (Codex CLI, Google Antigravity); other "market-standard" tools are wired in only as a manual hand-off path, explicitly labeled as not-yet-exercised where that's true (see `docs/HANDOFF.md`).
+- Two automated Worker adapters exist and are real (Codex CLI, Google Antigravity); other "market-standard" tools are wired in only as a manual hand-off path, explicitly labeled as not-yet-exercised where that's true (see `docs/HANDOFF.md`). Antigravity runs through Google's official `agy` CLI in its headless mode: that mode can change between vendor releases, and the account/terms risk is the user's. It ships disabled and is not the default automated path.
 - No GUI. The MCP bridge (16 tools, see `docs/MCP.md`) and the CLI are the entire surface — a deliberate choice after an earlier local web console was removed (see [CHANGELOG.md](CHANGELOG.md)), not an oversight.
 
 ## License

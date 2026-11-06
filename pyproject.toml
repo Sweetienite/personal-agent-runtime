@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "personal-agent-runtime"
-description = "Local multi-model scheduling runtime that reuses the existing AI Harness. Phase P2: task Kernel, SQLite ledger and a scripted-worker closed loop (no real model calls)."
+description = "Local task runtime for coordinating CLI coding agents: a Kernel with an append-only SQLite ledger, private per-attempt clones, approval-gated writes and Kernel-run verification; Codex and Antigravity adapters plus a manual hand-off path."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
