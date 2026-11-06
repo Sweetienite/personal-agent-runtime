@@ -374,6 +374,11 @@ class AntigravityAdapter:
     provider_id = "antigravity"
     kind = "antigravity"
     workspace_with_git = True            # not known to matter for agy; the plain default until a real run says otherwise
+    CAPABILITIES = Capabilities(
+        can_headless=Tri.YES, structured_output=Tri.YES, can_select_model=Tri.YES, can_write=Tri.YES,
+        can_restrict_tools=Tri.YES,           # permission presets and rules; the Runtime only uses the presets
+        has_sandbox=Tri.YES,                  # for commands; the file tools are not inside it
+        session_persistence_control=Tri.UNKNOWN, supports_subscription_auth=Tri.YES)
 
     def __init__(self, executable: str, *, provider_id: str = "antigravity", environ: "Mapping[str, str] | None" = None,
                  models: "tuple[str, ...]" = (), verify_signature: bool = True, keychains_from: "Path | None" = None,
@@ -508,11 +513,7 @@ class AntigravityAdapter:
 
     # --- the adapter protocol ------------------------------------------------------------------------------------------------------
     def capabilities(self) -> Capabilities:
-        return Capabilities(
-            can_headless=Tri.YES, structured_output=Tri.YES, can_select_model=Tri.YES, can_write=Tri.YES,
-            can_restrict_tools=Tri.YES,           # permission presets and rules; the Runtime only uses the presets
-            has_sandbox=Tri.YES,                  # for commands; the file tools are not inside it
-            session_persistence_control=Tri.UNKNOWN, supports_subscription_auth=Tri.YES)
+        return self.CAPABILITIES
 
     def preflight(self, request: RunRequest) -> "Optional[str]":
         problem = self.executable_problem()

@@ -216,19 +216,25 @@ _CODE_TO_FAILURE = {
 }
 
 
+# Static facts of this build, not of a run: the registry can read them without creating an adapter
+# (creating one would consume a scripted scenario in tests).
+SCRIPTED_CAPABILITIES = Capabilities(
+    can_headless=Tri.YES, structured_output=Tri.YES, can_select_model=Tri.NO, can_write=Tri.YES,
+    can_restrict_tools=Tri.NO, has_sandbox=Tri.NO, session_persistence_control=Tri.NO,
+    supports_subscription_auth=Tri.NO,
+)
+
+
 class ScriptedProvider:
     kind = "fake"
+    CAPABILITIES = SCRIPTED_CAPABILITIES
 
     def __init__(self, scenario: Scenario, provider_id: str = "fake") -> None:
         self.scenario = scenario
         self.provider_id = provider_id
 
     def capabilities(self) -> Capabilities:
-        return Capabilities(
-            can_headless=Tri.YES, structured_output=Tri.YES, can_select_model=Tri.NO, can_write=Tri.YES,
-            can_restrict_tools=Tri.NO, has_sandbox=Tri.NO, session_persistence_control=Tri.NO,
-            supports_subscription_auth=Tri.NO,
-        )
+        return self.CAPABILITIES
 
     def probe(self) -> ProbeResult:
         return ProbeResult(self.provider_id, ProviderStatus.AVAILABLE,
@@ -318,4 +324,12 @@ class ScenarioSequence:
         return scenario
 
     def factory(self, provider_id: str = "fake") -> "Callable[[], ScriptedProvider]":
-        return lambda: ScriptedProvider(self.next(), provider_id)
+        sequence = self
+
+        class _Factory:
+            declared_capabilities = SCRIPTED_CAPABILITIES
+
+            def __call__(self) -> ScriptedProvider:
+                return ScriptedProvider(sequence.next(), provider_id)
+
+        return _Factory()

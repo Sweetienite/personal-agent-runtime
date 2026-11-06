@@ -21,6 +21,11 @@ _PYTHON_NOTE = ("片段里写的是生成它的那个 Python，以及这份代�
                 "（例如 `python3 -m par coordinator kit ...`），把它打印的内容贴进去。")
 
 
+# What every MCP-host coordinator can do. It is a descriptor, not a grant: the bridge still enforces the
+# Kernel's own approvals and records who decided what.
+COORDINATOR_CAPABILITIES = ("read", "submit", "approve", "reject", "accept", "close", "recover")
+
+
 @dataclass(frozen=True)
 class Coordinator:
     id: str
@@ -29,6 +34,8 @@ class Coordinator:
     surfaces: "tuple[str, ...]"
     config_format: str                 # the format of the snippet a person pastes: "json" | "toml"
     limit_note: str                    # what running out of quota means for this coordinator
+    surface: str = "mcp_host"          # mcp_host | programmatic_session | manual
+    capabilities: "tuple[str, ...]" = COORDINATOR_CAPABILITIES
 
 
 COORDINATORS: "dict[str, Coordinator]" = {
@@ -49,6 +56,16 @@ def normalize(name: "str | None") -> "Optional[str]":
         return None
     name = ALIASES.get(name, name)
     return name if name in COORDINATORS else None
+
+
+def descriptor(name: "str | None") -> "dict[str, Any]":
+    """The machine-readable picture of one coordinator: identity, how it is reached, what the bridge lets it do."""
+    cid = normalize(name)
+    if cid is None:
+        raise ValueError(f"{name!r} is not a known coordinator")
+    c = COORDINATORS[cid]
+    return {"id": c.id, "name": c.name, "vendor": c.vendor, "surface": c.surface,
+            "capabilities": list(c.capabilities), "connection": "mcp", "surfaces": list(c.surfaces)}
 
 
 def known_names() -> "frozenset[str]":

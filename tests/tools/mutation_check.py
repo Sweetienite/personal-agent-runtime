@@ -372,6 +372,11 @@ MUTATIONS = [
     ('M664', 'a tampered patch outside the task allowed paths is integrated', 'src/par/core/candidate.py', '                if outside:', '                if False:', T + 'test_candidate_integration'),
     ('M665', 'a verified candidate is not reported in the evidence', 'src/par/core/kernel.py', '        if any(c["status"] == "VERIFIED" for c in rows):', '        if False:', T + 'test_candidate_integration'),
     ('M666', 'a failed candidate is reported as never integrated', 'src/par/core/kernel.py', '        return "CANDIDATE_FAILED" if rows else "NOT_INTEGRATED"', '        return "NOT_INTEGRATED"', T + 'test_candidate_integration'),
+    ('M667', 'routing ignores a declared headless capability', 'src/par/core/router.py', '            if getattr(caps, "can_headless", Tri.UNKNOWN) != Tri.YES:', '            if False:', T + 'test_routing'),
+    ('M668', 'routing ignores a declared write capability for an R2 task', 'src/par/core/router.py', '            if risk == "R2" and getattr(caps, "can_write", Tri.UNKNOWN) != Tri.YES:', '            if False:', T + 'test_routing'),
+    ('M669', 'the runtime capability gate is skipped', 'src/par/core/attempt.py', '        if declared.can_headless != Tri.YES or (contract.writes and declared.can_write != Tri.YES):', '        if False:', T + 'test_role_provider_caps'),
+    ('M670', 'reading a capability declaration instantiates the factory', 'src/par/providers/registry.py', '        declared = capabilities if capabilities is not None else getattr(factory, "declared_capabilities", None)', '        declared = self._factories[provider_id]().capabilities()', T + 'test_role_provider_caps'),
+    ('M671', 'a worker surface is no longer derived from its provider', 'src/par/config.py', '        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps), providers[prov].surface)', '        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps))', T + 'test_role_provider_caps'),
 ]
 
 

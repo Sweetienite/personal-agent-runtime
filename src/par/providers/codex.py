@@ -323,6 +323,10 @@ def _usage(raw: Any) -> "dict[str, int]":
 class CodexAdapter:
     provider_id = "codex"
     kind = "codex"
+    CAPABILITIES = Capabilities(
+        can_headless=Tri.YES, structured_output=Tri.YES, can_select_model=Tri.YES, can_write=Tri.YES,
+        can_restrict_tools=Tri.NO,            # no per-tool allow-list; the sandbox limits model-run shell commands only
+        has_sandbox=Tri.YES, session_persistence_control=Tri.YES, supports_subscription_auth=Tri.YES)
     # Measured (docs/CODEX.md §10): a writable (`-s workspace-write`) run inside a git workspace makes Codex append a
     # `[projects."<workspace>"] trust_level = "trusted"` entry to the USER'S ~/.codex/config.toml at startup - every attempt, and
     # `-c projects.….trust_level=…` does not prevent it. The same files without `.git` do not trigger it. The Kernel never uses
@@ -405,10 +409,7 @@ class CodexAdapter:
 
     # --- the adapter protocol ----------------------------------------------------------------------------------------------------
     def capabilities(self) -> Capabilities:
-        return Capabilities(
-            can_headless=Tri.YES, structured_output=Tri.YES, can_select_model=Tri.YES, can_write=Tri.YES,
-            can_restrict_tools=Tri.NO,            # no per-tool allow-list; the sandbox limits model-run shell commands only
-            has_sandbox=Tri.YES, session_persistence_control=Tri.YES, supports_subscription_auth=Tri.YES)
+        return self.CAPABILITIES
 
     def preflight(self, request: RunRequest) -> "Optional[str]":
         problem = self.executable_problem()

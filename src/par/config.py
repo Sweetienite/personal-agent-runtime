@@ -22,6 +22,11 @@ PROVIDER_KINDS = frozenset({"codex", "antigravity", "claude_host", "manual_hando
 WORKER_PROVIDER_KINDS = frozenset({"codex", "antigravity", "manual_handoff"})
 DEFAULT_PROVIDER_IDS = ("codex", "antigravity", "claude_host", "manual_handoff", "gemini_legacy")
 CAPABILITIES = frozenset({"read", "edit", "review"})
+# How a role is reached. The role name is not tied to a vendor: a worker id names a provider/model pair, and the
+# surface says which mechanism reaches it. "acp" is accepted in descriptors but has no adapter yet.
+SURFACES = frozenset({"native_cli", "acp", "manual", "programmatic_session"})
+PROVIDER_SURFACE = {"codex": "native_cli", "antigravity": "native_cli", "manual_handoff": "manual",
+                    "claude_host": "programmatic_session", "gemini_legacy": "native_cli"}
 FAILURE_POLICIES = frozenset({"ask", "pause", "safe_auto"})
 from par.coordinators import known_names as _known_coordinator_names
 KNOWN_COORDINATORS = _known_coordinator_names()        # claude_desktop, codex (and the older name codex_manual_takeover): see par/coordinators.py
@@ -45,6 +50,10 @@ class ProviderEntry:
     enabled: bool = False
     executable: "str | None" = None
 
+    @property
+    def surface(self) -> str:
+        return PROVIDER_SURFACE.get(self.kind, "native_cli")
+
 
 @dataclass(frozen=True)
 class WorkerEntry:
@@ -52,6 +61,7 @@ class WorkerEntry:
     provider: str
     model: str
     capabilities: "tuple[str, ...]" = ("read",)
+    surface: str = "native_cli"      # native_cli | manual (derived from the provider kind; never a vendor name)
 
     @property
     def model_configured(self) -> bool:
@@ -254,7 +264,7 @@ def _parse_workers(raw: Any, providers: "dict[str, ProviderEntry]", c: _Issues) 
         if bad:
             c.err(f"{where}.capabilities", f"unknown capability {bad}; allowed: {sorted(CAPABILITIES)}")
             continue
-        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps))
+        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps), providers[prov].surface)
     return workers
 
 

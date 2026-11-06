@@ -8,7 +8,7 @@
 
 | 方法 | 作用 |
 |---|---|
-| `capabilities()` | 八项能力，每项 `yes/no/unknown`，默认 `unknown`，只依据证据设置 |
+| `capabilities()` | 八项能力，每项 `yes/no/unknown`，默认 `unknown`，只依据证据设置。它是**构建期静态事实**：真实适配器用类级 `CAPABILITIES` 声明，`build_adapters` 注册时一并交给 `AdapterRegistry`；路由层不会为了读它而实例化工厂。Kernel 在启动前用本次实例再复核一次（R2 需要 write=yes、自动运行需要 headless=yes），未证明即拒绝 |
 | `probe()` | 存在性、版本、认证状态；**不得产生模型调用**（`par health --probe` 调用它；Codex 的探测只运行 `--version`、`login status`、`features list`、`mcp list`、`debug models`，有测试证明从不运行 `exec`） |
 | `build_argv(request)` | 返回参数**列表**，绝不拼 shell 命令行 |
 | `environment(request)` | 子进程**额外**需要的环境变量。Kernel 总是从干净环境（固定 PATH、私有 HOME 与 TMPDIR）起步，不继承你的 shell；适配器要用自己的登录状态就在这里点名（Codex：`CODEX_HOME` 与代理/证书变量，**绝不含任何 API key**） |

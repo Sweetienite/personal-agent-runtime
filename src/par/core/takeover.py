@@ -87,6 +87,7 @@ class TakeoverMixin:
             "configured": {"default": registry.normalize(profile.coordinator) if profile else None,
                            "fallback": registry.normalize(profile.fallback_coordinator) if profile and profile.fallback_coordinator else None},
             "coordinators": [{"id": c.id, "name": c.name, "vendor": c.vendor, "surfaces": list(c.surfaces), "connection": "mcp",
+                              "surface": c.surface, "capabilities": list(c.capabilities),
                               "last_seen": seen.get(c.id), "is_current": c.id == lease["coordinator"]} for c in registry.COORDINATORS.values()],
             "history": history}
 

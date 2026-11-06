@@ -15,7 +15,7 @@ from par.mcp.tools import Tools, UnknownTool
 from par.providers.fake import ScenarioSequence, ops, scenarios
 from tests import SRC
 from tests.kernel_fixture import KernelWorld, r1_contract
-from tests.world import sample_contract
+from tests.world import sample_config, sample_contract
 
 TOOLS = ["prepare_task", "submit_task", "get_task_status", "get_task_result", "get_task_diff", "cancel_task", "review_task", "approve_task",
         "reject_task", "accept_task", "close_task", "run_task", "list_tasks", "retry_task", "pause_task", "resume_task",
@@ -231,6 +231,20 @@ class ToolsOnTheKernel(KernelWorld):
         seen = {c["id"]: c["last_seen"] for c in self.kernel.coordinator_status()["coordinators"]}
         self.assertIsNotNone(seen["codex"])
         self.assertIsNone(seen["claude_desktop"])
+
+    def test_the_same_software_can_be_coordinator_and_worker_over_one_ledger(self):
+        self.codex = ScenarioSequence(scenarios.success())
+        self.kernel = self.new_kernel(config=sample_config(coordinator="codex"))
+        self.tools = Tools(self.kernel, coordinator="codex")
+        task_id = payload_of(self.ask("submit_task", contract=r1_contract(idempotency_key="same-1")))["task_id"]
+        self.assertEqual(self.run_task(task_id).status, "REVIEW_REQUIRED")
+        out = payload_of(self.ask("get_task_status", task_id=task_id))
+        self.assertEqual(out["status"], "REVIEW_REQUIRED")              # the bridge is not blocked by the worker's run
+        attempt = self.kernel.store.get_attempt(task_id, 1)
+        private_home = Path(attempt["artifact_dir"]) / "home"
+        self.assertTrue(private_home.is_dir())
+        self.assertNotEqual(private_home, self.home)                    # the worker never inherits the coordinator's home
+        self.assertFalse((self.home / ".codex").exists())
 
     def test_a_failing_heartbeat_never_fails_a_tool_call(self):
         with mock.patch.object(self.kernel, "coordinator_seen", side_effect=RuntimeError("ledger busy")):

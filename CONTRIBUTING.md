@@ -25,7 +25,7 @@ python3 -B -m unittest tests.unit.test_states tests.unit.test_store tests.unit.t
     tests.unit.test_kernel_control tests.unit.test_kernel_submit tests.unit.test_kernel_policy \
     tests.unit.test_context_interface tests.unit.test_generic_project tests.unit.test_p1_compat tests.unit.test_task_draft \
     tests.unit.test_mcp_prepare tests.unit.test_manual_handoff tests.unit.test_evidence_summary \
-    tests.unit.test_candidate_integration
+    tests.unit.test_candidate_integration tests.unit.test_role_provider_caps
 ```
 
 The rest of the suite still runs only on a developer's macOS machine: some tests assume a single-user machine (the real Codex/Antigravity adapters refuse GitHub's group-writable Python), and others expect macOS-specific `doctor` checks or a larger `ARG_MAX`. Those are real safety checks, so CI stays narrow rather than weakening them.

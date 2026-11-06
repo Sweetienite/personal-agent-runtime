@@ -6,7 +6,7 @@ from par.core.clock import FakeClock
 from par.core.health import Health
 from par.core.router import AUTOMATIC_KINDS, config_snapshot, evaluate, route
 from par.core.store import Store
-from par.providers.base import ProviderAdapter
+from par.providers.base import Capabilities, ProviderAdapter, Tri
 from par.providers.fake import ScenarioSequence, ScriptedProvider, scenarios
 from par.providers.registry import AdapterRegistry, NoAdapter, default_registry
 from tests.world import sample_config
@@ -17,6 +17,15 @@ def registry(*ids):
     for pid in ids:
         reg.register(pid, ScenarioSequence(scenarios.success()).factory(pid))
     return reg
+
+
+class _CapsProvider(ScriptedProvider):
+    def __init__(self, caps: Capabilities) -> None:
+        super().__init__(scenarios.success())
+        self._caps = caps
+
+    def capabilities(self) -> Capabilities:
+        return self._caps
 
 
 class Registry(unittest.TestCase):
@@ -165,6 +174,8 @@ class Routing(HealthCase):
         self.assertEqual(snap["profile"], "default")
         self.assertEqual(snap["roles"]["code"], {"primary": "w_code", "fallback": ["w_flash"]})
         self.assertEqual(snap["workers"]["w_code"]["provider"], "codex")
+        self.assertEqual((snap["workers"]["w_code"]["surface"], snap["providers"]["codex"]["surface"]),
+                         ("native_cli", "native_cli"))
         self.assertEqual(snap["worker_failure_policy"], "ask")
         self.assertEqual(snap["digest"], config_snapshot(sample_config())["digest"])
         self.assertNotEqual(snap["digest"], config_snapshot(sample_config(policy="pause"))["digest"])
@@ -225,6 +236,51 @@ class Routing(HealthCase):
         cand = evaluate(snap, "w_flash", risk="R2", adapters=self.reg, health=self.health)
         self.assertFalse(cand.usable)
         self.assertIn("the worker lacks the 'edit' capability", cand.reasons)
+
+    def test_a_write_run_needs_the_adapter_to_declare_write_capability(self):
+        reg = AdapterRegistry()
+        reg.register("codex", lambda: _CapsProvider(Capabilities(can_headless=Tri.YES, can_write=Tri.UNKNOWN)),
+                     capabilities=Capabilities(can_headless=Tri.YES, can_write=Tri.UNKNOWN))
+        cand = evaluate(self.snap, "w_code", risk="R2", adapters=reg, health=self.health)
+        self.assertFalse(cand.usable)
+        self.assertTrue(any("write unknown" in r for r in cand.reasons), cand.reasons)
+        self.assertTrue(evaluate(self.snap, "w_code", risk="R1", adapters=reg, health=self.health).usable)
+
+    def test_an_automatic_run_needs_the_adapter_to_declare_headless(self):
+        reg = AdapterRegistry()
+        reg.register("codex", lambda: _CapsProvider(Capabilities(can_headless=Tri.UNKNOWN, can_write=Tri.YES)),
+                     capabilities=Capabilities(can_headless=Tri.UNKNOWN, can_write=Tri.YES))
+        cand = evaluate(self.snap, "w_code", risk="R1", adapters=reg, health=self.health)
+        self.assertFalse(cand.usable)
+        self.assertTrue(any("headless unknown" in r for r in cand.reasons), cand.reasons)
+
+    def test_a_declaration_never_creates_an_adapter_just_to_be_read(self):
+        created = []
+        reg = AdapterRegistry()
+        reg.register("codex", lambda: created.append(1), capabilities=Capabilities(can_headless=Tri.YES, can_write=Tri.YES))
+        self.assertEqual(reg.capabilities("codex").can_write, Tri.YES)
+        self.assertEqual(created, [])                      # routing must not consume a run/scenario
+
+    def test_an_adapter_that_declares_nothing_leaves_the_decision_to_the_runtime_gate(self):
+        reg = AdapterRegistry()
+        reg.register("codex", lambda: None)
+        self.assertIsNone(reg.capabilities("codex"))
+        self.assertTrue(evaluate(self.snap, "w_code", risk="R1", adapters=reg, health=self.health).usable)
+
+    def test_a_role_name_is_not_bound_to_a_provider(self):
+        from par.config import build_config
+        profiles = {
+            "schema_version": 1, "active_profile": "p",
+            "workers": {"w": {"provider": "antigravity", "model": "m", "capabilities": ["read"]}},
+            "profiles": {"p": {"coordinator": "codex", "default_worker": "w", "max_parallel_workers": 1,
+                               "worker_failure_policy": "ask", "additional_paid_credits": False,
+                               "roles": {"codex": {"primary": "w", "fallback": []}}}},
+        }
+        result = build_config(profiles, {"schema_version": 1, "providers": {"antigravity": {"enabled": True}}})
+        self.assertTrue(result.ok, result.errors)
+        route_result = route(config_snapshot(result.config), role="codex", worker=None, risk="R1",
+                             adapters=registry("antigravity"), health=self.health)
+        self.assertEqual(route_result.chosen.worker_id, "w")
 
     def test_a_provider_without_a_registered_adapter_cannot_run(self):
         r = self.route(adapters=registry("antigravity"))
