@@ -25,6 +25,11 @@ By late 2026 a small cluster of "orchestrate CLI coding agents" tools had appear
   chain. One tool (or a human coordinator with a manual Worker) can fill both roles without a second account
   or a new product mode: the Worker always gets a fresh private HOME from the Kernel. Provider surfaces and
   adapter capabilities are explicit, and an unproven capability is refused before a write run starts.
+- **An evidence-based compatibility matrix, not a support claim.** [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
+  records each candidate's version, OS, official documentation, account/terms constraints, what was actually
+  probed (offline `--version`/`--help` only) and what was NOT tested. As of 2026-11-06 that research is static:
+  **no GREEN candidate**, `agy` is RED (Google's FAQ prohibits wrapping it in third-party coding agents under
+  consumer plans), and Gemini CLI / Claude Code / ACP / OpenCode are YELLOW. No new automatic provider was added.
 - **Zero third-party dependencies**, standard library only. Easier to audit, nothing to update for CVEs in a dependency tree.
 
 If your need is "coordinate many agents across machines fast," this is probably the wrong tool. If your need is "let an LLM actually touch my code, but never *just believe* it," this is what PAR is built for.

@@ -69,6 +69,10 @@ P2 起还有：`scenarios.custom(name, *steps)` 加 `ops.*` 步骤构造器（`w
 
 它**不能**通过配置文件注册（`config.py` 没有 `fake` 这种类型），所以生产 Profile 不可能把任务路由给它。
 
+## 兼容性证据（2026-11-06，T13）
+
+本文的「接入清单」是**工程检查表**，不是兼容性声明。官方接口、版本、账号类型、条款与实测状态统一记在 [COMPATIBILITY.md](COMPATIBILITY.md)：本轮是**静态能力研究，缺真实测试**，`Antigravity CLI/agy` 判 `RED`（官方禁止第三方封装），Gemini CLI / Claude Code CLI / ACP / OpenCode 判 `YELLOW`，Codex 为 `EXISTING`（本机仅内置 alpha 版本，未重做真实复核），人工交接为 `EXISTING`。**没有任何 `GREEN` 候选，T14 = `BLOCKED_BY_EVIDENCE`**：不新增正式自动适配器，不把 YELLOW 写成「已支持」。可复现的离线探测：`python -B tests/tools/provider_probe.py`（不调用模型）。
+
 ## 接入真实 Provider 的清单（P3 已对 Codex 逐条落实，P4 对 Antigravity 照做）
 
 （P4 补充了两条经验：**真实 CLI 的配置文件位置若只能靠 HOME 改变，就用私有 HOME 把它与用户自己的配置隔开**；**任何「软失败」——退出码 0 却没做成——必须变成结果上可见的警告，并由 Kernel 自己的比对来裁决**。）

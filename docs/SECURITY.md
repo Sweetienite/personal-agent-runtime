@@ -6,6 +6,9 @@ Runtime 只写自己的数据目录；对**真实项目**默认只读：只有�
 
 ## 它能写什么、不能写什么
 
+> **第三方条款不是 Runtime 能替你承担的风险**：外部 CLI 的服务条款由你与该厂商决定。2026-11-06 核对到 Google Antigravity 官方 FAQ 明确禁止把 `agy` 封装在第三方编码 Agent/应用中（消费者订阅不支持），以及 Gemini CLI 自 2026-06-18 起停止为免费层 / Google AI Pro / Ultra 提供服务。PAR 的 `agy` 适配器因此保持实验性、默认禁用；启用任何外部 Provider 前请看 [COMPATIBILITY.md](COMPATIBILITY.md) 的账号/条款列。Runtime 的技术隔离（私有 HOME、干净环境、文件比对）不能让一种被厂商条款禁止的用法变得合规。
+>
+
 | 位置 | 能否写入 | 机制 |
 |---|---|---|
 | `~/Library/Application Support/PersonalAgentRuntime`（0700） | 能 | `WriteGuard` 以它为唯一允许根 |
