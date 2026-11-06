@@ -111,9 +111,10 @@ generic 项目没有父合同，用 `ad_hoc = true`。两种模式的规则见 [
   未被沙箱化的 runner，或直接 `python -B tests/tools/codex_revalidate.py --check-only` 一键复核，
   与适配器无关；**不要**用 `--dangerously-bypass-approvals-and-sandbox` 之类的提权参数让写测试「通过」。
   2026-11-06 的两次实测见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md) 与
-  [第二部分（成功的真实 R1/R2 及其限定条件）](reports/CODEX_REVALIDATION_PART2_20261106.md)。
-  当前 `TESTED_VERSION` 为 `0.166.0-alpha.6`，但那是带限定的 `GREEN (scoped)`：
-  默认沙箱模式仍需在允许嵌套沙箱的普通终端用 `codex_revalidate.py --yes-use-quota --model <slug>` 复核。
+  [第二部分（成功的真实 R1/R2 及其限定条件）](reports/CODEX_REVALIDATION_PART2_20261106.md)；
+  **2026-11-07 已在普通终端用产品默认 `-s` 模式补跑成功**，见
+  [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
+  当前 `TESTED_VERSION` 为 `0.166.0-alpha.6`，现有 Codex 的等级为 `GREEN`。
 
 ## 7. 测试与贡献
 

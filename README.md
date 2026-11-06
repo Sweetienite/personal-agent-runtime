@@ -62,9 +62,9 @@ python -B tests/tools/parallel_tests.py                 # 同一套测试，按�
 
 详细用法、退出码与排障见 [docs/OPERATIONS.md](docs/OPERATIONS.md)。
 
-> **CI 覆盖范围**：GitHub Actions 只有三个明确命名的作业——`smoke_install`（macOS 安装 + doctor + version）、`core_unittests`（macOS 上的状态/合同/审批/交接/候选整合等核心回归）、`linux_security_core`（Ubuntu 上平台无关的纯逻辑安全回归）。**徽章不代表全量 1561 项在 CI 通过**；其余模块只在开发机跑（部分测试假设单用户 macOS 机器、macOS 专属 doctor 检查或更大的 ARG_MAX）。在本机沙箱里 4 个进程终止类模块因无法向子进程组投递信号而失败，未修改基线的失败集合完全相同。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+> **CI 覆盖范围**：GitHub Actions 只有三个明确命名的作业——`smoke_install`（macOS 安装 + doctor + version）、`core_unittests`（macOS 上的状态/合同/审批/交接/候选整合等核心回归）、`linux_security_core`（Ubuntu 上平台无关的纯逻辑安全回归）。**徽章不代表全量 1561 项在 CI 通过**；其余模块只在开发机跑（部分测试假设单用户 macOS 机器、macOS 专属 doctor 检查或更大的 ARG_MAX）。普通终端上全量 1561 项已通过；在某些受限沙箱里，4 个进程终止类模块可能因无法向子进程组投递信号而失败（这些模块本身不因平台差异被跳过）。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-> **支持范围（2026-11-06 核对）**：正式自动执行路径只有已在配置中启用并写明绝对路径的 Codex；Antigravity 适配器是**实验性、默认禁用**，其官方条款明确禁止第三方封装；Gemini CLI / Claude Code CLI / ACP / OpenCode 尚未在 PAR 的隔离与授权模式下做过真实验证。人工交接（`par task handoff`）适用于 GUI-only 工具。证据等级与未测项见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)，本轮没有新增正式自动 Provider。
+> **支持范围（2026-11-07 核对）**：正式自动执行路径只有已在配置中启用并写明绝对路径的 Codex；它的默认沙箱模式已于 2026-11-07 用真实 R1/R2 复核，等级为 `GREEN`（仅该版本/OS/账号组合）。Antigravity 适配器是**实验性、默认禁用**，其官方条款明确禁止第三方封装；Gemini CLI / Claude Code CLI / ACP / OpenCode 尚未在 PAR 的隔离与授权模式下做过真实验证。人工交接（`par task handoff`）适用于 GUI-only 工具。证据等级与未测项见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)，本轮没有新增正式自动 Provider。
 
 ## 设计边界（来自已拍板的决策，配置与代码都在强制）
 
@@ -122,7 +122,7 @@ docs/          SECURITY  OPERATIONS  ROLLBACK  ADAPTERS  CONTEXT  KERNEL  CHANGE
 | [docs/CODEX.md](docs/CODEX.md) | Codex 适配器：版本兼容记录、命令行逐项依据、隔离配方、沙箱实测、失败分类、升级复核清单 |
 | [docs/AGY.md](docs/AGY.md) | Antigravity 适配器：版本兼容记录、私有 HOME 与权限预设、真实实测与官方文档的差异、未验证清单、升级复核清单 |
 | [docs/ADAPTERS.md](docs/ADAPTERS.md) | Provider 协议、失败分类、测试替身、接入清单 |
-| [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) | **兼容性证据矩阵**：候选工具的版本/OS、官方资料、账号与条款、实测方法与「没有测的内容」；2026-11-06 为静态研究加两次真实复核，现有 Codex 为 `GREEN (scoped)`，无跨环境通用 GREEN |
+| [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) | **兼容性证据矩阵**：候选工具的版本/OS、官方资料、账号与条款、实测方法与「没有测的内容」；2026-11-06 静态研究加两次真实复核、2026-11-07 默认沙箱复核，现有 Codex 为 `GREEN`，仍无其它通用 GREEN 候选 |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Context Manifest：给 Worker 的上下文契约、写入就绪 |
 | [CHANGELOG.md](CHANGELOG.md) | 面向用户的版本变化摘要 |
 | [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md) | **发行审查清单**：P0–P3 全部合并记录、明确「不建议现在打 tag」的结论与解锁条件（打 tag 需你单独批准） |

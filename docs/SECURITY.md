@@ -45,11 +45,11 @@ Runtime 只写自己的数据目录；对**真实项目**默认只读：只有�
 - 手工交接时决定能否把项目文件交给那个 GUI 应用的云端模型（每个交接包 README 都写了数据去向）。
 - 在收紧读范围并做真实调用验证之前，不要对含敏感文件的真实项目开放写入。
 
-## 平台验证分级（2026-11-06）
+## 平台验证分级（2026-11-06，2026-11-07 更新）
 
 | 平台 | 证据等级 | 已验证 | 已知缺口 |
 |---|---|---|---|
-| **macOS 15.6.1 / arm64** | `E2E`（本机 + CI） | 安装、`par doctor/version`、CI 核心子集（17 个模块）、fake CLI 全链路、通用 Git 项目、人工交接包、候选整合、证据分层；历史真实 Codex / `agy` 烟测记录见 [CODEX.md](CODEX.md) / [AGY.md](AGY.md) | 内置 codex 二进制当前是 `0.166.0-alpha.6`（alpha）；真实 R1/R2 需按版本升级复核清单重跑。WorkBuddy 手工流程是历史 macOS 实测，版本需重核。CI 里 4 个进程终止类模块在本沙箱失败（无法向子进程组投递信号），失败集合与未修改基线完全一致 |
+| **macOS 15.6.1 / arm64** | `E2E`（本机 + CI） | 安装、`par doctor/version`、CI 核心子集（17 个模块）、fake CLI 全链路、通用 Git 项目、人工交接包、候选整合、证据分层；真实 Codex 的 R1/R2 与默认沙箱已于 2026-11-07 复核（[CODEX.md](CODEX.md) §15），历史 `agy` 烟测见 [AGY.md](AGY.md) | 内置 codex 二进制当前是 `0.166.0-alpha.6`（alpha）；升级后仍需按版本复核清单重跑。WorkBuddy 手工流程是历史 macOS 实测，版本需重核。CI 里 4 个进程终止类模块在本沙箱失败（无法向子进程组投递信号），失败集合与未修改基线完全一致 |
 | **Linux (ubuntu-latest, GitHub Actions)** | `CORE_EXPERIMENTAL`（**CI 实跑纯逻辑核心**） | 新增 `linux_security_core` 作业：`pip install -e .`、`par doctor`（对未测平台明确报 WARN 但退出 0）、`par version`，以及 126 项平台无关回归（状态机、合同、路径策略、脱敏、数据目录、离线 probe、22 项 T15 安全审计） | 真实适配器（`codesign` 签名校验、Seatbelt/bwrap 沙箱、钥匙串链接）是 macOS 实现，**不能据此宣布 Linux 支持真实 Provider**；进程/信号相关模块仍只在 macOS 跑。`TRUSTED_DIRS` 含 `/opt/homebrew/bin`，Linux 上需重核可执行文件解析。CI 日志以具体 run 为准 |
 | **Windows** | `STATIC_GAP`（仅静态缺口） | 2026-11 已加固：Windows 盘符 / UNC / 反斜杠形式的敏感路径不再漏判（PR #17） | 进程组与信号（`os.setsid`、SIGKILL）、文件权限位（0600/0700）、`codesign` 签名、`realpath` 与大小写/Unicode 规范化、盘符/UNC 在项目路径中的语义、`protected_roots` 的 `Library/…` 布局、`git` 行为、检查可执行文件白名单，全部**未验证**。不宣布 Windows 支持，也不为「全平台」放宽安全行为 |
 
