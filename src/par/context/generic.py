@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from dataclasses import asdict
 from pathlib import Path
 
 from par.config import ProjectEntry
-from par.context.facts import file_facts, git_facts
+from par.context.facts import file_facts, git_facts, outside, project_file, skipped_file, thin_bridge
 from par.context.rendering import read_inline as read_inline_entries, render_manifest
 from par.context.types import (Blocker, ContextManifest, FileFacts, ManifestEntry, ProjectView, SCHEMA_VERSION,
                                WriteReadiness)
@@ -45,9 +46,12 @@ class GenericContextAdapter:
                                notes=("the project folder does not exist",))
         notes: "list[str]" = []
         bridge = None
-        claude = self.root / "CLAUDE.md"
-        if claude.is_file():
-            bridge = "thin" if claude.read_text(encoding="utf-8", errors="replace").strip() == "@AGENTS.md" else "other"
+        raw_claude = self.root / "CLAUDE.md"
+        claude = project_file(self.root, "CLAUDE.md")
+        if claude is not None:
+            bridge = "thin" if thin_bridge(claude) else "other"
+        elif raw_claude.is_symlink() or outside(self.root, raw_claude):
+            notes.append("CLAUDE.md is a symlink or outside the project root; it was not read")
         return ProjectView(id=self.project.id, root=shown, exists=True, rules=self._facts("AGENTS.md"), bridge=bridge,
                            state=None, contracts=(), git=git_facts(self.project, self.root, self.home, notes),
                            vcs_declared=self.project.vcs, notes=tuple(notes))
@@ -66,8 +70,12 @@ class GenericContextAdapter:
         readme = self._facts("README.md")
         if readme:
             entries.append(sized("readme", readme))
+        elif skipped_file(self.root, "README.md"):
+            warnings.append("README.md is a symlink, outside the project root, or unreadable; it was not read")
         if v.rules:
             entries.append(sized("rules", v.rules))
+        elif skipped_file(self.root, "AGENTS.md"):
+            warnings.append("AGENTS.md is a symlink, outside the project root, or unreadable; it was not read")
         else:
             warnings.append("AGENTS.md is missing (generic context: README.md, when present, and the task contract are the context)")
         if v.bridge == "thin":

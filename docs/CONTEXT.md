@@ -1,6 +1,6 @@
 # Context Manifest：给 Worker 的上下文契约
 
-Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一份 **Context Manifest**：列出这次任务会看到什么、以什么形式、凭什么确认它没被改过。它由实现了 `par.context.interface.Context` 的适配器只读生成；当前默认实现仍是 `HarnessContextAdapter`（`src/par/context/harness.py`），由 `par.context.resolver.default_context` 选择，Kernel 只依赖接口，不直接构造具体适配器。整条路径只读，不写任何东西。
+Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一份 **Context Manifest**：列出这次任务会看到什么、以什么形式、凭什么确认它没被改过。它由实现了 `par.context.interface.Context` 的适配器只读生成；`par.context.resolver.default_context` 按项目登记的 `context_mode` 选择实现——新项目默认 `GenericContextAdapter`（`src/par/context/generic.py`），显式 `--context-mode harness` 的旧项目用 `HarnessContextAdapter`（`src/par/context/harness.py`）。Kernel 只依赖接口，不直接构造具体适配器。整条路径只读，不写任何东西。
 
 查看：`par project show <id> [--manifest] [--json]`。
 
@@ -10,7 +10,7 @@ Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一
 2. 超过上限的东西变成指针（路径、大小、哈希），**绝不静默截断**。上限：单条 20,000 B，合计 60,000 B，`STATE.md` 15,000 B（与 Core 的 hygiene 一致）。
 3. 超大的 `STATE.md` 永远不内联，并且在它被对账之前拦住写入试运行。
 4. 每一条都带来源、大小和 sha256。读取内联内容时会重新校验，不一致就抛 `ContextChanged`，对应 Core 的 `CONCURRENT_MODIFICATION_DETECTED` 语义。
-5. 敏感路径只计数、不列名。事实源指针取自 `STATE.md` 的 `## Sources of Truth`；绝对路径、`..` 和符号链接逃逸一律标为 `outside_project` 并跳过。
+5. 敏感路径只计数、不列名。事实源指针取自 `STATE.md` 的 `## Sources of Truth`；绝对路径、`..` 和符号链接逃逸一律标为 `outside_project` 并跳过。`README.md`、`AGENTS.md`、`CLAUDE.md`、`.ai/STATE.md`、active 合同本身是符号链接、指向项目外或不可读时，**不读取**、不进入清单，并在 warnings 里点名说明（符号链接指向项目内的另一个文件也一样拒绝）。
 6. `digest` 只取决于内容，不含生成时间；相同输入得到相同 digest。
 7. 默认全新会话：清单不携带任何旧对话或工具记忆。
 

@@ -1,11 +1,9 @@
 import os
 import unittest
 from dataclasses import replace
-from pathlib import Path
 
 from par.config import ProjectEntry
 from par.context.generic import GenericContextAdapter
-from par.core.policy import PolicyViolation
 from tests.kernel_fixture import KernelWorld
 
 
@@ -61,15 +59,27 @@ class GenericContext(KernelWorld):
         self.assertEqual(readme.mode, "pointer")
         self.assertIn("exceeds", readme.reason)
 
-    def test_a_symlinked_readme_is_refused_when_rendering_not_read(self):
+    def test_a_symlinked_readme_is_never_read_or_offered_as_context(self):
         outside = self.base / "outside.md"
         outside.write_text("secret\n", encoding="utf-8")
         (self.plain / "README.md").unlink()
         os.symlink(outside, self.plain / "README.md")
+        os.chmod(outside, 0)
         a = self.adapter()
         m = a.manifest()
-        with self.assertRaises(PolicyViolation):
-            a.render(m)
+        self.assertNotIn("readme", [e.kind for e in m.entries])
+        self.assertTrue(any("README.md is a symlink" in w and "not read" in w for w in m.warnings))
+        self.assertNotIn("secret", a.render(m))
+
+    def test_a_symlink_inside_the_project_is_still_not_read(self):
+        target = self.plain / "secret.txt"
+        target.write_text("secret\n", encoding="utf-8")
+        (self.plain / "README.md").unlink()
+        os.symlink(target, self.plain / "README.md")
+        m = self.adapter().manifest()
+        self.assertNotIn("readme", [e.kind for e in m.entries])
+        self.assertIn("README.md is a symlink", " ".join(m.warnings))
+        self.assertNotIn("secret", self.adapter().render(m))
 
     def test_write_readiness_keeps_the_write_switch_git_and_a_clean_base(self):
         a = self.adapter()

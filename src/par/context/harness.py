@@ -23,7 +23,7 @@ from pathlib import Path
 from par.config import ProjectEntry
 from par.context.types import (Blocker, ContextChanged, ContextManifest, FileFacts, ManifestEntry, ProjectView,
                                SCHEMA_VERSION, SourcePointer, StateFacts, WriteReadiness)
-from par.context.facts import file_facts, git_facts
+from par.context.facts import file_facts, git_facts, outside, project_file, skipped_file, thin_bridge
 from par.context.rendering import read_inline as read_inline_entries, render_manifest
 from par.core.policy import is_sensitive_path
 from par.core.redact import contains_secret, redact_text
@@ -59,14 +59,17 @@ class HarnessContextAdapter:
         return file_facts(self.root, rel)
 
     def _state(self) -> "tuple[StateFacts | None, str]":
-        p = self.root / ".ai" / "STATE.md"
-        if not p.is_file():
+        p = project_file(self.root, ".ai/STATE.md")
+        if p is None:
             return None, ""
-        size = p.stat().st_size
-        raw = p.read_bytes() if size <= PARSE_MAX_BYTES else b""
-        text = raw.decode("utf-8", errors="replace")
-        lines = text.splitlines()
-        sha = hashlib.sha256(raw).hexdigest() if raw else hc.sha256_file(p)
+        try:
+            size = p.stat().st_size
+            raw = p.read_bytes() if size <= PARSE_MAX_BYTES else b""
+            text = raw.decode("utf-8", errors="replace")
+            lines = text.splitlines()
+            sha = hashlib.sha256(raw).hexdigest() if raw else hc.sha256_file(p)
+        except OSError:
+            return None, ""
         facts = StateFacts(".ai/STATE.md", size, len(lines), max((len(x) for x in lines), default=0),
                            round(size / 2.5), sha, size > self.state_max)
         return facts, text
@@ -128,18 +131,50 @@ class HarnessContextAdapter:
         notes: "list[str]" = []
         rules = self._facts("AGENTS.md")
         markers = None
-        if rules:
-            text = (self.root / "AGENTS.md").read_text(encoding="utf-8", errors="replace")
-            markers = (text.count(BEGIN), text.count(END))
-        claude = self.root / "CLAUDE.md"
+        agents = project_file(self.root, "AGENTS.md")
+        if agents is not None:
+            try:
+                if agents.stat().st_size <= PARSE_MAX_BYTES:
+                    text = agents.read_text(encoding="utf-8", errors="replace")
+                    markers = (text.count(BEGIN), text.count(END))
+                else:
+                    notes.append("AGENTS.md is too large to parse for managed markers")
+            except OSError:
+                notes.append("AGENTS.md could not be read")
+        elif skipped_file(self.root, "AGENTS.md"):
+            notes.append("AGENTS.md is a symlink or outside the project root; it was not read")
+        raw_claude = self.root / "CLAUDE.md"
+        claude = project_file(self.root, "CLAUDE.md")
         bridge = None
-        if claude.is_file():
-            bridge = "thin" if claude.read_text(encoding="utf-8", errors="replace").strip() == "@AGENTS.md" else "other"
+        if claude is not None:
+            bridge = "thin" if thin_bridge(claude) else "other"
+        elif raw_claude.is_symlink() or outside(self.root, raw_claude):
+            notes.append("CLAUDE.md is a symlink or outside the project root; it was not read")
         state, state_text = self._state()
+        if state is None:
+            raw_state = self.root / ".ai" / "STATE.md"
+            if raw_state.is_symlink() or outside(self.root, raw_state):
+                notes.append("STATE.md is a symlink or outside the project root; it was not read")
+            elif raw_state.is_file():
+                notes.append("STATE.md could not be read")
         sources, cut, sensitive = self._sources(state_text)
+        contracts = self._contracts()
+        active = self.root / ".ai" / "tasks" / "active"
+        skipped_contracts = 0
+        if active.is_dir():
+            try:
+                names = list(active.iterdir())
+            except OSError:
+                names = []
+            for f in names:
+                if (f.is_file() and f.suffix.lower() == ".md" and not f.name.startswith(".")
+                        and skipped_file(self.root, f".ai/tasks/active/{f.name}")):
+                    skipped_contracts += 1
+        if skipped_contracts:
+            notes.append(f"{skipped_contracts} active contract(s) are symlinks or outside the project root; they were not read")
         return ProjectView(
             id=self.project.id, root=shown, exists=True, rules=rules, managed_markers=markers, bridge=bridge,
-            state=state, contracts=self._contracts(), task_dirs=hc.task_dirs(self.root), sources=sources,
+            state=state, contracts=contracts, task_dirs=hc.task_dirs(self.root), sources=sources,
             sources_cut=cut, sensitive_sources=sensitive, git=self._git(notes), vcs_declared=self.project.vcs,
             notes=tuple(notes),
         )
@@ -159,7 +194,7 @@ class HarnessContextAdapter:
 
         if v.rules:
             entries.append(sized("rules", v.rules, self.inline_max))
-        else:
+        elif not any(n.startswith("AGENTS.md") for n in v.notes):
             warnings.append("AGENTS.md is missing")
         if v.bridge == "thin":
             entries.append(ManifestEntry("bridge", "CLAUDE.md", "skip", reason="thin '@AGENTS.md' bridge; nothing to add"))
@@ -173,7 +208,7 @@ class HarnessContextAdapter:
                 warnings.append("STATE.md is oversized: reconciliation is recommended before any write trial")
             else:
                 entries.append(ManifestEntry("state", v.state.path, "inline", v.state.bytes, v.state.sha256))
-        else:
+        elif not any(n.startswith("STATE.md") for n in v.notes):
             warnings.append(".ai/STATE.md is missing")
         if len(v.contracts) == 1:
             entries.append(sized("contract", v.contracts[0], self.inline_max))

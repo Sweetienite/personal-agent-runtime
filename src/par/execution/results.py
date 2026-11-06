@@ -222,10 +222,11 @@ def acceptance_problems(*, status: str, attempt: "Mapping[str, Any] | None", con
                         needs_write_approval: bool, write_approved: bool, by: str = "user") -> "list[str]":
     """Every reason this attempt may not be accepted. Empty means the caller is free to accept it.
 
-    A coordinator never sees the diff content (the bridge has no tool for it - only diff_stat and test
-    results). When a write task has no acceptance.checks at all, the Kernel has nothing of its own to measure,
-    so "acceptance rests on your own review of the diff" (see contract.py's warning) can only be honored by a
-    person at the CLI, who can run `par task diff`. A coordinator is refused here, not left to accept blind.
+    A coordinator can read the diff through the bridge's ``get_task_diff`` tool, but that is for reporting
+    to a person, not for accepting on their behalf. When a write task has no acceptance.checks at all,
+    the Kernel has nothing of its own to measure, so "acceptance rests on your own review of the diff"
+    (see contract.py's warning) can only be honored by a person at the CLI, who can run `par task diff`.
+    A coordinator is refused here, not left to accept blind.
     """
     contract_checks = list(contract_checks)
     problems: "list[str]" = []
@@ -260,6 +261,6 @@ def acceptance_problems(*, status: str, attempt: "Mapping[str, Any] | None", con
         problems.append("write permission was never approved for this task")
     if needs_write_approval and not contract_checks and by == "coordinator":
         problems.append("this write task has no acceptance.checks, so the Kernel measured nothing to accept on; "
-                        "a coordinator cannot accept it without reading the diff, which it has no tool to do - "
+                        "a coordinator cannot accept it even after reading the diff through get_task_diff - "
                         "review `par task diff` yourself and run `par task accept`")
     return problems
