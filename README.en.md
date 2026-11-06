@@ -53,7 +53,7 @@ python3 -B -m unittest discover -s tests -t .           # ~1370 tests, single pr
 python3 -B tests/tools/parallel_tests.py                # the same tests, parallelized across modules, ~1 min
 ```
 
-From here: configure a provider (`config/providers.example.toml`), register a project with `par project add ID PATH` (an ordinary Git repository needs no `AGENTS.md` or `.ai/STATE.md` — that is the default generic mode; `--context-mode harness` keeps the parent-contract rules, and `--scaffold-harness` writes minimal starters only when you ask for them, never overwriting anything that exists), and `par project enable-write ID` when you're ready to let it touch real files. Every write still waits for your explicit per-task approval. Full detail (exit codes, troubleshooting, baseline workflow) is in `docs/OPERATIONS.md`.
+From here: configure a provider (`config/providers.example.toml`), register a project with `par project add ID PATH` (an ordinary Git repository needs no `AGENTS.md` or `.ai/STATE.md` — that is the default generic mode; `--context-mode harness` is the optional advanced mode that keeps the parent-contract rules, and `--scaffold-harness` writes minimal starters only when you ask for them, never overwriting anything that exists), and `par project enable-write ID` when you're ready to let it touch real files. Every write still waits for your explicit per-task approval. Full detail (exit codes, troubleshooting, baseline workflow) is in `docs/OPERATIONS.md`.
 
 ## Design boundaries (enforced in code, not just documented)
 

@@ -159,8 +159,10 @@ def run_doctor(data_dir: "str | os.PathLike[str]", home: "str | os.PathLike[str]
         gone = sorted(pid for pid, p in registry.projects.items() if not p.path.is_dir())
         fixtures = sorted(pid for pid, p in registry.projects.items() if p.fixture)
         approved = sorted(f"{pid} (approved {p.write_approved})" for pid, p in registry.projects.items() if p.write_enabled and not p.fixture)
+        modes = {m: sum(1 for p in registry.projects.values() if p.context_mode == m) for m in ("generic", "harness")}
         add("projects", WARN if gone else INFO,
             f"{len(registry.projects)} registered ({', '.join(sorted(registry.projects))}); "
+            f"context: {modes['generic']} generic / {modes['harness']} harness; "
             + (f"writes are enabled for {', '.join(approved)} and disabled for the other real projects" if approved
                else "writes are disabled for all real projects")
             + (f"; fixture project(s) {', '.join(fixtures)} may be written" if fixtures else "")

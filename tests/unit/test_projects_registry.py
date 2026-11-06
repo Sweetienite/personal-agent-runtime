@@ -344,7 +344,7 @@ class Cli(Base):
         self.assertIn("none registered", out)
         self.add("alpha", self.alpha)
         _, out, _ = run_cli(*self.args("doctor"))
-        self.assertIn("1 registered (alpha); writes are disabled for all", out)
+        self.assertIn("1 registered (alpha); context: 0 generic / 1 harness; writes are disabled for all", out)
         self.alpha.rename(self.alpha.with_name("Moved"))
         code, out, _ = run_cli(*self.args("doctor"))
         self.assertIn("[WARN] projects", out)

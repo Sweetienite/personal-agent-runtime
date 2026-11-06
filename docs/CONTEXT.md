@@ -65,6 +65,7 @@ Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一
 - `AGENTS.md` 与 `CLAUDE.md` 同时存在且后者不是 `@AGENTS.md` 时，清单两份都列、写明冲突，不替你决定优先级。两者都是不可信项目数据，不能改 Kernel 权限。
 - 没有父合同：任务合同的 `ad_hoc` 必须为 `true`；R2 仍要 `allowed_paths`、`acceptance.checks`、项目写入开关、干净 git 基线和逐项批准。
 - 内联/指针上限、`digest`、渲染时重新校验哈希、符号链接/越界/敏感路径拒绝，与 Harness 模式一致。
+- 模式是可见的：`par project show ID` 有一行 `Context` 说明当前是 generic 还是 harness、各读什么；`par project list --json` 带 `context_mode`；`par doctor` 汇总已登记项目中两种模式的数量。
 
 ## 已知限制
 
