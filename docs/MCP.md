@@ -13,6 +13,8 @@
 > 挡住了 `accept_task`（见下表），这个工具就是补上那个缺口——给协调者一份脱敏、限长的真实 diff，自己
 > 读完告诉你怎么样，但接受与否仍然只能是你本人在终端做的事。
 >
+> **2026-11 证据分层**：`get_task_result` 与 `review_task` 增加 `evidence_summary`——`level`（`MEASURED`/`MEASURED_WITH_EDITED_CHECKS`/`UNVERIFIED`/`FAILED`/`INCOMPLETE`/`UNKNOWN`）、`boundary.status`、`checks.status`（含 `inputs_edited` 与 `test_files_changed`）、`review`（谁验收/拒绝）、`integration`（默认 `NOT_INTEGRATED`）与 `applied_to_project`（恒 false）。Worker 自述仍只放在 `summary` 里，且 `summary_verified` 永远为 false；主控看到的是同一个短摘要，不重复大段原文。
+>
 > **2026-11 新增**：`prepare_task`——把最小草案（项目、目标、risk、allowed_paths、acceptance）确定性编译成严格合同，或列出还缺什么；它只读、不提交、不读项目文件、不发现命令。`get_task_status`/`review_task` 同时增加了 `derived_state` 短摘要（`NEEDS_SCOPE`、`NEEDS_PERMISSION`、`READY_TO_RUN`、`NEEDS_REVIEW`、`RESULT_VERIFIED` 等），`review_task` 的 `summary` 先给 Kernel 量到的检查数与阻碍数。
 
 ## 它是什么
@@ -28,10 +30,10 @@
 | `prepare_task`（2026-11 新增） | 把最小草案编译成严格合同，或列出缺失项 | 只读、不提交；缺 `allowed_paths`/写任务的 `checks`、未知项目/worker/角色、Harness 项目没有唯一主合同时返回问题清单；不读项目文件，也不从 README 发现命令 |
 | `submit_task` | 提交任务合同并入队 | 提交者永远记为 `coordinator`，输入里说什么都不算；R2（改文件）任务要等写权限被批准（`approve_task`） |
 | `get_task_status` | 查看一个任务的状态、风险、尝试次数、待批准项 | 只读；`derived_state` 给出 `NEEDS_SCOPE`/`NEEDS_PERMISSION`/`READY_TO_RUN`/`NEEDS_REVIEW`/`RESULT_VERIFIED` 等派生视图；`agent_next` 列出协调者接下来可以调用的每一个工具 |
-| `get_task_result` | 查看最近一次（或指定的）尝试的结果 | 只读；Worker 的文字是**未经验证的数据**，带 `summary_verified: false` 与 `untrusted_worker_text: true` |
+| `get_task_result` | 查看最近一次（或指定的）尝试的结果 | 只读；Worker 的文字是**未经验证的数据**，带 `summary_verified: false` 与 `untrusted_worker_text: true`；`evidence_summary` 把 Kernel 实测、Worker 自述、审查与整合状态分开 |
 | `get_task_diff`（2026-11-03 新增） | 查看最近一次（或指定的）尝试的实际 diff 内容 | 只读；脱敏、限长（截断时 `truncated: true`）；`get_task_result` 只给 `diff_stat`（文件数/行数），这个工具才给真正的改动内容 |
 | `cancel_task` | 取消一个未完成的任务 | 正在运行的 Worker 会被停止；已验收的任务不能取消 |
-| `review_task` | 只读审阅：结果能否被接受，阻碍是什么 | 不改变任何状态；`summary` 先给 Kernel 检查通过数与阻碍数，`derived_state` 是派生视图；`ready_to_accept` 为真时协调者可以直接调用 `accept_task`；没配检查的 R2 任务会在这里就看到阻碍（见下面 `accept_task` 的说明），不用等调用 `accept_task` 才被拒绝 |
+| `review_task` | 只读审阅：结果能否被接受，阻碍是什么 | 不改变任何状态；`summary` 先给 Kernel 检查通过数与阻碍数，`evidence_summary` 给分层证据，`derived_state` 是派生视图；`ready_to_accept` 为真时协调者可以直接调用 `accept_task`；没配检查的 R2 任务会在这里就看到阻碍（见下面 `accept_task` 的说明），不用等调用 `accept_task` 才被拒绝 |
 | `approve_task` / `reject_task`（2026-10-20 新增） | 批准/拒绝一项待决的权限（写权限或 Worker 选择）；没有待决权限时 `reject_task` 改为拒绝一个待验收的结果 | 多于一项待决时要给 `approval_id`（`get_task_status` 的 `pending_approvals` 里有）；只有一项时可以省略；**`reason` 必填**（空字符串也会被拒绝）——要求说清楚核实了什么、为什么可以放行/为什么不行，不是走个形式；记进台账时 `by="coordinator"` |
 | `accept_task` / `close_task`（2026-10-20 新增） | 验收一个结果 / 关闭一个已验收的任务 | `accept_task` **`reason` 同样必填**——要求写内核自己量到的检查结果，不能照抄 Worker 的自述；只是记录验收，从不把补丁应用到项目；`close_task` 要求任务已经是 `ACCEPTED`，没有 `reason`；**一个没配 `acceptance.checks` 的 R2 任务，`accept_task` 会被 Kernel 直接拒绝**（2026-11-03）——没有检查时 Kernel 没有任何自己量到的信号，协调者再怎么用 `get_task_diff` 看过 diff 也不能让它自己验收；这种任务只能等你自己在终端看过 `par task diff` 后用 `par task accept` |
 | `run_task` | 在独立进程里启动一次 QUEUED 任务的尝试，立即返回 | 等待批准、未排队、依赖未满足、已在运行的任务会被拒绝并说明原因 |

@@ -165,6 +165,23 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 
 真实 Worker 要能端到端演练，就得有一个**可以写**的项目——而真实项目在 P8 之前都不可写。`par fixture create` 在 `<数据目录>/fixtures/<id>/` 下造一个一次性的小项目（git 仓库、Harness 文件、`app/calc.py` 里一个故意的 bug、一个会失败的 unittest），登记为 `fixture = true` 与 `write_enabled = true`。它是**唯一**能被登记为可写的项目：加载器每次都独立核对「是 `fixtures/` 的直接子目录、文件夹名等于 id、带有合法的 `.par-fixture.json`、不是符号链接」，手工把真实项目改成可写、或把标记文件拷进真实项目，都会整条登记被丢弃（有测试）。
 
+## 证据分层（`par task result` 与 MCP）
+
+结果信封本身不变（`schema_version = 1`），`par task result`、`get_task_result` 和 `review_task` 额外给一份**派生**的 `evidence_summary`：
+
+| 字段 | 含义 |
+|---|---|
+| `level` | `MEASURED`（Kernel 跑了检查且都过）、`MEASURED_WITH_EDITED_CHECKS`（都过，但 Worker 改了检查会读到的文件）、`UNVERIFIED`（没有可运行的检查）、`FAILED`（检查/边界/尝试失败）、`INCOMPLETE`（中断/取消/孤儿）、`UNKNOWN`（旧结果或缺字段） |
+| `claim` | Worker 自述，永远 `verified: false`；已脱敏、去控制字符、限长。主控看到的是同一个 `summary` 字段，不重复大段原文 |
+| `boundary` | `CLEAN` / `VIOLATIONS` / `EXCLUSIONS`（有受保护文件被排除出副本，不是越界）/ `UNKNOWN` |
+| `checks` | `status`、通过/总数、失败的检查名、从未运行的检查名、`worker_editable`（写任务为真）、`inputs_edited`（检查命令直接读到的被改文件）、`test_files_changed`（补丁里像测试的文件） |
+| `review` | `NOT_REVIEWED` / `HUMAN_REVIEW` / `COORDINATOR_REVIEW` / `UNKNOWN`：谁验收或拒绝了这个结果 |
+| `integration` | 默认 `NOT_INTEGRATED`；候选整合是单独的问题，不由验收自动改变 |
+| `applied_to_project` | 恒为 `false`：验收只记录结果，从不把补丁应用进项目 |
+| `untested` | 从没跑过的检查名，或“合同没有 `acceptance.checks`”这句话 |
+
+**派生，不新增列**：旧台账没有这些字段时按 `UNKNOWN`/`NOT_RUN` 返回，绝不会因为缺字段就当 `PASS`。检查仍然在 Kernel 自己搭的验证树里跑（Worker 能改测试脚本，这是测试的本质），所以“检查通过”只说明**该版本的检查**通过了；`inputs_edited`/`test_files_changed` 把“检查本身被改过”摆在明面上，独立参考断言应放在 Worker 无权修改的路径里。
+
 ## 已知限制
 
 - 检查会运行补丁里的代码（这是测试的本质），P2 没有操作系统级沙箱。缓解：一次性副本、不含机密的干净环境、固定的可执行文件与参数规则、独立进程组与超时；而且 P2 根本不可能对真实项目提交写任务（P3 起只有夹具项目可写）。进入 P8 之前需要评估 `sandbox-exec` 之类的加固。

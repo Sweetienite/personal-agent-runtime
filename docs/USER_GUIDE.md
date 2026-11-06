@@ -105,9 +105,11 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 2. 任务排队后，由主控或你自己启动：`par task run 编号`。**真实的 Worker 会调用厂商模型、消耗你的额度**。
 3. 运行中 → 验证中（Runtime 自己量改动、跑检查）。
 4. 变成「**待验收**」：`par task result 编号` 看结果——
+   - **证据等级**（一行）：`MEASURED`（Kernel 跑了检查且都过）、`MEASURED_WITH_EDITED_CHECKS`（都过，但 Worker 改了检查会读到的文件）、`UNVERIFIED`（没有可运行的检查）、`FAILED`、`INCOMPLETE`（中断/取消）、`UNKNOWN`（旧结果）。`REVIEW_REQUIRED`/`ACCEPTED` **不等于功能已经完成**；
    - **改动**：几个文件、+几行 −几行（Runtime 量的）；
-   - **检查**：每条检查通过还是未通过（Runtime 自己跑的）；
+   - **检查**：每条检查通过还是未通过（Runtime 自己跑的）；`inputs_edited`/`test_files_changed` 会点出 Worker 改过哪些检查读到的文件；
    - **边界**：有没有越出允许路径；
+   - **审查与落地**：谁验收/拒绝了（`HUMAN_REVIEW`/`COORDINATOR_REVIEW`/`NOT_REVIEWED`）；`integration` 默认 `NOT_INTEGRATED`，`applied_to_project` 恒为 false——验收只记录结果，补丁仍要你自己 `git apply`；
    - **Worker 自述（未经核实）**：Worker 自己写的摘要，只当参考；
    - 需要细看补丁：`par task diff 编号`。
 5. 满意：`par task accept 编号`；不满意：`par task reject 编号`（任务转为「失败」，补丁留作证据）。

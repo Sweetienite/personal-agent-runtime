@@ -349,7 +349,10 @@ class ToolsOnTheKernel(KernelWorld):
         self.assertLessEqual(len(res["evidence"]), 10)
         self.assertEqual(set(res), {"task_id", "attempt", "outcome", "terminal_state", "failure_class", "stage", "summary",
                                     "summary_verified", "untrusted_worker_text", "diff_stat", "tests", "boundary",
-                                    "remaining_issues", "partial", "evidence", "note"})
+                                    "remaining_issues", "partial", "evidence", "note", "evidence_summary"})
+        self.assertEqual((res["evidence_summary"]["level"], res["evidence_summary"]["checks"]["status"]), ("UNVERIFIED", "NO_MECHANICAL_CHECK"))
+        self.assertEqual(res["evidence_summary"]["boundary"]["status"], "CLEAN")
+        self.assertEqual((res["evidence_summary"]["integration"], res["evidence_summary"]["applied_to_project"]), ("NOT_INTEGRATED", False))
 
     def test_get_task_diff_is_null_before_any_attempt_ends(self):
         task_id = self.queued(r1_contract())
@@ -385,7 +388,9 @@ class ToolsOnTheKernel(KernelWorld):
         task_id = self.queued(r1_contract())
         before = self.ledger()
         out = payload_of(self.ask("review_task", task_id=task_id))
-        self.assertEqual(set(out), {"task_id", "derived_state", "ready_to_accept", "blockers", "summary", "diff_stat", "tests", "boundary"})
+        self.assertEqual(set(out), {"task_id", "derived_state", "ready_to_accept", "blockers", "summary", "evidence_summary",
+                                    "diff_stat", "tests", "boundary"})
+        self.assertEqual((out["evidence_summary"]["level"], out["evidence_summary"]["checks"]["status"]), ("UNKNOWN", "NOT_RUN"))
         self.assertEqual(set(out["summary"]), {"headline", "checks_passed", "checks_total", "blockers", "agent_next"})
         self.assertFalse(out["ready_to_accept"])
         self.assertTrue(out["blockers"])
@@ -393,6 +398,8 @@ class ToolsOnTheKernel(KernelWorld):
         self.run_task(task_id)
         out = payload_of(self.ask("review_task", task_id=task_id))
         self.assertTrue(out["ready_to_accept"])
+        self.assertEqual(out["evidence_summary"]["level"], "UNVERIFIED")
+        self.assertIn("UNVERIFIED", out["summary"]["headline"])
         self.assertEqual(out["blockers"], [])
         self.assertEqual(self.kernel.describe(task_id)["status"], "REVIEW_REQUIRED")
 

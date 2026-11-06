@@ -353,6 +353,12 @@ MUTATIONS = [
     ('M645', 'a hand-off packet whose prompt was edited is still imported', 'src/par/core/manual.py', '                    or hashlib.sha256(prompt_file.read_bytes()).hexdigest() != doc.get("prompt_sha256")):', '                    or False):', T + 'test_manual_handoff'),
     ('M646', 'a read-only task takes a folder as its result', 'src/par/core/manual.py', '        if not contract.writes and (source is not None or patch is not None):', '        if False:', T + 'test_manual_handoff'),
     ('M647', 'the hand-off marker is left in the workspace and counted as work', 'src/par/core/attempt.py', '                    if marker.is_file() and not marker.is_symlink():', '                    if False:', T + 'test_manual_handoff'),
+    ('M648', 'a failed check is reported as a measured pass', 'src/par/execution/results.py', '        checks_status, level = "FAILED", "FAILED"', '        checks_status, level = "PASSED", "MEASURED"', T + 'test_evidence_summary'),
+    ('M649', 'a worker-edited check is reported as a clean pass', 'src/par/execution/results.py', '    elif edited:', '    elif False:', T + 'test_evidence_summary'),
+    ('M650', 'a boundary violation does not lower the evidence level', 'src/par/execution/results.py', '    if boundary["status"] == "VIOLATIONS":', '    if False:', T + 'test_evidence_summary'),
+    ('M651', 'the worker summary is marked verified', 'src/par/execution/results.py', '        "claim": {"text": _safe(result.get("summary", ""), SUMMARY_MAX), "verified": False},', '        "claim": {"text": _safe(result.get("summary", ""), SUMMARY_MAX), "verified": True},', T + 'test_evidence_summary'),
+    ('M652', 'the MCP evidence says the patch was applied to the project', 'src/par/mcp/tools.py', '            "applied_to_project": False,', '            "applied_to_project": True,', T + 'test_mcp_tools'),
+    ('M653', 'an accepted result is reported as never reviewed', 'src/par/core/kernel.py', '        return "HUMAN_REVIEW" if who == "user" else "COORDINATOR_REVIEW" if who == "coordinator" else "UNKNOWN"', '        return "NOT_REVIEWED"', T + 'test_evidence_summary'),
 ]
 
 

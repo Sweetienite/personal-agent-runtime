@@ -178,8 +178,9 @@ _HANDLERS = {"prepare_task": "_prepare_task", "submit_task": "_submit_task", "ge
              "resume_task": "_resume_task", "recover_task": "_recover_task"}
 # Lists that may be trimmed (largest first) when an answer would exceed RESULT_MAX_CHARS.
 _SHRINK = {"prepare_task": (("questions",), ("warnings",)),
-           "get_task_result": (("evidence",), ("remaining_issues",), ("boundary", "paths"), ("tests",)),
-           "review_task": (("blockers",), ("tests",)),
+           "get_task_result": (("evidence",), ("evidence_summary", "untested"), ("evidence_summary", "checks", "failed"),
+                               ("remaining_issues",), ("boundary", "paths"), ("tests",)),
+           "review_task": (("blockers",), ("evidence_summary", "untested"), ("evidence_summary", "checks", "failed"), ("tests",)),
            "list_tasks": (("tasks",),),
            "recover_task": (("actions",),)}
 
@@ -547,11 +548,33 @@ class Tools:
             "last_problem": self._t(d["last_failure"], PROBLEM_MAX) if d["last_failure"] else None,
         }
 
+    def _evidence_view(self, ev: "Mapping[str, Any]") -> "dict[str, Any]":
+        """The derived evidence, clipped for the bridge. The Worker's claim is already in `summary`; it is not repeated here."""
+        c = ev["checks"]
+        return {
+            "level": ev["level"],
+            "boundary": {"status": ev["boundary"]["status"], "violations": ev["boundary"]["violations"],
+                         "paths": [self._t(p, ISSUE_MAX) for p in ev["boundary"]["paths"]][:PATHS_MAX]},
+            "checks": {"status": c["status"], "passed": c["passed"], "total": c["total"],
+                       "failed": [self._t(n, ISSUE_MAX) for n in c["failed"]][:ISSUES_MAX],
+                       "never_run": [self._t(n, ISSUE_MAX) for n in c["never_run"]][:ISSUES_MAX],
+                       "worker_editable": c["worker_editable"],
+                       "inputs_edited": [self._t(p, ISSUE_MAX) for p in c["inputs_edited"]][:PATHS_MAX],
+                       "test_files_changed": [self._t(p, ISSUE_MAX) for p in c["test_files_changed"]][:PATHS_MAX],
+                       "changes_known": c["changes_known"]},
+            "review": ev["review"],
+            "integration": ev["integration"],
+            "applied_to_project": False,
+            "untested": [self._t(item, ISSUE_MAX) for item in ev["untested"]][:ISSUES_MAX],
+        }
+
     def _get_task_result(self, task_id: str, attempt: "int | None" = None) -> "dict[str, Any]":
         res = self.kernel.result(task_id, attempt)
         if res is None:
             return {"task_id": task_id, "result": None}
-        return self._envelope_view(res)
+        out = self._envelope_view(res)
+        out["evidence_summary"] = self._evidence_view(self.kernel.evidence(task_id, attempt))
+        return out
 
     def _get_task_diff(self, task_id: str, attempt: "int | None" = None) -> "dict[str, Any]":
         d = self.kernel.describe(task_id)                   # an unknown task is reported as one
@@ -572,6 +595,7 @@ class Tools:
         blockers = self.kernel.accept_blockers(task_id, by="coordinator")
         res = self.kernel.result(task_id)
         view = self._envelope_view(res) if res is not None else None
+        ev = self.kernel.evidence(task_id)
         tests = view["tests"] if view else []
         passed = sum(1 for t in tests if t["status"] == "PASS")
         return {
@@ -579,10 +603,11 @@ class Tools:
             "derived_state": d["derived_state"],
             "ready_to_accept": not blockers,
             "blockers": [self._t(b, ISSUE_MAX) for b in blockers][:BLOCKERS_MAX],
-            "summary": {"headline": self._t(f"{d['status']}: {passed}/{len(tests)} Kernel checks passed, "
+            "summary": {"headline": self._t(f"{d['status']} ({ev['level']}): {passed}/{len(tests)} Kernel checks passed, "
                                             f"{len(blockers)} blocker(s)", SUMMARY_MAX),
                         "checks_passed": passed, "checks_total": len(tests), "blockers": len(blockers),
                         "agent_next": self._agent_next(d)},
+            "evidence_summary": self._evidence_view(ev),
             "diff_stat": view["diff_stat"] if view else None,
             "tests": tests,
             "boundary": view["boundary"] if view else None,

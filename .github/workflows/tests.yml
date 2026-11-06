@@ -51,3 +51,4 @@ jobs:
           tests.unit.test_task_draft
           tests.unit.test_mcp_prepare
           tests.unit.test_manual_handoff
+          tests.unit.test_evidence_summary

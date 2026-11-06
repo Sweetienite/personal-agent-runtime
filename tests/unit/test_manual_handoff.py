@@ -239,6 +239,10 @@ class ImportFolder(HandoffWorld):
         self.assertNotIn(b".par-handoff", patch)                                                # the bookkeeping file is not work
         self.assertEqual(self.kernel.store.health_rows(), [])                                   # a person is not a provider: no health record
         self.assertEqual(self.project_digest(), before)                                         # nothing applied
+        ev = self.kernel.evidence(tid)
+        self.assertEqual((ev["level"], ev["checks"]["status"]), ("MEASURED", "PASSED"))
+        self.assertEqual((ev["integration"], ev["applied_to_project"]), ("NOT_INTEGRATED", False))
+        self.assertFalse(ev["claim"]["verified"])
         self.assertEqual(self.kernel.accept(tid)["status"], "ACCEPTED")
         types = self.event_types(tid)
         self.assertLess(types.index("HANDOFF_EXPORTED"), types.index("HANDOFF_IMPORTED"))

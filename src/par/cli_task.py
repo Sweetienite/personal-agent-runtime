@@ -161,11 +161,20 @@ def render_event(e: dict) -> str:
     return f"{e['id']:>5}  {e['ts']}  {e['type']:<20} {att:<3} {move}  {e['reason'] or ''}".rstrip()
 
 
-def render_result(res: dict) -> str:
+def render_result(res: dict, evidence: "dict | None" = None) -> str:
     lines = [f"{res['task_id']} attempt {res['attempt']}: {res['outcome']}"
-             + (f" ({res['failure_class']} at {res['stage']})" if res["failure_class"] else ""),
-             f"  worker {res['worker']} ({res['provider']}, asked for {res['model_requested']}, vendor reported {res['model_observed'] or 'nothing'})",
-             f"  worker's own summary (NOT verified): {clean(res['summary'])}"]
+             + (f" ({res['failure_class']} at {res['stage']})" if res["failure_class"] else "")]
+    if evidence:
+        c = evidence["checks"]
+        checks = c["status"] + (f" ({c['passed']}/{c['total']})" if c["total"] else "")
+        line = (f"  evidence  {evidence['level']} · boundary {evidence['boundary']['status']} · checks {checks}"
+                f" · review {evidence['review']} · integration {evidence['integration']} · not applied")
+        changed = c.get("test_files_changed") or []
+        if changed:
+            line += " · tests changed: " + ", ".join(changed[:3])
+        lines.append(line)
+    lines += [f"  worker {res['worker']} ({res['provider']}, asked for {res['model_requested']}, vendor reported {res['model_observed'] or 'nothing'})",
+              f"  worker's own summary (NOT verified): {clean(res['summary'])}"]
     ds = res["diff_stat"]
     lines.append(f"  change  {ds['files']} file(s) +{ds['additions']} -{ds['deletions']}" + (f"   patch: {res['diff_artifact']}" if res["diff_artifact"] else "")
                  + ("   [PARTIAL]" if res["partial"] else ""))
@@ -297,10 +306,16 @@ def cmd_events(args):
 def cmd_result(args):
     with session(args) as kernel:
         res = kernel.result(args.task, args.attempt)
+        evidence = kernel.evidence(args.task, args.attempt) if res is not None else None
     if res is None:
         print("no result yet: the task has no finished attempt")
         return 1
-    print(_dump(res) if args.json else render_result(res))
+    if args.json:
+        out = dict(res)
+        out["evidence_summary"] = evidence
+        print(_dump(out))
+    else:
+        print(render_result(res, evidence))
     return 0
 
 
