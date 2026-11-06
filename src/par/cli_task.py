@@ -126,6 +126,8 @@ def render_status(d: dict) -> str:
              f"  project {d['project_id']}   worker {worker}   submitted by {d['submitted_by']}   attempts {d['attempt_count']}"
              + ("   AD-HOC" if d["ad_hoc"] else ""),
              f"  base    {base.get('vcs', '-')} {_short(base.get('commit'))}   config {_short(d['config_digest'], 8)}"]
+    if base.get("candidate"):
+        lines.append(f"  runs on candidate {base['candidate']}  (built on {_short(base.get('candidate_base'))}; never applied to the project)")
     if d["last_failure"]:
         lines.append(f"  last problem: {clean(d['last_failure'])}")
     if d["not_before"]:
@@ -214,6 +216,9 @@ def cmd_submit(args):
     except OSError as exc:
         _error(f"cannot read the contract: {exc.strerror or exc}")
         return 2
+    if args.check and getattr(args, "candidate", None):
+        _error("--candidate and --check do not go together: check the contract first, then submit it with the candidate")
+        return 2
     if args.check:
         with session(args) as kernel:
             res = kernel.validate(text, submitted_by=args.by)
@@ -227,7 +232,7 @@ def cmd_submit(args):
                 print(f"  would need approval: {kind}")
         return 0
     with session(args) as kernel:
-        res = kernel.submit(text, submitted_by=args.by)
+        res = kernel.submit(text, submitted_by=args.by, candidate=getattr(args, "candidate", None))
     if args.json:
         print(_dump(res.__dict__))
     elif res.deduplicated:
@@ -238,6 +243,77 @@ def cmd_submit(args):
             print("  note: " + w)
         if res.pending_approvals:
             print(f"  waiting for your approval: par task approve {res.task_id}")
+    return 0
+
+
+@handled
+def cmd_rebase(args):
+    with session(args) as kernel:
+        d = kernel.task_rebase(args.task, args.candidate, note=args.note or "")
+    if args.json:
+        print(_dump(d))
+    else:
+        base = d.get("base") or {}
+        print(f"{d['task_id']}  {d['status']}  base {str(base.get('commit'))[:12]}  (candidate {base.get('candidate')})")
+        print(f"  runs on the candidate's base; nothing was applied to the real project")
+    return 0
+
+
+@handled
+def cmd_candidate_create(args):
+    with session(args) as kernel:
+        d = kernel.candidate_create(args.task, note=args.note or "")
+    if args.json:
+        print(_dump(d))
+        return 0 if d["status"] == "VERIFIED" else 1
+    print(f"{d['candidate_id']}  {d['status']}  base {d['base_commit'][:12]}  commit {(d.get('commit_sha') or '-')[:12]}")
+    for t in d["tasks"]:
+        print(f"  {t['task_id']}#{t['attempt']}  patch {t['patch_sha256'][:12]}  commit {t['commit'][:12]}")
+    for c in d["checks"]:
+        print(f"  check {c['task_id']} {c['name']}: {c['status']}")
+    if d.get("reason"):
+        print(f"  reason: {clean(d['reason'])}")
+    print(f"  repo: {d['repo']}")
+    print("  nothing was applied to the real project")
+    if d["status"] == "VERIFIED":
+        print(f"  use it: par task submit --contract FILE --candidate {d['candidate_id']}")
+        print(f"          or: par task rebase TASK --candidate {d['candidate_id']}")
+    return 0 if d["status"] == "VERIFIED" else 1
+
+
+@handled
+def cmd_candidate_show(args):
+    with session(args) as kernel:
+        d = kernel.candidate_show(args.candidate)
+    if args.json:
+        print(_dump(d))
+        return 0
+    print(f"{d['candidate_id']}  {d['status']}  project {d['project_id']}")
+    print(f"  base   {d['base_commit']}")
+    print(f"  commit {d.get('commit_sha') or '-'}")
+    print(f"  asked  {', '.join(d.get('requested', [])) or '-'}")
+    for t in d["tasks"]:
+        print(f"  {t['task_id']}#{t['attempt']}  patch {t['patch_sha256'][:12]}  commit {t['commit'][:12]}")
+    for c in d["checks"]:
+        print(f"  check {c['task_id']} {c['name']}: {c['status']}")
+    if d.get("reason"):
+        print(f"  reason: {clean(d['reason'])}")
+    print(f"  repo   {d['repo']}  (never applied to the real project)")
+    return 0
+
+
+@handled
+def cmd_candidate_list(args):
+    with session(args) as kernel:
+        rows = kernel.candidate_list(args.project)
+    if args.json:
+        print(_dump(rows))
+        return 0
+    if not rows:
+        print("no candidates")
+        return 0
+    for d in rows:
+        print(f"{d['candidate_id']:<32} {d['status']:<9} {d['project_id']:<12} base {d['base_commit'][:12]}  {len(d['tasks'])} task(s)")
     return 0
 
 
@@ -561,6 +637,22 @@ def register(sub) -> None:
     c.add_argument("--data-dir", metavar="PATH")
     c.set_defaults(func=cmd_provider_login)
 
+    p = sub.add_parser("candidate", help="integrate accepted patches on one verified baseline (a preview; never applied to the project)")
+    actions = p.add_subparsers(dest="candidate_command", required=True, metavar="ACTION")
+    c = actions.add_parser("create", help="apply accepted tasks' own patches to one clean baseline and run their checks")
+    c.add_argument("--task", action="append", required=True, metavar="TASK", help="an accepted R2 task (repeat for A, then B)")
+    c.add_argument("--note", metavar="TEXT")
+    _common(c)
+    c.set_defaults(func=cmd_candidate_create)
+    c = actions.add_parser("show", help="one candidate: its base, commit, tasks, patches and checks")
+    c.add_argument("candidate")
+    _common(c)
+    c.set_defaults(func=cmd_candidate_show)
+    c = actions.add_parser("list", help="candidates, oldest first")
+    c.add_argument("--project")
+    _common(c)
+    c.set_defaults(func=cmd_candidate_list)
+
     p = sub.add_parser("task", help="submit, run, review and control tasks (the Kernel's work queue)")
     actions = p.add_subparsers(dest="task_command", required=True, metavar="ACTION")
 
@@ -570,8 +662,17 @@ def register(sub) -> None:
                    help="who is submitting; a coordinator's worker override needs your approval (default: user)")
     c.add_argument("--check", action="store_true",
                    help="only validate the contract; nothing is submitted, no task/event/approval is written")
+    c.add_argument("--candidate", metavar="ID",
+                   help="run on a verified candidate's baseline (see `par candidate create`); its dependencies must be included")
     _common(c)
     c.set_defaults(func=cmd_submit)
+
+    c = actions.add_parser("rebase", help="point a queued task at a verified candidate before its first attempt")
+    c.add_argument("task")
+    c.add_argument("--candidate", required=True, metavar="ID")
+    c.add_argument("--note", metavar="TEXT")
+    _common(c)
+    c.set_defaults(func=cmd_rebase)
 
     c = actions.add_parser("draft", help="compile a short draft into a strict contract (prints it; submits nothing)")
     c.add_argument("--draft", required=True, metavar="FILE", help="draft JSON file, or - for standard input")

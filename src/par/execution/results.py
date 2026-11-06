@@ -18,7 +18,7 @@ NO_SUMMARY = "(the worker gave no summary)"
 EVIDENCE_PATHS_MAX = 10
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 _REVIEW = frozenset({"NOT_REVIEWED", "HUMAN_REVIEW", "COORDINATOR_REVIEW", "UNKNOWN"})
-_INTEGRATION = frozenset({"NOT_INTEGRATED", "CANDIDATE_READY", "INTEGRATED", "UNKNOWN"})
+_INTEGRATION = frozenset({"NOT_INTEGRATED", "CANDIDATE_READY", "CANDIDATE_FAILED", "INTEGRATED", "UNKNOWN"})
 
 
 def worker_summary(events: "Iterable[ProviderEvent]") -> str:

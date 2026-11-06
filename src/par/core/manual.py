@@ -221,7 +221,8 @@ class ManualHandoffMixin:
         base_commit = task["base"].get("commit")
         try:
             if has_workspace:
-                self._export_workspace(folder, project.path, base_commit, contract, seed, task_id, name, mode)
+                source = self.runner._base_source(project, task["base"])       # a candidate-bound task exports from its candidate
+                self._export_workspace(folder, source, base_commit, contract, seed, task_id, name, mode)
             write_private(folder / "PROMPT.md", prompt)
             write_private(folder / "README.md", _readme(task_id=task_id, export=name, title=contract.title, to=to, folder=folder,
                                                          contract=contract, mode=mode, has_workspace=has_workspace,

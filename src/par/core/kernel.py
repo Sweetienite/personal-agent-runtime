@@ -29,6 +29,7 @@ from par.context.resolver import default_context
 from par.context.types import ContextChanged, ContextManifest
 from par.core import relay
 from par.core.attempt import AttemptOutcome, AttemptRunner, private_dirs, remove_scratch, write_private
+from par.core.candidate import CandidateMixin, INTEGRATION_MODE
 from par.core.clock import Clock, iso, parse_iso
 from par.core.contract import Contract, ContractError, parse_contract
 from par.core.health import Health
@@ -118,7 +119,7 @@ class _MissingGit:
         raise gitops.GitError(self._message)
 
 
-class Kernel(ManualHandoffMixin, TakeoverMixin):
+class Kernel(CandidateMixin, ManualHandoffMixin, TakeoverMixin):
     def __init__(self, data_dir: "str | os.PathLike[str]", *, config: RuntimeConfig, projects: "Mapping[str, ProjectEntry]",
                  adapters: AdapterRegistry, clock: "Clock | None" = None, home: "str | os.PathLike[str] | None" = None,
                  settings: "KernelSettings | None" = None, kernel_id: "str | None" = None,
@@ -212,7 +213,7 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
     # ------------------------------------------------------------------------------------------------------
     # submit
     def submit(self, source: "str | bytes | Mapping[str, Any]", *, submitted_by: str = "user",
-               coordinator_id: "str | None" = None) -> SubmitResult:
+               coordinator_id: "str | None" = None, candidate: "str | None" = None) -> SubmitResult:
         if submitted_by not in ("user", "coordinator"):
             raise ValueError("submitted_by must be 'user' or 'coordinator'")
         if submitted_by == "coordinator" and coordinator_id is not None:
@@ -248,6 +249,14 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
             raise Refused("not_allowed", problems)
 
         base = self._base_record(manifest, contract.risk)
+        base["integration"] = INTEGRATION_MODE
+        if candidate is not None:
+            base.update(self.candidate_base_for(candidate, contract.project_id, contract.dependencies))
+            if sum((manifest.base.get("dirty") or {}).values()):
+                raise Refused("dirty_project", "the project has uncommitted changes; a candidate-bound task needs the clean state it was built on")
+            if manifest.base_git_commit != base["candidate_base"]:
+                raise Refused("stale_candidate", f"the project is at {manifest.base_git_commit}, but candidate {candidate} was built on "
+                                                 f"{base['candidate_base']}; create a new candidate from the current state")
         snapshot = config_snapshot(self.config)
         try:
             with self.store.tx():
@@ -264,13 +273,14 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
                                      data={"project": contract.project_id, "risk": contract.risk, "role": contract.role,
                                            "worker": contract.worker, "contract_sha256": contract.sha256,
                                            "base_commit": base["commit"], "ad_hoc": contract.ad_hoc,
+                                           "candidate": base.get("candidate"), "integration": base.get("integration"),
                                            "config_digest": snapshot["digest"], "warnings": list(contract.warnings)})
                 self.store.set_status(task_id, T.READY, reason="the contract passed validation")
                 approvals: "list[int]" = []
                 if contract.writes:
                     approvals.append(self.store.add_approval(task_id, "WRITE_PERMISSION", {
                         "allowed_paths": list(contract.allowed_paths), "base_commit": base["commit"],
-                        "checks": [c["name"] for c in contract.checks]}))
+                        "candidate": base.get("candidate"), "checks": [c["name"] for c in contract.checks]}))
                 if submitted_by == "coordinator" and contract.worker:
                     approvals.append(self.store.add_approval(task_id, "WORKER_OVERRIDE", {"worker": contract.worker}))
                 if approvals:
@@ -379,6 +389,8 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
         task = self._require(task_id)
         target = self._decide_target(task_id, approval_id)
         kind = target["kind"]
+        if kind == "BASE_DRIFT" and (task["base"] or {}).get("candidate"):
+            raise Refused("candidate_base", "this task runs on an immutable candidate; re-create the candidate against the current project state instead")
         columns: "dict[str, Any]" = {}
         extra_events: "list[tuple[str, str, dict]]" = []
         if kind == "BASE_DRIFT":
@@ -472,7 +484,7 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
             row = self.store.get_task(dep)
             if row is None or row["status"] not in (T.ACCEPTED.value, T.CLOSED.value):
                 return f"waiting for {dep} ({row['status'] if row else 'missing'})"
-        return None
+        return self._candidate_dependency_problem(task)
 
     def run(self, task_id: str) -> RunReport:
         self.recover()
@@ -530,6 +542,8 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
             raise Refused("relay_unavailable", f"git could not be used to check the previous attempt's patch: {redact_text(str(exc))[:160]}") from None
 
     def _check_drift(self, task: "dict[str, Any]", manifest: ContextManifest) -> "RunReport | None":
+        if (task["base"] or {}).get("candidate"):
+            return None                                  # the candidate's base is immutable; the project moving does not change what runs
         recorded = (task["base"] or {}).get("drift") or {}
         current = self._drift_signature(manifest, task["risk_tier"])
         changed = sorted(k for k in set(recorded) | set(current) if recorded.get(k) != current.get(k))
@@ -1096,7 +1110,15 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
                 changed = None
         return R.evidence_summary(self.result(task_id, attempt), contract_checks=contract.checks, changed_paths=changed,
                                   worker_can_edit_checks=contract.writes, review=self._review_state(task_id, chosen),
-                                  status=task["status"])
+                                  status=task["status"], integration=self._integration_state(task_id))
+
+    def _integration_state(self, task_id: str) -> str:
+        """How far this task's result has travelled: a verified candidate, only a failed one, or nowhere yet."""
+        project_id = self._require(task_id)["project_id"]
+        rows = [c for c in self.store.list_candidates(project_id) if task_id in c.get("requested", [])]
+        if any(c["status"] == "VERIFIED" for c in rows):
+            return "CANDIDATE_READY"
+        return "CANDIDATE_FAILED" if rows else "NOT_INTEGRATED"
 
     def _review_state(self, task_id: str, attempt: "int | None") -> str:
         """Who, if anyone, decided on this attempt's result: the accept decision or a result rejection, latest wins."""

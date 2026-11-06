@@ -359,6 +359,19 @@ MUTATIONS = [
     ('M651', 'the worker summary is marked verified', 'src/par/execution/results.py', '        "claim": {"text": _safe(result.get("summary", ""), SUMMARY_MAX), "verified": False},', '        "claim": {"text": _safe(result.get("summary", ""), SUMMARY_MAX), "verified": True},', T + 'test_evidence_summary'),
     ('M652', 'the MCP evidence says the patch was applied to the project', 'src/par/mcp/tools.py', '            "applied_to_project": False,', '            "applied_to_project": True,', T + 'test_mcp_tools'),
     ('M653', 'an accepted result is reported as never reviewed', 'src/par/core/kernel.py', '        return "HUMAN_REVIEW" if who == "user" else "COORDINATOR_REVIEW" if who == "coordinator" else "UNKNOWN"', '        return "NOT_REVIEWED"', T + 'test_evidence_summary'),
+    ('M654', 'a task that was never accepted is integrated', 'src/par/core/candidate.py', '        if T(task["status"]) not in (T.ACCEPTED, T.CLOSED):', '        if False:', T + 'test_candidate_integration'),
+    ('M655', 'a candidate accepts a patch that touches protected paths', 'src/par/core/candidate.py', '                if protected:', '                if False:', T + 'test_candidate_integration'),
+    ('M656', 'a candidate with a failing check is recorded as verified', 'src/par/core/candidate.py', '        status = "FAILED" if bad else "VERIFIED"', '        status = "VERIFIED"', T + 'test_candidate_integration'),
+    ('M657', 'a candidate is built from a dirty project', 'src/par/core/candidate.py', '        if dirty:', '        if False:', T + 'test_candidate_integration'),
+    ('M658', 'a candidate is built after the project head moved', 'src/par/core/candidate.py', '        if manifest.base_git_commit != base_commit:', '        if False:', T + 'test_candidate_integration'),
+    ('M659', 'a dependent task runs although its dependency was never integrated', 'src/par/core/candidate.py', '        if base.get("integration") != INTEGRATION_MODE:', '        if True:', T + 'test_candidate_integration'),
+    ('M660', 'the runner ignores the candidate repository and clones the project instead', 'src/par/core/attempt.py', '        rel = base.get("candidate_repo")', '        rel = None', T + 'test_candidate_integration'),
+    ('M661', 'a task that already ran can be rebased', 'src/par/core/candidate.py', '        if task["attempt_count"]:', '        if False:', T + 'test_candidate_integration'),
+    ('M662', 'a task is rebased onto a candidate built on an older head', 'src/par/core/candidate.py', '        if manifest.base_git_commit != candidate["base_commit"]:', '        if False:', T + 'test_candidate_integration'),
+    ('M663', 'a task is submitted on a candidate that misses its dependency', 'src/par/core/candidate.py', '        if missing:\n            raise Refused("candidate_missing"', '        if False:\n            raise Refused("candidate_missing"', T + 'test_candidate_integration'),
+    ('M664', 'a tampered patch outside the task allowed paths is integrated', 'src/par/core/candidate.py', '                if outside:', '                if False:', T + 'test_candidate_integration'),
+    ('M665', 'a verified candidate is not reported in the evidence', 'src/par/core/kernel.py', '        if any(c["status"] == "VERIFIED" for c in rows):', '        if False:', T + 'test_candidate_integration'),
+    ('M666', 'a failed candidate is reported as never integrated', 'src/par/core/kernel.py', '        return "CANDIDATE_FAILED" if rows else "NOT_INTEGRATED"', '        return "NOT_INTEGRATED"', T + 'test_candidate_integration'),
 ]
 
 

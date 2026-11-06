@@ -14,7 +14,7 @@ import shutil
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from par.config import ProjectEntry
 from par.core.clock import Clock
@@ -135,6 +135,17 @@ class AttemptRunner:
         return self.data_dir / "tasks" / task_id / "attempts" / str(n)
 
     # ------------------------------------------------------------------------------------------------------
+    def _base_source(self, project: ProjectEntry, base: "Mapping[str, Any]") -> Path:
+        """Where this attempt's mirror comes from: the project itself, or a candidate repository under our data dir."""
+        rel = base.get("candidate_repo")
+        if not rel:
+            return project.path
+        root = Path(os.path.realpath(Path(self.data_dir) / "candidates"))
+        source = Path(os.path.realpath(Path(self.data_dir) / str(rel)))
+        if root not in source.parents:
+            raise gitops.GitError("the candidate repository is outside the Runtime's data directory")
+        return source
+
     def execute(self, store: Store, task: "dict[str, Any]", n: int, *, contract: Contract, project: ProjectEntry,
                 route: "dict[str, Any]", prompt_text: str, started_at: str, seed_patch: "bytes | None" = None) -> AttemptOutcome:
         task_id = task["task_id"]
@@ -189,7 +200,7 @@ class AttemptRunner:
                 prepared = ws.Prepared(workspace, None)
             else:
                 ref = attempt_dir / "ref"
-                excluded = gitops.clone_at(self.git, project.path, ref, base.get("commit"))
+                excluded = gitops.clone_at(self.git, self._base_source(project, base), ref, base.get("commit"))
                 if "source" in incoming:
                     ws.stage_import(incoming["source"], workspace)
                     marker = workspace / ".par-handoff.json"          # our own bookkeeping file, not part of the work
@@ -265,7 +276,7 @@ class AttemptRunner:
             home, tmp = attempt_dir / "home", attempt_dir / "tmp"
             home.mkdir(mode=0o700, exist_ok=True)
             tmp.mkdir(mode=0o700, exist_ok=True)
-            prepared = ws.prepare(self.git, source=project.path if risk != "R0" else None, base_commit=base.get("commit"),
+            prepared = ws.prepare(self.git, source=self._base_source(project, base) if risk != "R0" else None, base_commit=base.get("commit"),
                                   attempt_dir=attempt_dir, risk=risk, with_git=with_git)
         except (gitops.GitError, OSError) as exc:
             return self._end(kind="prepare_failed", end_kind="FAILED", failure_class="EXECUTION_FAILED", stage="prepare",
@@ -453,7 +464,7 @@ class AttemptRunner:
             else:
                 ref = attempt_dir / "ref"
                 remove_scratch(ref, attempt_dir)                     # never trust a pristine copy a crash may have cut short
-                gitops.clone_at(self.git, project.path, ref, base)
+                gitops.clone_at(self.git, self._base_source(project, task["base"]), ref, base)
                 os.chmod(ref, 0o700)
                 prepared = ws.Prepared(Path(attempt["workspace_path"]), ref)
         except (gitops.GitError, OSError, TypeError):

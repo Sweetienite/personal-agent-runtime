@@ -9,6 +9,7 @@ Runtime 只写自己的数据目录；对**真实项目**默认只读：只有�
 | 位置 | 能否写入 | 机制 |
 |---|---|---|
 | `~/Library/Application Support/PersonalAgentRuntime`（0700） | 能 | `WriteGuard` 以它为唯一允许根 |
+| `<数据目录>/candidates/<id>/repo`（0700） | 能，仅 Kernel 自己 | 候选整合只在这里应用已验收的 `work.patch` 并提交；补丁路径仍过 `forbidden_reason`，真实项目永远不写 |
 | Harness Core、`AI_Harness_History`、`~/ai-harness-backups` | **不能** | `protected_roots` |
 | `~/.claude` `~/.codex` `~/.gemini` `~/.workbuddy` `~/.config/kilo` `~/.copilot` 等厂商目录 | **不能** | `protected_roots` |
 | `~/.zshrc` 等 shell 与 git 用户配置、`~/.local/bin`、`Library/LaunchAgents` | **不能** | `protected_roots` |
