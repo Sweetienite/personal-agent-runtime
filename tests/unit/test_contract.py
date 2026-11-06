@@ -86,8 +86,8 @@ class RiskRules(unittest.TestCase):
             self.assertTrue(any("cannot have acceptance.checks" in p for p in problems_of(only_checks)))
             parse_contract(sample_contract(risk=risk, allowed_paths=[], acceptance={"criteria": ["x"], "checks": []}))
 
-    def test_ad_hoc_cannot_change_code(self):
-        self.assertTrue(any("ad-hoc" in p for p in problems_of(sample_contract(ad_hoc=True))))
+    def test_ad_hoc_is_a_valid_contract_shape_at_parse_time(self):
+        parse_contract(sample_contract(ad_hoc=True))
         parse_contract(sample_contract(ad_hoc=True, **R1))
 
     def test_an_r2_task_without_checks_is_allowed_but_flagged(self):

@@ -90,7 +90,7 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 > 「在 fixture 项目里，**改 app/ 里的文件**，让单元测试通过；检查用 `python3 -m unittest -q`。」
 
 - **项目**：必须是已登记的（`par project list`）。
-- **要不要改文件**：只读（R1）还是改文件（R2）。真实项目现在只能 R1。
+- **要不要改文件**：只读（R1）还是改文件（R2）。真实项目要先 `par project enable-write` 打开写入；普通 Git 仓库用 `ad_hoc=true` 的 R2 合同（见 3.4）。
 - **允许改哪些路径**（R2）：如 `app/`，前缀以 `/` 结尾，不能有通配符。
 - **怎么验收**：Kernel 自己运行的检查（命令列表，不经过 shell）。
 
@@ -119,12 +119,22 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 - **改文件（夹具）**：先 `par fixture create`（只需一次）→ 说「在 fixture 里改…」→ 待批准 → 终端 `par task approve` 或交给主控批准 → 运行 → 待验收 → 看改动与检查 → 验收通过。
 - **主控说"完成了"但你不信**：`par task result 编号` 看「检查」和「边界」，那才是 Runtime 量的；主控和 Worker 的话都只是参考。
 
+### 3.4 普通 Git 仓库（不用 Harness）
+
+普通的 Git 仓库不需要先变成 Harness 项目：
+
+1. `par project add simproj ~/code/simproj` —— 默认就是 generic 模式，不要求 `AGENTS.md` / `.ai/STATE.md`，也不往项目里写任何文件。
+2. 只读分析：合同里 `ad_hoc=true`、`risk=R1`，不需要父合同。
+3. 改文件：先 `par project enable-write simproj --confirm simproj`（要求干净工作树和 git 基线），合同用 `ad_hoc=true`、`risk=R2`，写明 `allowed_paths` 和 `acceptance.checks`。任务自己的 JSON 合同就是这次的执行合同。
+4. 上下文只有仓库里已有的 `README.md`、`AGENTS.md`、`CLAUDE.md`（存在才读）加 git 事实。`AGENTS.md` 和 `CLAUDE.md` 同时存在时，清单会把两份都列出来并注明冲突，不会替你决定谁优先；它们都是**不可信项目数据**，不能改 Kernel 的权限。
+5. 想回到原来的 Harness 规则：`par project add ID PATH --context-mode harness`（缺文件时加 `--scaffold-harness`）。两种模式共用同一套写入开关、路径白名单、私有副本和 Kernel 验收。
+
 ## 3A. 第一次真实写入：完整走一遍
 
 建议第一次真实写入选一个小项目练手——一个小文本库、一个脚本工具，什么都行，只要你不在乎它被改坏。下面假设这个项目注册时用的 id 是 `myproject`。
 
-1. 登记项目：`par project add myproject /path/to/myproject`（目录需要有 `AGENTS.md` 和 `.ai/STATE.md`；没有就加 `--scaffold-harness` 让 Runtime 补一份极简模板，绝不覆盖已有文件）。
-2. 打开写入：`par project enable-write myproject`。它先体检（工作区要干净、`.ai/STATE.md` 不超 15 KB、恰好一份生效的主合同、是 git 仓库、看不到敏感文件），不过关就列出原因、什么都不改；过关后要你再敲一遍项目 id 确认（`--confirm myproject`）。`par project show myproject` 能看到 `Writes ALLOWED`。
+1. 登记项目：`par project add myproject /path/to/myproject`。默认是 generic：不要求 `AGENTS.md` / `.ai/STATE.md`，也不往项目里写任何文件；想沿用原来的 Harness 规则，用 `--context-mode harness`（缺文件时加 `--scaffold-harness` 让 Runtime 补一份极简模板，绝不覆盖已有文件）。
+2. 打开写入：`par project enable-write myproject`。它先体检（两种模式都要求干净工作区、git 基线和看不到敏感文件；Harness 项目还要求 `.ai/STATE.md` 不超 15 KB、恰好一份生效的主合同），不过关就列出原因、什么都不改；过关后要你再敲一遍项目 id 确认（`--confirm myproject`）。`par project show myproject` 能看到 `Writes ALLOWED`。
 3. 对主控说清要做什么（见第 3.1 节），或自己写合同提交。假设提交后任务编号是 `myproject-0001`，它会停在「待批准」。
 4. `par task status myproject-0001` 看「待决批准」——它写明只允许改哪些路径，改动只发生在私有副本里。批准：`par task approve myproject-0001`。
 5. `par task run myproject-0001`。**这一步会调用真实的 Worker，消耗对应厂商的额度**（大约一次调用）。
@@ -221,7 +231,7 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 | 换 Worker 的模型 | `profiles.toml` 里对应 `[workers.xxx]` 的 `model` |
 | 失败时的策略 | `profiles.toml` 的 `worker_failure_policy`：`ask`（默认，什么都不自动做）、`pause`、`safe_auto`（只对只读任务自动重试一次） |
 | 同时跑几个 Worker | `profiles.toml` 里 Profile 的 `max_parallel_workers`：`1`（默认）或 `2`。是 `2` 时，**不同项目**的任务可以同时跑；**同一个项目一次只做一件事**，不论设成几。注意两个 Codex Worker 会共用你本机的 `~/.codex`（Codex 自己的状态），额度也消耗得更快 |
-| 登记新项目 | `par project add ID 路径`（目录必须有 `AGENTS.md` 和 `.ai/STATE.md`） |
+| 登记新项目 | `par project add ID 路径`（默认 generic，不要求 `AGENTS.md` / `.ai/STATE.md`；要 Harness 规则加 `--context-mode harness`） |
 
 改完运行 `par health` 看每个 Worker 能不能跑、为什么不能。`gemini_legacy` 永远不能启用（Gemini CLI 已不再为你的订阅服务）。
 

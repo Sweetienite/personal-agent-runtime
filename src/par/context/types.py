@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 
+SCHEMA_VERSION = 1
+
 
 class ContextChanged(Exception):
     """A file named in a manifest no longer matches the size/hash recorded in it."""

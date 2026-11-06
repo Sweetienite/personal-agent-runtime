@@ -258,7 +258,7 @@ class Cli(Base):
         return [*a, "--data-dir", str(self.data)]
 
     def test_add_list_show_cycle(self):
-        code, out, _ = run_cli("project", "add", "alpha", str(self.alpha), "--data-dir", str(self.data))
+        code, out, _ = run_cli("project", "add", "alpha", str(self.alpha), "--context-mode", "harness", "--data-dir", str(self.data))
         self.assertEqual(code, 0, out)
         self.assertIn("writes disabled", out)
         self.assertNotIn(str(self.home), out)
@@ -328,7 +328,7 @@ class Cli(Base):
     def test_without_scaffold_harness_the_refusal_mentions_the_flag(self):
         plain = self.home / "Documents" / "Plain"
         plain.mkdir()
-        code, _, err = run_cli(*self.args("project", "add", "plain", str(plain)))
+        code, _, err = run_cli(*self.args("project", "add", "plain", str(plain), "--context-mode", "harness"))
         self.assertEqual(code, 1)
         self.assertIn("--scaffold-harness", err)
 

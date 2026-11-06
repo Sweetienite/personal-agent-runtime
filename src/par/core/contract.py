@@ -262,8 +262,6 @@ def parse_contract(source: "str | bytes | Mapping[str, Any]") -> Contract:
     if risk == "R3":
         problems.append("risk R3 (destructive, credential, deployment, remote-write or paid work) is never run by "
                         "V1; it needs a single explicit human authorisation outside the Runtime")
-    if doc.get("ad_hoc") and risk == "R2":
-        problems.append("an ad-hoc task (no parent contract) can only be R0 or R1; code changes need a parent contract")
     if _control_chars(doc["title"]) or _control_chars(doc["description"], allow_newlines=True):
         problems.append("title must be one line; no control characters anywhere (only newlines and tabs in the description)")
     elif any(_control_chars(text) for text in [*doc.get("acceptance", {}).get("criteria", []), *doc.get("allowed_paths", []),

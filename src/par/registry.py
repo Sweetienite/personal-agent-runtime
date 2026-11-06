@@ -1,14 +1,14 @@
 """Project registry: the ``[projects.<id>]`` tables of ``<data dir>/config/projects.toml``.
 
-Registering a project is read-only with respect to the project itself: it checks that the folder carries
-a Harness (``AGENTS.md`` and ``.ai/STATE.md``) and records only an id, a path, the vcs setting and
-``write_enabled = false``. The only file written is the Runtime's own projects.toml, and only after the
-whole resulting file has passed the same validation the loader applies.
+Registering a project is read-only with respect to the project itself: it records only an id, a path,
+the vcs setting, the context mode and ``write_enabled = false``. A generic project (the default) needs no
+Harness files; a Harness project must carry ``AGENTS.md`` and ``.ai/STATE.md``. The only file written is
+the Runtime's own projects.toml, and only after the whole resulting file has passed the same validation
+the loader applies.
 
-``add_project(..., scaffold=True)`` is the one exception: for a project that is missing one or both of
-those two files, it creates a minimal, generic starter for exactly the missing ones (never overwriting
-one that already exists) before registering, so a brand-new project does not need to already know this
-Runtime's own Harness convention to adopt it.
+``add_project(..., scaffold=True)`` is the one exception, and only for the Harness mode: for a project
+that is missing one or both of those two files, it creates a minimal starter for exactly the missing ones
+(never overwriting one that already exists) before registering.
 """
 from __future__ import annotations
 
@@ -18,7 +18,8 @@ import re
 import time
 from pathlib import Path
 
-from par.config import FIXTURES_DIR, ID_PATTERN, PROJECT_VCS, ProjectEntry, ProjectsFile, load_projects_file, parse_projects_text
+from par.config import (FIXTURES_DIR, ID_PATTERN, PROJECT_CONTEXT_MODES, PROJECT_VCS, ProjectEntry, ProjectsFile,
+                        load_projects_file, parse_projects_text)
 from par.core.policy import PolicyViolation, WriteGuard, protected_roots
 from par.paths import inspect_data_dir
 
@@ -74,27 +75,35 @@ def _display(root: Path, home: Path) -> str:
 
 def add_project(data_dir: "str | os.PathLike[str]", project_id: str, path: "str | os.PathLike[str]",
                 vcs: str = "auto", home: "str | os.PathLike[str] | None" = None, *, fixture: bool = False,
-                scaffold: bool = False) -> ProjectEntry:
-    """Register a Harness project. Raises ``PolicyViolation`` with a plain reason when it must not.
+                scaffold: bool = False, context_mode: str = "harness") -> ProjectEntry:
+    """Register a project. Raises ``PolicyViolation`` with a plain reason when it must not.
 
     ``fixture=True`` (only ``par fixture create`` passes it) registers a throw-away fixture project as writable; the
     loader independently re-checks that it really is one, so a hand-edited entry gains nothing.
 
+    ``context_mode="generic"`` registers an ordinary repository: no ``AGENTS.md`` / ``.ai/STATE.md`` is required and
+    nothing is written into the project. ``"harness"`` (the default for callers that predate the field) keeps the old
+    requirement.
+
     ``scaffold=True`` creates a minimal starter for whichever of ``HARNESS_FILES`` is missing, before the check
     below - never overwriting one that is already there - so a project that never had this Runtime's Harness
-    convention can adopt it in one step instead of being refused with no way forward."""
+    convention can adopt it in one step instead of being refused with no way forward. It implies the Harness mode."""
     home_p = Path(home) if home is not None else Path.home()
     data_dir = Path(data_dir)
     if not ID_PATTERN.match(project_id):
         raise PolicyViolation("project id must match [a-z][a-z0-9_]*")
     if vcs not in PROJECT_VCS:
         raise PolicyViolation(f"vcs must be one of {sorted(PROJECT_VCS)}")
+    if context_mode not in PROJECT_CONTEXT_MODES:
+        raise PolicyViolation(f"context_mode must be one of {sorted(PROJECT_CONTEXT_MODES)}")
+    if scaffold and context_mode != "harness":
+        raise PolicyViolation("--scaffold-harness writes the Harness files, so the project must use context_mode 'harness'")
     root = Path(os.path.normpath(os.path.expanduser(os.fspath(path))))
     if not root.is_absolute():
         raise PolicyViolation("the project path must be absolute (a leading ~ is allowed)")
     if not root.is_dir():
         raise PolicyViolation("the project folder does not exist")
-    missing = [need for need in HARNESS_FILES if not (root / need).is_file()]
+    missing = [need for need in HARNESS_FILES if not (root / need).is_file()] if context_mode == "harness" else []
     if missing and scaffold:
         guard = WriteGuard(allowed_roots=(root,), protected=protected_roots(home_p))
         targets = [(need, guard.check(root / need)) for need in missing]  # validate all before writing any
@@ -123,7 +132,8 @@ def add_project(data_dir: "str | os.PathLike[str]", project_id: str, path: "str 
     block = (f"\n[projects.{project_id}]\n"
              f"path = {json.dumps(_display(root, home_p), ensure_ascii=False)}\n"
              f'vcs = "{vcs}"\n'
-             + ("fixture = true\nwrite_enabled = true\n" if fixture else "write_enabled = false\n"))
+             + ("fixture = true\nwrite_enabled = true\n" if fixture else "write_enabled = false\n")
+             + f'context_mode = "{context_mode}"\n')
     new_text = existing.rstrip("\n") + "\n" + block
     projects, issues = parse_projects_text(new_text, home_p, fixtures_root)
     errors = [i for i in issues if i.severity == "error"]

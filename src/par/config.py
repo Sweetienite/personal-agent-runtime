@@ -404,6 +404,7 @@ def default_harness_settings(home: "str | os.PathLike[str] | None" = None) -> Ha
 
 ID_PATTERN = _ID  # public alias: project ids follow the same rule as every other id
 PROJECT_VCS = frozenset({"auto", "git", "none"})
+PROJECT_CONTEXT_MODES = frozenset({"harness", "generic"})
 
 
 FIXTURE_MARKER = ".par-fixture.json"
@@ -412,7 +413,7 @@ FIXTURES_DIR = "fixtures"
 
 @dataclass(frozen=True)
 class ProjectEntry:
-    """A registered Harness project. Registration records where it is, never what is in it."""
+    """A registered project. Registration records where it is, never what is in it."""
 
     id: str
     path: Path
@@ -420,6 +421,7 @@ class ProjectEntry:
     write_enabled: bool = False  # a real project is written only after `par project enable-write` (readiness checked, the person typed its id)
     fixture: bool = False        # a throw-away project the Runtime made itself (`par fixture create`): always writable
     write_approved: str = ""     # YYYY-MM-DD: the day the person switched writes on for a real project (empty for fixtures and read-only projects)
+    context_mode: str = "harness"  # harness | generic; entries written before this field existed keep the Harness behaviour
 
 
 def fixture_problem(root: Path, project_id: str, fixtures_root: "Path | None") -> "str | None":
@@ -497,7 +499,7 @@ def build_projects(raw: dict, c: _Issues, home: "str | os.PathLike[str] | None" 
         _scan_secrets(p, where, c)  # an entry that invites a secret is dropped whole
         if any(i.severity == "error" for i in c.items[before:]):
             continue
-        _unknown_keys(p, {"path", "vcs", "write_enabled", "fixture", "write_approved"}, where, c)
+        _unknown_keys(p, {"path", "vcs", "write_enabled", "fixture", "write_approved", "context_mode"}, where, c)
         raw_path = p.get("path")
         expanded = os.path.expanduser(raw_path) if isinstance(raw_path, str) else ""
         if not expanded or not os.path.isabs(expanded):
@@ -510,6 +512,10 @@ def build_projects(raw: dict, c: _Issues, home: "str | os.PathLike[str] | None" 
         vcs = p.get("vcs", "auto")
         if not isinstance(vcs, str) or vcs not in PROJECT_VCS:
             c.err(f"{where}.vcs", f"must be one of {sorted(PROJECT_VCS)}")
+            continue
+        mode = p.get("context_mode", "harness")
+        if not isinstance(mode, str) or mode not in PROJECT_CONTEXT_MODES:
+            c.err(f"{where}.context_mode", f"must be one of {sorted(PROJECT_CONTEXT_MODES)}")
             continue
         fixture, write = p.get("fixture", False), p.get("write_enabled", False)
         if not isinstance(fixture, bool) or not isinstance(write, bool):
@@ -540,7 +546,7 @@ def build_projects(raw: dict, c: _Issues, home: "str | os.PathLike[str] | None" 
             c.err(f"{where}.path", f"is already registered as {seen[real]!r}")
             continue
         seen[real] = pid
-        projects[pid] = ProjectEntry(pid, root, vcs, write, fixture, approved if isinstance(approved, str) else "")
+        projects[pid] = ProjectEntry(pid, root, vcs, write, fixture, approved if isinstance(approved, str) else "", mode)
     return projects
 
 
