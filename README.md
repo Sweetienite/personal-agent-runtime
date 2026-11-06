@@ -4,7 +4,7 @@
 
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它既支持普通 Git 仓库（默认的 generic 模式，不需要 `AGENTS.md` / `.ai/STATE.md`），也能复用已有的 AI Harness（Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`，用 `--context-mode harness`），不新建第二份项目记忆。
+本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它既支持普通 Git 仓库（默认的 generic 模式，不需要 `AGENTS.md` / `.ai/STATE.md`），也能复用已有的 AI Harness（可选的进阶模式：Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`，用 `--context-mode harness`），不新建第二份项目记忆。
 
 > **版本 `1.0.0`**：真实的写入、批准、验收全流程都已跑通并通过人工验收；Codex 与 Claude Desktop 两种主控都已接入并验证过连通；完整验收记录见 [docs/reports/V1_ACCEPTANCE_REPORT_20261016.md](docs/reports/V1_ACCEPTANCE_REPORT_20261016.md)。
 > 目前有两个真实适配器：Codex（ChatGPT 订阅登录）与 Antigravity（Google 登录，经系统钥匙串）。**默认没有任何适配器**：只有配置里显式启用了 `codex` / `antigravity` 并写明可执行文件的绝对路径才会注册。测试套件全程使用假的 codex / agy 程序，**真实模型调用只在你逐项批准后才会发生**。

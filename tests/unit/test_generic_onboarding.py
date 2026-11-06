@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -76,6 +77,18 @@ class Registration(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("readme", out)
         self.assertIn("README.md", out)
+
+    def test_the_mode_is_visible_in_show_list_and_doctor(self):
+        add_project(self.data, "plain", self.plain, home=self.home, context_mode="generic")
+        code, out, _ = run_cli("project", "show", "plain", "--data-dir", str(self.data))
+        self.assertEqual(code, 0, out)
+        self.assertIn("Context   generic", out)
+        code, out, _ = run_cli("project", "list", "--json", "--data-dir", str(self.data))
+        self.assertEqual(code, 0, out)
+        self.assertEqual(json.loads(out)[0]["context_mode"], "generic")
+        code, out, _ = run_cli("doctor", "--data-dir", str(self.data))
+        self.assertEqual(code, 0, out)
+        self.assertIn("1 generic / 0 harness", out)
 
     def test_the_cli_default_registers_a_plain_project_as_generic(self):
         before = tree_digest(self.plain)

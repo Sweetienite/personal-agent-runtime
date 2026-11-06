@@ -146,8 +146,11 @@ def _git_line(g: dict) -> str:
     return f"git {g.get('branch')}@{(g.get('head_full') or g.get('head') or '')[:12]}{track}, " + (f"{dirty} uncommitted" if dirty else "clean")
 
 
-def _render_project(v: ProjectView, w: WriteReadiness, m: "ContextManifest | None", show_entries: bool) -> str:
+def _render_project(v: ProjectView, w: WriteReadiness, m: "ContextManifest | None", show_entries: bool,
+                   context_mode: str = "harness") -> str:
     L = [f"Project   {v.id}  {v.root}  vcs: {v.vcs_declared}"]
+    L.append("Context   " + ("generic (README/AGENTS/CLAUDE + Git facts; no parent contract)" if context_mode == "generic"
+                             else "harness (AGENTS.md + .ai/STATE.md + active contract)"))
     if not v.exists:
         L.append("          the folder does not exist")
     if v.rules:
@@ -291,19 +294,20 @@ def _cmd_project_list(args: argparse.Namespace) -> int:
         a = default_context(entry, Path.home())
         v = a.view()
         w = a.write_readiness(v)
-        rows.append((v, w))
+        rows.append((entry, v, w))
     if args.json:
         doc = [{"id": v.id, "root": v.root, "exists": v.exists, "state_bytes": v.state.bytes if v.state else None,
                 "state_oversized": bool(v.state and v.state.oversized), "contract_state": v.contract_state,
+                "context_mode": entry.context_mode,
                 "git": {k: v.git.get(k) for k in ("is_repo", "branch", "head_full", "ahead", "behind")},
-                "write_allowed": w.allowed, "blockers": [b.code for b in w.blockers]} for v, w in rows]
+                "write_allowed": w.allowed, "blockers": [b.code for b in w.blockers]} for entry, v, w in rows]
         print(json.dumps(redact_obj(doc, home=str(Path.home())), ensure_ascii=False))
         return 0
     print(f"Registered projects ({len(rows)}) - real projects are read-only until you run `par project enable-write ID`")
-    for v, w in rows:
+    for entry, v, w in rows:
         st = f"STATE {v.state.bytes} B" + (" OVERSIZED" if v.state.oversized else "") if v.state else "no STATE"
-        writes = "ALLOWED (fixture)" if w.allowed else f"BLOCKED ({len(w.blockers)})"
-        print(redact_text(f"  {v.id:<14} {v.root}  {st}  contract: {v.contract_state}  {_git_line(v.git)}  writes: {writes}", home=str(Path.home())))
+        writes = ("ALLOWED" + (" (fixture)" if entry.fixture else "")) if w.allowed else f"BLOCKED ({len(w.blockers)})"
+        print(redact_text(f"  {v.id:<14} {v.root}  {entry.context_mode}  {st}  contract: {v.contract_state}  {_git_line(v.git)}  writes: {writes}", home=str(Path.home())))
     if not rows:
         print("  (none yet: `par project add ID PATH`)")
     return 0
@@ -327,7 +331,7 @@ def _cmd_project_show(args: argparse.Namespace) -> int:
                "manifest": m.to_dict()}
         print(json.dumps(redact_obj(doc, home=home), ensure_ascii=False))
     else:
-        print(redact_text(_render_project(v, w, m, args.manifest), home=home))
+        print(redact_text(_render_project(v, w, m, args.manifest, reg.projects[args.id].context_mode), home=home))
     return 0
 
 
