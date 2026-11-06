@@ -14,9 +14,12 @@ import signal
 import sqlite3
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 from par.config import ProviderEntry, RuntimeConfig, load_config
+from par.context.resolver import default_context
+from par.core.draft import NEEDS_DECISION, READY, compile_draft
 from par.core.contract import MAX_CONTRACT_BYTES
 from par.core.kernel import Busy, Kernel, KernelError, NotAllowed, Refused, UnknownTask
 from par.core.policy import PolicyViolation
@@ -227,6 +230,41 @@ def cmd_submit(args):
         if res.pending_approvals:
             print(f"  waiting for your approval: par task approve {res.task_id}")
     return 0
+
+
+@handled
+def cmd_draft(args):
+    try:
+        text = _read_contract(args.draft)
+    except OSError as exc:
+        _error(f"cannot read the draft: {exc.strerror or exc}")
+        return 2
+    try:
+        draft = json.loads(text)
+    except json.JSONDecodeError as exc:
+        _error(f"the draft is not valid JSON: {exc}")
+        return 2
+    with session(args) as kernel:
+        project = kernel.projects.get(draft.get("project_id")) if isinstance(draft, Mapping) else None
+        state = None
+        if project is not None and project.context_mode == "harness":
+            state = default_context(project, kernel.home).view().contract_state
+        result = compile_draft(draft, config=kernel.config, projects=kernel.projects, contract_state=state)
+    if args.json:
+        print(json.dumps({"status": result.status, "contract": result.contract, "questions": list(result.questions),
+                          "warnings": list(result.warnings)}, ensure_ascii=False, indent=2))
+    elif result.status == READY:
+        print(result.contract_json())
+        for warning in result.warnings:
+            print("note: " + warning, file=sys.stderr)
+        print("not submitted: review allowed_paths and checks, then `par task submit --contract FILE`", file=sys.stderr)
+    else:
+        print(f"needs a decision ({len(result.questions)}):")
+        for n, question in enumerate(result.questions, 1):
+            print(f"  {n}. {question}")
+        for warning in result.warnings:
+            print("note: " + warning)
+    return 0 if result.status == READY else 2
 
 
 @handled
@@ -520,6 +558,11 @@ def register(sub) -> None:
                    help="only validate the contract; nothing is submitted, no task/event/approval is written")
     _common(c)
     c.set_defaults(func=cmd_submit)
+
+    c = actions.add_parser("draft", help="compile a short draft into a strict contract (prints it; submits nothing)")
+    c.add_argument("--draft", required=True, metavar="FILE", help="draft JSON file, or - for standard input")
+    _common(c)
+    c.set_defaults(func=cmd_draft)
 
     c = actions.add_parser("list", help="list tasks")
     c.add_argument("--status")

@@ -53,6 +53,8 @@ python3 -B -m unittest discover -s tests -t .           # ~1370 tests, single pr
 python3 -B tests/tools/parallel_tests.py                # the same tests, parallelized across modules, ~1 min
 ```
 
+If writing the full contract JSON is the friction, `par task draft --draft FILE` compiles a short draft (project, goal, risk, paths, checks) into the same strict contract: role, ad-hoc and the idempotency key are derived deterministically, a missing path or check becomes a question (exit 2) instead of a guess, and it only prints - it never submits and never adds a command from repository files.
+
 From here: configure a provider (`config/providers.example.toml`), register a project with `par project add ID PATH` (an ordinary Git repository needs no `AGENTS.md` or `.ai/STATE.md` — that is the default generic mode; `--context-mode harness` is the optional advanced mode that keeps the parent-contract rules, and `--scaffold-harness` writes minimal starters only when you ask for them, never overwriting anything that exists), and `par project enable-write ID` when you're ready to let it touch real files. Every write still waits for your explicit per-task approval. Full detail (exit codes, troubleshooting, baseline workflow) is in `docs/OPERATIONS.md`.
 
 ## Design boundaries (enforced in code, not just documented)

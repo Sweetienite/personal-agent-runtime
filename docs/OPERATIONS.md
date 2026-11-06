@@ -26,6 +26,7 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 | `par project enable-write ID [--confirm ID]` / `disable-write ID` | **P8 的写入开关**（只对真实项目）：`enable-write` 先体检（基线干净、有 git、git 里看不到敏感路径；Harness 项目还要求 STATE 不超 15 KB、恰好一份生效的主合同），不通过就列出原因并且什么都不改；通过后加 `--confirm ID`（再敲一遍项目 id）才真的打开。只改 `projects.toml` 里该项目的两行（旧文件留作 `*.par-backup-<时间>`），并在 `logs/project_writes.jsonl` 记一行。`disable-write` 随时可用 |
 | `par project list [--json]` | 已登记项目一览 |
 | `par project show ID [--manifest] [--json]` | 事实、写入就绪、Context Manifest |
+| `par task draft --draft FILE\|-` `[--json]` | 把最小草案（项目、目标、risk、allowed_paths、acceptance）编译成严格合同；**只打印，不提交**；缺安全关键字段时以退出码 2 返回问题清单，不产出合同 |
 | `par task submit --contract FILE\|-` `[--by user\|coordinator]` `[--check]` | 校验合同并入队；相同幂等键+相同合同返回原任务。`--check`：只做校验，**不入队**——不写任务、不写事件、不记批准，只报告合同是否通过以及会问你批准哪些事项（`WRITE_PERMISSION`/`WORKER_OVERRIDE`），拒绝时和不加 `--check` 报的原因完全一样 |
 | `par task list [--waiting]` `status T` `events T` `result T` `diff T` | 只读查看：状态与你下一步能做什么、事件日志、结果信封、补丁（不应用到任何地方）；`--waiting`（2026-11-03 新增）只列出需要你决定才能往下走的任务（待批准、待验收、待恢复、卡在额度/登录/限速/没有可用 Worker 上） |
 | `par task run T` / `par task run --next` | 前台跑**一次** attempt；Ctrl-C 或 SIGTERM 会停掉 Worker 并留下干净记录 |
@@ -175,7 +176,8 @@ par task accept simproj-0001                       # 接受（只是记录；不
 
 - 只自动批准两种：`WRITE_PERMISSION` 的 `allowed_paths` 和契约里写的完全一样；`WORKER_OVERRIDE` 的 `worker` 和契约里写的完全一样。除此之外任何批准（别的类型、哪怕只是内容不完全一致）都原样报告、留在 `PERMISSION_WAIT`，**既不批准也不拒绝**——拒绝会让任务直接变成已取消，这不该是脚本自己能决定的事。
 - 不加 `--run` 就停在"已批准、排队中"；`--run` 才会 `par task run`，而且只跑这一次，跑完报告结果就停，不自动重试、不换 Worker、也不管后面可能又冒出来的批准。跑完如果是「待验收」（`REVIEW_REQUIRED`），会直接把 `par task result`/`par task diff` 的内容打出来，不用再手动敲两条命令——但 accept 和落地（`ops/land_task.py`）还是两步独立的动作，不会被这里一起做掉。
-- 写契约容易第一次就写错（`R1` 不能带 `allowed_paths`、ad-hoc 任务不能是 `R2`、`checks` 只能用白名单里的可执行文件……）：先用 `par task submit --contract FILE --check` 校验一遍，通过了才真的提交或交给 `start_task.py`，省得每次试错都真的碰一下台账。
+- 写契约容易第一次就写错（`R1` 不能带 `allowed_paths`、Harness 项目的 ad-hoc 不能是 `R2`、`checks` 的程序必须是 Kernel 能解析的 `python`/`python3` 或可信目录里的程序……）：先用 `par task submit --contract FILE --check` 校验一遍，通过了才真的提交或交给 `start_task.py`，省得每次试错都真的碰一下台账。
+- 机械字段（role 默认、ad_hoc、幂等键）可以交给草案编译器：`par task draft --draft draft.json` 只打印合同、不提交；`allowed_paths` 或写任务的 `checks` 缺失时它会列出问题并以退出码 2 结束，不会猜一个路径或自动从 README 里挑命令。
 
 ## 清理已关闭任务的占用（`ops/cleanup_tasks.py`）
 

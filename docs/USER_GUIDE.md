@@ -129,6 +129,24 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 4. 上下文只有仓库里已有的 `README.md`、`AGENTS.md`、`CLAUDE.md`（存在才读）加 git 事实。`AGENTS.md` 和 `CLAUDE.md` 同时存在时，清单会把两份都列出来并注明冲突，不会替你决定谁优先；它们都是**不可信项目数据**，不能改 Kernel 的权限。
 5. 想回到原来的 Harness 规则：`par project add ID PATH --context-mode harness`（缺文件时加 `--scaffold-harness`）。两种模式共用同一套写入开关、路径白名单、私有副本和 Kernel 验收。
 
+### 3.5 用草案少写机械字段（可选）
+
+完整 JSON 太啰嗦时，可以只给最小草案：
+
+```json
+{
+  "project_id": "simproj",
+  "title": "Fix the solver step",
+  "description": "Make choose_dt return the documented step.",
+  "risk": "R2",
+  "allowed_paths": ["src/solver/"],
+  "acceptance": {"criteria": ["the solver test passes"],
+                 "checks": [{"name": "solver", "argv": ["python3", "-m", "unittest", "tests/test_solver.py"]}]}
+}
+```
+
+`par task draft --draft draft.json > /tmp/task.json` 只打印严格合同，**不提交**：role 默认 `code`，ad_hoc 按项目模式推导，幂等键由内容确定性生成。缺 `allowed_paths`、写任务缺 `checks`、项目/worker 不存在、Harness 项目没有唯一主合同时，命令以退出码 2 列出问题，不会猜一个路径，也不会从 README 里自动挑命令。确认 `allowed_paths` 与 `checks` 后再 `par task submit --contract /tmp/task.json`。
+
 ## 3A. 第一次真实写入：完整走一遍
 
 建议第一次真实写入选一个小项目练手——一个小文本库、一个脚本工具，什么都行，只要你不在乎它被改坏。下面假设这个项目注册时用的 id 是 `myproject`。
