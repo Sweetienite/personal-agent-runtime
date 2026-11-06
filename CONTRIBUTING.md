@@ -11,14 +11,18 @@ This is a solo-maintained personal tool, open-sourced as-is. Issues and small, f
 ## Running the test suite
 
 ```bash
-python3 -B -m unittest discover -s tests -t .      # full suite, ~1400 tests
+python3 -B -m unittest discover -s tests -t .      # full suite, ~1545 tests
 python3 -B tests/tools/parallel_tests.py            # the same, parallelized, faster
 ```
 
-CI runs two separate checks on `macos-latest`, neither of which is the full suite:
+CI runs three explicitly named checks, none of which is the full suite.
+For a stranger-machine reproduction of the whole zero-account path, see [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
-- `smoke_install` — `pip install -e .`, `par doctor`, `par version`.
-- `core_unittests` — the state, store, contract, approval and policy regressions:
+- `smoke_install` (macOS) — `pip install -e .`, `par doctor`, `par version`.
+- `core_unittests` (macOS) — the state, store, contract, approval, policy, hand-off and integration regressions:
+- `linux_security_core` (Ubuntu) — `pip install -e .`, `par doctor` (WARN for an untested platform, exit 0),
+  `par version`, then the platform-independent security regressions in `docs/SECURITY.md`'s matrix
+  (states, contract, policy, redaction, paths, provider probe, `test_p3_security_audit`).
 
 ```bash
 python3 -B -m unittest tests.unit.test_states tests.unit.test_store tests.unit.test_contract \
@@ -29,7 +33,12 @@ python3 -B -m unittest tests.unit.test_states tests.unit.test_store tests.unit.t
     tests.unit.test_p3_security_audit
 ```
 
-The rest of the suite still runs only on a developer's macOS machine: some tests assume a single-user machine (the real Codex/Antigravity adapters refuse GitHub's group-writable Python), and others expect macOS-specific `doctor` checks or a larger `ARG_MAX`. Those are real safety checks, so CI stays narrow rather than weakening them.
+The rest of the suite still runs only on a developer's machine: some tests assume a single-user macOS
+machine (the real Codex/Antigravity adapters refuse GitHub's group-writable Python), and others expect
+macOS-specific `doctor` checks or a larger `ARG_MAX`. Those are real safety checks, so CI stays narrow
+rather than weakening them. The Linux job deliberately repeats the security regressions that have no
+platform dependency; it does **not** claim Linux support for the real adapters. Known platform gaps are
+graded in [docs/SECURITY.md](docs/SECURITY.md).
 
 No network access and no real model calls happen in the test suite — everything runs against scripted fake CLIs.
 

@@ -34,6 +34,15 @@ By late 2026 a small cluster of "orchestrate CLI coding agents" tools had appear
 
 If your need is "coordinate many agents across machines fast," this is probably the wrong tool. If your need is "let an LLM actually touch my code, but never *just believe* it," this is what PAR is built for.
 
+## Start here if you have never used PAR
+
+The full stranger-machine walkthrough (isolated data directory, no account, fake smoke, an ordinary
+Git repository, manual hand-off, and a dated log of what actually ran) is in
+[docs/QUICKSTART.md](docs/QUICKSTART.md). [docs/MODES.md](docs/MODES.md) explains who the coordinator is,
+who the Worker is, and why accepted / candidate-verified / applied are three different states.
+**Set `PAR_DATA_DIR` to an empty directory before the first run** - otherwise `par doctor` reads
+whatever configuration already exists in the default macOS data directory.
+
 ## Try it with nothing configured (2 minutes, no API key, no login)
 
 Before setting up anything real, you can watch the whole pipeline — contract → Worker → private clone → Kernel re-verification → result — run end to end against **scripted fake CLIs**, no vendor account needed:
@@ -59,7 +68,7 @@ cd personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .     # or: python3.12 -m venv .venv && .venv/bin/pip install -e .
 .venv/bin/par init                                      # creates its own data directory (mode 0700)
 .venv/bin/par doctor                                    # should be all PASS, providers disabled until you configure one
-python3 -B -m unittest discover -s tests -t .           # ~1370 tests, single process, ~6-9 min, no network, no model calls
+python3 -B -m unittest discover -s tests -t .           # ~1545 tests, single process, ~6-9 min, no network, no model calls
 python3 -B tests/tools/parallel_tests.py                # the same tests, parallelized across modules, ~1 min
 ```
 
@@ -74,6 +83,23 @@ From here: configure a provider (`config/providers.example.toml`), register a pr
 - State transitions go through one explicit table, enforced a second time by a database trigger — not just application-level checks.
 - A result's own "tests pass" claim is never trusted; only the Kernel's own check runs count.
 - Nothing is ever applied to a real project automatically. A result stays a diff until you run `git apply` yourself.
+
+## Release status
+
+As of 2026-11-06 the recommendation is **not to tag a new release yet**: there is no GREEN provider
+candidate (T14 is BLOCKED_BY_EVIDENCE), the bundled Codex binary is an alpha, and platform evidence
+is incomplete. The full checklist and unlock conditions are in
+[docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md). Tagging needs a separate approval.
+
+## What the CI badge means
+
+Three named jobs: `smoke_install` (macOS install + doctor + version), `core_unittests`
+(macOS core state/contract/approval/hand-off/integration regressions) and `linux_security_core`
+(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1545-test
+suite passes in CI**; the remaining modules run only on a developer's Mac, and four
+process-termination modules fail in the local sandbox with a failure set identical to the unmodified
+baseline. See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/SECURITY.md](docs/SECURITY.md).
+`docs/reports/` are historical snapshots of the version that was tested then, not current support claims.
 
 ## What's here, in English, vs. what stays in Chinese
 

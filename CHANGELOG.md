@@ -62,6 +62,17 @@ Documentation and metadata corrections only — no behavior change:
   Ubuntu, so a platform difference cannot silently skip a security behaviour. No new
   OS-sandbox or full Windows support is claimed.
 
+- Public documentation and release review (T16): added `docs/QUICKSTART.md` (a dated,
+  stranger-machine reproduction using an isolated `PAR_DATA_DIR`: install, `par doctor` 5 PASS / 0 FAIL,
+  fake CLI R1+R2 smoke, an ordinary Git repository registered in generic mode, and a manual hand-off
+  packet), `docs/MODES.md` (three independent roles, three collaboration paths, and the
+  ACCEPTED / CANDIDATE_READY / APPLIED distinction), `docs/reports/README.md` (historical snapshots are
+  not current support claims; the old P1-P8 phases are distinct from this round's P0-P3), and
+  `docs/RELEASE_NOTES_2026-11.md` with an explicit **recommendation not to tag a new release yet**
+  (T14 is BLOCKED_BY_EVIDENCE, the bundled Codex binary is an alpha, platform evidence is incomplete).
+  README / README.en / CONTRIBUTING / AGENTS were aligned: ~1545 tests, three named CI jobs, a badge that
+  does not mean the full suite, no stale private paths, and honest historical-report framing.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:
