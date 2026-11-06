@@ -133,7 +133,7 @@ def add_project(data_dir: "str | os.PathLike[str]", project_id: str, path: "str 
              f"path = {json.dumps(_display(root, home_p), ensure_ascii=False)}\n"
              f'vcs = "{vcs}"\n'
              + ("fixture = true\nwrite_enabled = true\n" if fixture else "write_enabled = false\n")
-             + f'context_mode = "{context_mode}"\n')
+             + (f'context_mode = "{context_mode}"\n' if context_mode != "harness" else ""))
     new_text = existing.rstrip("\n") + "\n" + block
     projects, issues = parse_projects_text(new_text, home_p, fixtures_root)
     errors = [i for i in issues if i.severity == "error"]

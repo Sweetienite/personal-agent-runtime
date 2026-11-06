@@ -59,7 +59,7 @@ Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一
 
 ## Generic 模式（普通 Git 仓库）
 
-`par project add ID PATH` 默认登记为 generic：普通 Git 仓库即可，不要求也不写 `AGENTS.md` / `.ai/STATE.md`。旧 `projects.toml` 里没有 `context_mode` 的条目保持 harness 行为（迁移见 T06）。
+`par project add ID PATH` 默认登记为 generic：普通 Git 仓库即可，不要求也不写 `AGENTS.md` / `.ai/STATE.md`。旧 `projects.toml` 里没有 `context_mode` 的条目保持 harness 行为（回退步骤见 `docs/OPERATIONS.md` 的「兼容与回退」）。
 
 - 上下文只读仓库已有的 `README.md`（清单 kind `readme`）、`AGENTS.md`（`rules`）、`CLAUDE.md`（`bridge`），加 git 事实；没有文件也合法。
 - `AGENTS.md` 与 `CLAUDE.md` 同时存在且后者不是 `@AGENTS.md` 时，清单两份都列、写明冲突，不替你决定优先级。两者都是不可信项目数据，不能改 Kernel 权限。

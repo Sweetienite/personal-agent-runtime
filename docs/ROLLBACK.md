@@ -102,6 +102,12 @@ python3 -B -I ~/Documents/AI_Harness_Core/scripts/sync_runtime_core.py --check  
 - Worker 的副本不会被自动清理（它们是证据）。确认不再需要后，你自己删除 `tasks/` 下对应目录即可；删除前请先确认没有 `RUNNING` / `RECOVERY_REQUIRED` 的任务在用它们。
 - 如果 `par task run` 被强行杀掉，下一次 `par task run` 或 `par task recover` 会结算遗留的 attempt；不需要手工清理数据库。
 
+## P1 上下文模式（2026-11）
+
+- 没有数据库迁移：旧任务、审批与 attempt 记录原样可读；回退代码不需要还原台账。
+- 旧 `projects.toml` 没有 `context_mode` → `harness`；harness 的新注册也不写这一行。
+- 回退到 P1 之前的代码：先备份 `projects.toml`，再删除 generic 条目里的 `context_mode = "generic"`（旧版本会把它当未知字段、整条丢弃），或恢复 `projects.toml.par-backup-*`。不要删除项目目录或台账。
+
 ## 没有改动的东西（回滚时不必担心）
 
 - 各项目的 `AGENTS.md`、`CLAUDE.md`、`.ai/STATE.md`、`.ai/tasks/`，哈希前后一致。

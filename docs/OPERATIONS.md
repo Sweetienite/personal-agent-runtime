@@ -61,6 +61,13 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 
 `harness check --save-baseline` 表示「我已看过，接受这个状态」，所以此时只有 FAIL 会让退出码变 1。
 
+## 兼容与回退（P1 上下文模式）
+
+- `projects.toml` 里**没有** `context_mode` 的条目按 `harness` 处理；generic 注册会写 `context_mode = "generic"`，harness 注册不写这一行，所以旧版本仍能读回原来的 Harness 项目。
+- 没有 SQLite schema 迁移，也没有自动改写旧配置：`par doctor` / `par project show` 只读显示当前模式，不会“修正”旧记录。
+- 回退到 P1 之前的版本：先备份 `projects.toml`，再移除 generic 条目里的 `context_mode = "generic"`（旧版本会把它当未知字段，整条丢弃），或恢复 `projects.toml.par-backup-*`。harness 条目本来就没有这一行。
+- 已排队/暂停/待验收的任务保留当时的合同与基线；新配置只影响新提交的任务。不要为了“迁移”清空台账。
+
 ## 配置：Profile 与 Provider（P2 起使用）
 
 任务的路由由你的配置决定，放在数据目录的 `config/` 下（建议 `chmod 600`）：

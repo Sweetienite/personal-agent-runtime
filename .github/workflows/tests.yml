@@ -47,3 +47,4 @@ jobs:
           tests.unit.test_kernel_policy
           tests.unit.test_context_interface
           tests.unit.test_generic_project
+          tests.unit.test_p1_compat
