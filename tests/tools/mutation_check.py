@@ -341,6 +341,10 @@ MUTATIONS = [
     ('M633', 'a Harness project accepts an ad-hoc write task', 'src/par/core/kernel.py', '            if contract.ad_hoc and contract.risk == "R2":', '            if False:', T + 'test_generic_project'),
     ('M634', 'a generic write starts on a dirty base', 'src/par/context/generic.py', '            if dirty:', '            if False:', T + 'test_generic_context'),
     ('M635', 'a generic write starts while writes are switched off', 'src/par/context/generic.py', '        if not self.project.write_enabled and not assume_enabled:', '        if False:', T + 'test_generic_context'),
+    ('M636', 'a write draft without allowed_paths gets a contract', 'src/par/core/draft.py', '        if not isinstance(paths, list) or not paths or not all(_nonempty(p) for p in paths):', '        if False:', T + 'test_task_draft'),
+    ('M637', 'a write draft without checks gets a contract', 'src/par/core/draft.py', '        if not isinstance(checks, list) or not checks:', '        if False:', T + 'test_task_draft'),
+    ('M638', 'a generic project is compiled as a Harness ad-hoc task', 'src/par/core/draft.py', '        if project.context_mode == "generic":', '        if False:', T + 'test_task_draft'),
+    ('M639', 'a check program the Kernel cannot run is accepted into the contract', 'src/par/core/draft.py', '            if isinstance(argv, list) and argv and isinstance(argv[0], str) and resolve_executable(argv[0]) is None:', '            if False:', T + 'test_task_draft'),
 ]
 
 

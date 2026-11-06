@@ -48,3 +48,4 @@ jobs:
           tests.unit.test_context_interface
           tests.unit.test_generic_project
           tests.unit.test_p1_compat
+          tests.unit.test_task_draft

@@ -20,6 +20,7 @@
 | `par project add ID PATH [--context-mode generic\|harness] [--scaffold-harness]` | 登记一个项目（只记录 id、路径、vcs、上下文模式，登记后写入是关着的；打开写入见 `enable-write`）。默认 generic：普通 Git 仓库即可，不要求也不写 `AGENTS.md`/`.ai/STATE.md`；`--context-mode harness` 沿用 Harness 规则；`--scaffold-harness` 只在显式要求时补缺失的极简模板，绝不覆盖已有文件 | 仅 Runtime 自己的 `projects.toml`；带 `--scaffold-harness` 时额外在项目里补缺失的那两个文件 |
 | `par project enable-write ID [--confirm ID]` / `disable-write ID` | **写入开关**（真实项目）：先体检，不过关就列原因、什么都不改；过关后再敲一遍项目 id 才生效；留备份与审计行 | `projects.toml`（旧文件留备份）与 `logs/project_writes.jsonl` |
 | `par project list` / `show ID` | 项目事实、**写入就绪**（谁在拦）、给 Worker 的 **Context Manifest** | 否 |
+| `par task draft --draft FILE` | 把最小草案编译成严格合同：默认 role、ad_hoc、幂等键；缺路径/检查时列问题而不是猜；**只打印，不提交** | 否（会打开台账但不写任务） |
 | `par task submit --contract FILE` | 校验任务合同并入队（幂等）；写任务等你批准 | 仅 Runtime 自己的台账 |
 | `par task run T` / `--next` | 前台跑一次 attempt（私有克隆里，Kernel 自己测改动与跑检查） | 台账与 `tasks/…`；**不碰项目** |
 | `par task status / events / result / diff T` | 状态与下一步、事件日志、结果信封、补丁（只显示，不应用） | 否 |

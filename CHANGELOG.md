@@ -12,6 +12,8 @@ Documentation and metadata corrections only — no behavior change:
 - The Antigravity account/terms limitation is stated where the adapters are introduced, and `USER_GUIDE.md` no longer describes the removed web console.
 - An ordinary Git repository can now be registered without the Harness convention: `par project add` defaults to `context_mode = "generic"`, which reads `README.md` / `AGENTS.md` / `CLAUDE.md` (when present) and the Git facts, and accepts an `ad_hoc` R2 contract once writes are switched on and the base is clean. `--context-mode harness` keeps the old parent-contract rules; registry entries written before the field keep the Harness behaviour. The mode is visible in `par project show`, `par project list --json` and `par doctor`. There is no data migration: entries without the field keep the Harness behaviour, and a Harness registration does not write the field, so older builds can still read it.
 
+- `par task draft --draft FILE` compiles a short draft (project, goal, risk, paths, checks) into the same strict contract, deriving role, the ad-hoc flag and the idempotency key deterministically. A missing path, a missing check for a write task, an unknown project/worker/role or a Harness project without one active contract returns a question list and exit code 2 instead of a contract. It prints and never submits; it reads no repository files and never adds a command from a README.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:
