@@ -6,6 +6,7 @@ unverified.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Iterable, Mapping
 
 from par import schema
@@ -14,6 +15,10 @@ from par.providers.base import ProviderEvent
 
 SUMMARY_MAX = 1200
 NO_SUMMARY = "(the worker gave no summary)"
+EVIDENCE_PATHS_MAX = 10
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+_REVIEW = frozenset({"NOT_REVIEWED", "HUMAN_REVIEW", "COORDINATOR_REVIEW", "UNKNOWN"})
+_INTEGRATION = frozenset({"NOT_INTEGRATED", "CANDIDATE_READY", "INTEGRATED", "UNKNOWN"})
 
 
 def worker_summary(events: "Iterable[ProviderEvent]") -> str:
@@ -91,6 +96,126 @@ def build_envelope(**fields: Any) -> "dict[str, Any]":
 
 def envelope_problems(envelope: Mapping[str, Any]) -> "list[str]":
     return schema.check(dict(envelope), "result")
+
+
+# --- evidence, derived from the envelope -------------------------------------------------------------------------
+def _safe(value: Any, limit: int = 200) -> str:
+    """Anything taken from a result may be old or hand-made: redact it, strip control characters, cap it."""
+    text = redact_text(str(value))
+    return _CONTROL.sub("", text)[:limit]
+
+
+def _check_inputs(checks: "Iterable[Mapping[str, Any]]") -> "set[str]":
+    """Files a check runs, when its argv names them. Module names (tests.unit.test_x) become paths too."""
+    out: "set[str]" = set()
+    for spec in checks:
+        argv = spec.get("argv") if isinstance(spec, Mapping) else None
+        if not isinstance(argv, list):
+            continue
+        for token in argv[1:]:
+            if not isinstance(token, str):
+                continue
+            value = token.strip()
+            while value.startswith("./"):
+                value = value[2:]
+            if not value or any(ch in value for ch in "*?[") or value.startswith("-"):
+                continue
+            if value.startswith(("tests/", "test/", "spec/")):
+                out.add(value)
+            elif value.endswith(".py") and "/" in value:
+                out.add(value)
+            elif value.startswith(("tests.", "test.")) and "/" not in value:
+                out.add(value.replace(".", "/") + ".py")
+    return out
+
+
+def _looks_like_test_file(path: str) -> bool:
+    name = path.rsplit("/", 1)[-1]
+    return (path.startswith(("tests/", "test/", "spec/")) or name.startswith("test_")
+            or name.endswith(("_test.py", ".test.js", ".test.ts", ".spec.js", ".spec.ts")) or name == "conftest.py")
+
+
+def evidence_summary(result: "Mapping[str, Any] | None", *, contract_checks: "Iterable[Mapping[str, Any]]" = (),
+                     changed_paths: "Iterable[str] | None" = None, worker_can_edit_checks: bool = False,
+                     review: str = "NOT_REVIEWED", status: "str | None" = None,
+                     integration: str = "NOT_INTEGRATED") -> "dict[str, Any]":
+    """A layered, derived view of one result - never a new source of truth and never a claim that work is complete.
+
+    ``tests`` and ``boundary`` are the Kernel's own measurements. ``claim`` is the Worker's statement and stays
+    unverified. ``level`` says which of those a person is looking at, so ``REVIEW_REQUIRED`` or ``ACCEPTED`` cannot be
+    read as "the feature is done": nothing is applied to the project, and integration is its own question.
+    """
+    result = result if isinstance(result, Mapping) else {}
+    checks = [c for c in contract_checks if isinstance(c, Mapping)]
+    names = [str(c["name"]) for c in checks if isinstance(c.get("name"), str) and c["name"]]
+    tests = [t for t in result.get("tests", []) if isinstance(t, Mapping)] if isinstance(result.get("tests"), list) else []
+    by_name = {str(t.get("name")): str(t.get("status")) for t in tests if t.get("name") is not None}
+    failed = sorted(name for name, state in by_name.items() if state != "PASS")
+    never_run = [name for name in names if name not in by_name]
+    outcome = result.get("outcome")
+    paths = [str(p) for p in changed_paths] if changed_paths is not None else None
+    inputs = _check_inputs(checks)
+    inputs_edited = sorted(inputs & set(paths)) if paths is not None else []
+    test_files_changed = sorted(p for p in (paths or []) if _looks_like_test_file(p))[:EVIDENCE_PATHS_MAX]
+    edited = bool(inputs_edited or test_files_changed)
+
+    raw_boundary = result.get("boundary")
+    if isinstance(raw_boundary, Mapping):
+        violations = raw_boundary.get("violations") if isinstance(raw_boundary.get("violations"), int) else 0
+        sensitive = raw_boundary.get("sensitive") if isinstance(raw_boundary.get("sensitive"), int) else 0
+        boundary_status = "VIOLATIONS" if violations else ("EXCLUSIONS" if sensitive else "CLEAN")
+        raw_paths = raw_boundary.get("paths") if isinstance(raw_boundary.get("paths"), list) else []
+        boundary = {"status": boundary_status, "violations": violations, "sensitive": sensitive,
+                    "paths": [_safe(p, 200) for p in raw_paths][:EVIDENCE_PATHS_MAX]}
+    else:
+        boundary = {"status": "UNKNOWN", "violations": 0, "sensitive": 0, "paths": []}
+
+    if not result or outcome is None:
+        checks_status, level = "NOT_RUN", "UNKNOWN"
+    elif outcome in ("interrupted", "canceled", "orphaned"):
+        checks_status, level = "NOT_COMPLETED", "INCOMPLETE"
+    elif outcome == "failed":
+        checks_status = ("FAILED" if (failed or never_run) else "PASSED" if tests else "NOT_RUN")
+        level = "FAILED"
+    elif outcome != "completed" or bool(result.get("partial")):
+        checks_status, level = "NOT_COMPLETED", "INCOMPLETE"
+    elif not names and not tests:
+        checks_status, level = "NO_MECHANICAL_CHECK", "UNVERIFIED"
+    elif failed or never_run:
+        checks_status, level = "FAILED", "FAILED"
+    elif edited:
+        checks_status, level = "PASSED_CHECKS_EDITED", "MEASURED_WITH_EDITED_CHECKS"
+    else:
+        checks_status, level = "PASSED", "MEASURED"
+    if boundary["status"] == "VIOLATIONS":
+        level = "FAILED"
+    elif boundary["status"] == "UNKNOWN" and level == "MEASURED":
+        level = "UNKNOWN"
+
+    untested = [f"check {name!r} never ran" for name in never_run]
+    if outcome == "completed" and not result.get("partial") and not names and not tests:
+        untested = ["the contract has no acceptance.checks; nothing mechanical backs this result"]
+
+    review = review if review in _REVIEW else "UNKNOWN"
+    integration = integration if integration in _INTEGRATION else "UNKNOWN"
+    return {
+        "level": level,
+        "task_status": status,
+        "claim": {"text": _safe(result.get("summary", ""), SUMMARY_MAX), "verified": False},
+        "boundary": boundary,
+        "checks": {"status": checks_status, "passed": sum(1 for s in by_name.values() if s == "PASS"),
+                   "total": len(tests), "failed": [_safe(n, 200) for n in failed][:EVIDENCE_PATHS_MAX],
+                   "never_run": [_safe(n, 200) for n in never_run][:EVIDENCE_PATHS_MAX],
+                   "worker_editable": bool(worker_can_edit_checks),
+                   "inputs_edited": [_safe(p, 200) for p in inputs_edited][:EVIDENCE_PATHS_MAX],
+                   "test_files_changed": test_files_changed,
+                   "changes_known": paths is not None},
+        "review": review,
+        "integration": integration,
+        "applied_to_project": False,
+        "untested": untested[:EVIDENCE_PATHS_MAX],
+        "note": "accepting a result records it; it never applies the patch to the project",
+    }
 
 
 def acceptance_problems(*, status: str, attempt: "Mapping[str, Any] | None", contract_checks: "Iterable[Mapping[str, Any]]",

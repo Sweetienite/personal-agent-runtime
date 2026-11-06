@@ -18,6 +18,8 @@ Documentation and metadata corrections only — no behavior change:
 
 - Manual hand-offs now say exactly what they need and check what comes back: the export reports its `mode` (`workspace` for a file-changing task, `text` for a written answer), every absolute path, the base commit, the allowed paths and a copyable `next_actions` list. `PROMPT.md` starts with the folder check before any work instruction; the WorkBuddy menu path is labelled as a dated observation rather than a promise. The import now checks the marker against the ledger, the task's base and the packet's own `manifest.json`, and refuses a copy of the folder, an older export or an incomplete older packet by name instead of silently taking it. A failed import can be retried without touching the first attempt's evidence, and the noise rule for app settings folders is stated precisely: only newly added files are ignored.
 
+- Results now carry a derived `evidence_summary` (CLI `par task result`, MCP `get_task_result`/`review_task`): a `level` (`MEASURED`, `MEASURED_WITH_EDITED_CHECKS`, `UNVERIFIED`, `FAILED`, `INCOMPLETE`, `UNKNOWN`), the Kernel's boundary and check results, whether the Worker edited a file a check reads, who reviewed the result, and `integration`/`applied_to_project` (always `NOT_INTEGRATED`/`false` until a separate integration step). The result envelope and its schema are unchanged: an old result without the newer sections comes back as `UNKNOWN`/`NOT_RUN`, never `PASS`.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:

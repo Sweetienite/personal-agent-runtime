@@ -414,7 +414,8 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
         task = self._require(task_id)
         if task["status"] == T.REVIEW_REQUIRED.value and approval_id is None and not self._pending(task_id):
             with self.store.tx():
-                self.store.add_event("RESULT_REJECTED", task_id=task_id, reason=f"result rejected by {by}", data={"note": note[:200]})
+                self.store.add_event("RESULT_REJECTED", task_id=task_id, reason=f"result rejected by {by}",
+                                     data={"by": by, "attempt": task["attempt_count"], "note": note[:200]})
                 self.store.set_status(task_id, T.FAILED, reason=f"the result was rejected by {by}: {note[:200]}".strip(": "))
             return self.describe(task_id)
         target = self._decide_target(task_id, approval_id)
@@ -1074,6 +1075,45 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
         if attempt is not None:
             attempts = [a for a in attempts if a["n"] == attempt]
         return attempts[-1]["result"] if attempts else None
+
+    def evidence(self, task_id: str, attempt: "int | None" = None) -> "dict[str, Any]":
+        """The layered view of one result (Kernel measurements vs the Worker's claim vs review/integration).
+
+        Derived on read: no new column, no schema bump, and an old envelope without the newer sections comes back
+        as UNKNOWN/NOT_RUN rather than PASS."""
+        task = self._require(task_id)
+        contract = self._contract_of(task)
+        attempts = self.store.attempts(task_id)
+        chosen = attempt if attempt is not None else (attempts[-1]["n"] if attempts else None)
+        changed: "list[str] | None" = None
+        if chosen is not None:
+            try:
+                doc = json.loads((self.runner.attempt_dir(task_id, chosen) / "changes.json").read_text(encoding="utf-8"))
+                allowed = doc.get("allowed")
+                if isinstance(allowed, list):
+                    changed = [str(c["path"]) for c in allowed if isinstance(c, Mapping) and isinstance(c.get("path"), str)]
+            except (OSError, ValueError, TypeError):
+                changed = None
+        return R.evidence_summary(self.result(task_id, attempt), contract_checks=contract.checks, changed_paths=changed,
+                                  worker_can_edit_checks=contract.writes, review=self._review_state(task_id, chosen),
+                                  status=task["status"])
+
+    def _review_state(self, task_id: str, attempt: "int | None") -> str:
+        """Who, if anyone, decided on this attempt's result: the accept decision or a result rejection, latest wins."""
+        decisions: "list[tuple[str, str]]" = []
+        for a in self.store.approvals(task_id):
+            payload = a.get("payload") if isinstance(a.get("payload"), Mapping) else {}
+            if (a.get("kind") == "ACCEPT_RESULT" and a.get("status") in ("APPROVED", "REJECTED")
+                    and payload.get("attempt") == attempt):
+                decisions.append((str(a.get("decided_at") or ""), str(a.get("decided_by") or "")))
+        for e in self.store.events(task_id):
+            if e["type"] == "RESULT_REJECTED" and (attempt is None or e.get("attempt") in (None, attempt)):
+                who = e.get("data", {}).get("by") if isinstance(e.get("data"), Mapping) else None
+                decisions.append((str(e.get("ts") or ""), str(who or "")))
+        if not decisions:
+            return "NOT_REVIEWED"
+        who = max(decisions)[1]
+        return "HUMAN_REVIEW" if who == "user" else "COORDINATOR_REVIEW" if who == "coordinator" else "UNKNOWN"
 
     def diff(self, task_id: str, attempt: "int | None" = None) -> "bytes | None":
         self._require(task_id)
