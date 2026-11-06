@@ -73,7 +73,7 @@ This file and this project's commit messages are English. The deep reference doc
 
 - Used daily by one person, on their own projects, with a single-digit-task sample size tracked honestly in `ops/reliability_report.py`'s output — not "battle-tested at scale."
 - Two automated Worker adapters exist and are real (Codex CLI, Google Antigravity); other "market-standard" tools are wired in only as a manual hand-off path, explicitly labeled as not-yet-exercised where that's true (see `docs/HANDOFF.md`). Antigravity runs through Google's official `agy` CLI in its headless mode: that mode can change between vendor releases, and the account/terms risk is the user's. It ships disabled and is not the default automated path.
-- No GUI. The MCP bridge (16 tools, see `docs/MCP.md`) and the CLI are the entire surface — a deliberate choice after an earlier local web console was removed (see [CHANGELOG.md](CHANGELOG.md)), not an oversight.
+- No GUI. The MCP bridge (17 tools, including `prepare_task`, see `docs/MCP.md`) and the CLI are the entire surface — a deliberate choice after an earlier local web console was removed (see [CHANGELOG.md](CHANGELOG.md)), not an oversight.
 
 ## License
 

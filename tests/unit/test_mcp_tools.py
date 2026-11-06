@@ -1,4 +1,4 @@
-"""The sixteen MCP tools: the exact list, strict schemas, argument checks before the Kernel is touched, and what each tool
+"""The seventeen MCP tools: the exact list, strict schemas, argument checks before the Kernel is touched, and what each tool
 does to a real Kernel (its fake Workers come from par.providers.fake, its child process is a mock)."""
 import ast
 import json
@@ -17,7 +17,7 @@ from tests import SRC
 from tests.kernel_fixture import KernelWorld, r1_contract
 from tests.world import sample_contract
 
-TOOLS = ["submit_task", "get_task_status", "get_task_result", "get_task_diff", "cancel_task", "review_task", "approve_task",
+TOOLS = ["prepare_task", "submit_task", "get_task_status", "get_task_result", "get_task_diff", "cancel_task", "review_task", "approve_task",
         "reject_task", "accept_task", "close_task", "run_task", "list_tasks", "retry_task", "pause_task", "resume_task",
         "recover_task"]
 # Actions still outside this bridge entirely: health and configuration. Neither may be an identifier anywhere in
@@ -79,7 +79,7 @@ def bridge_sources():
 class Surface(unittest.TestCase):
     """Nothing here touches a Kernel: a Tools object without one must still refuse bad input on its own."""
 
-    def test_the_tool_list_is_exactly_the_sixteen_documented_names(self):
+    def test_the_tool_list_is_exactly_the_seventeen_documented_names(self):
         self.assertEqual([t["name"] for t in Tools(None).list_tools()], TOOLS)
         self.assertEqual(list(T.TOOL_NAMES), TOOLS)
 
@@ -302,7 +302,7 @@ class ToolsOnTheKernel(KernelWorld):
         task_id = self.submit_r2("w-3")
         pending = self.kernel.describe(task_id)["pending_approvals"]
         out = payload_of(self.ask("get_task_status", task_id=task_id))
-        self.assertEqual(set(out), {"task_id", "title", "status", "risk", "attempts", "worker", "pending_approvals",
+        self.assertEqual(set(out), {"task_id", "title", "status", "derived_state", "risk", "attempts", "worker", "pending_approvals",
                                     "agent_next", "last_problem"})
         self.assertEqual(out["pending_approvals"], [{"id": pending[0]["id"], "kind": "WRITE_PERMISSION"}])
         self.assertEqual(out["agent_next"], ["cancel_task", "approve_task", "reject_task"])
@@ -385,7 +385,8 @@ class ToolsOnTheKernel(KernelWorld):
         task_id = self.queued(r1_contract())
         before = self.ledger()
         out = payload_of(self.ask("review_task", task_id=task_id))
-        self.assertEqual(set(out), {"task_id", "ready_to_accept", "blockers", "diff_stat", "tests", "boundary"})
+        self.assertEqual(set(out), {"task_id", "derived_state", "ready_to_accept", "blockers", "summary", "diff_stat", "tests", "boundary"})
+        self.assertEqual(set(out["summary"]), {"headline", "checks_passed", "checks_total", "blockers", "agent_next"})
         self.assertFalse(out["ready_to_accept"])
         self.assertTrue(out["blockers"])
         self.assertEqual(self.ledger(), before)

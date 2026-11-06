@@ -37,7 +37,7 @@ from par.core.prompt import build_prompt
 from par.core.redact import redact_text
 from par.core.router import config_snapshot, route as route_task
 from par.core.settings import KernelSettings
-from par.core.states import ACTIVE, NEXT_ACTIONS, TRANSITIONS, TaskStatus as T
+from par.core.states import ACTIVE, NEXT_ACTIONS, TRANSITIONS, TaskStatus as T, derived_state
 from par.core.takeover import TakeoverMixin
 from par.core.store import IdempotencyConflict, LedgerError, LockBusy, NotFound, Store, VersionConflict
 from par.execution import gitops, results as R, subprocesses as sp, workspace as ws
@@ -1043,6 +1043,7 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
                                                "artifact_dir", "workspace_path")})
         contract = task["contract"]
         deps = [{"task_id": d, "status": (self.store.get_task(d) or {}).get("status", "missing")} for d in contract.get("dependencies", [])]
+        pending = self._pending(task_id)
         return {
             "task_id": task_id, "project_id": task["project_id"], "title": task["title"], "risk": task["risk_tier"],
             "role": task["role"], "worker_requested": task["requested_worker"], "pinned_worker": task["pinned_worker"],
@@ -1051,7 +1052,8 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
             "not_before": task["not_before"], "last_failure": task["last_failure"], "cancel_requested": bool(task["cancel_requested"]),
             "ad_hoc": bool(task["ad_hoc"]), "submitted_by": task["submitted_by"], "base": task["base"],
             "attempts": attempts, "pending_approvals": [{"id": a["id"], "kind": a["kind"], "payload": a["payload"],
-                                                          "requested_at": a["requested_at"]} for a in self._pending(task_id)],
+                                                          "requested_at": a["requested_at"]} for a in pending],
+            "derived_state": derived_state(task["status"], tuple(a["kind"] for a in pending)),
             "next_actions": self.next_actions(task), "dependencies": deps, "lock": self.store.get_lock(task["project_id"]),
             "config_digest": task["profile"].get("digest"), "waiting_for": self._dependency_problem(task),
         }

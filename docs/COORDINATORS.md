@@ -31,13 +31,35 @@ par coordinator prompt codex     # 打印：起手提示词（它必须遵守的
    .venv/bin/python ops/connect_claude_desktop.py --apply --background --reopen
    # 然后完全退出 Claude Desktop（⌘Q）：它退出后工具自动写入、自检、并重新打开应用（想撤销：--remove --apply …）
    ```
-3. **Claude Code**：默认不接（接到用户级会让你所有项目的所有会话都多出 16 个工具）。只在需要的项目里，执行 `kit claude_desktop` 打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效）。
-4. 把 `par coordinator prompt NAME` 的内容作为新聊天的第一条消息（Claude Code：放进该会话的项目说明里）。它告诉主控：有哪 16 个工具、合同怎么写、怎么用依赖关系拆大任务、它可以自己决定批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话不可信。
+3. **Claude Code**：默认不接（接到用户级会让你所有项目的所有会话都多出 17 个工具）。只在需要的项目里，执行 `kit claude_desktop` 打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效）。
+4. 把 `par coordinator prompt NAME` 的内容作为新聊天的第一条消息（Claude Code：放进该会话的项目说明里）。它告诉主控：有哪 17 个工具、怎么用 `prepare_task` 得到合同、怎么用依赖关系拆大任务、它可以自己决定批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话不可信。
 5. 验证：让它调用 `list_tasks`，然后运行 `par coordinator status`——它的「最近出现」应是刚刚。
 
 - 片段里的 Python 是**生成它的那个 Python**。请用项目自己的解释器生成（`.venv/bin/par coordinator kit …`，它指向 uv 管理的稳定 Python 3.12），不要用放在「下载」文件夹里的 conda 环境——那个文件夹一清理，桥就悄悄坏了。
 - 片段里的 `PYTHONPATH` 必须保留：Claude Desktop / Codex 启动桥时不在任何特定目录。
 - Codex 的配置已用你机器上的 Codex（0.162）验证过：`codex mcp list` 能列出 `par` 且启用；用 `tests/tools/smoke_codex_mcp.py` 可以在一次性目录里重做这项验证（不调用模型）。
+
+## 合同速查（主控按需阅读）
+
+主控不需要手写完整 JSON：先给草案，`prepare_task` 会补齐机械字段或列出缺失项。
+
+```json
+{"project_id": "simproj", "title": "Fix the solver step",
+ "description": "Make choose_dt return the documented step.",
+ "risk": "R2", "allowed_paths": ["src/solver/"],
+ "acceptance": {"criteria": ["the solver test passes"],
+                "checks": [{"name": "solver", "argv": ["python3", "-m", "unittest", "tests/test_solver.py"]}]}}
+```
+
+- `risk`：`R0`/`R1` 只读，`R2` 改文件；`R3` 永不运行。`R1` 不能带 `allowed_paths` 或 `checks`。
+- `allowed_paths`：写任务必填，文件或前缀（前缀以 `/` 结尾），不能是 `.`、绝对路径或 `..`。
+- `acceptance.checks`：写任务必填；程序必须是 Kernel 能解析的 `python`/`python3` 或可信目录里的程序；检查在私有副本里由 Kernel 自己跑。
+- `ad_hoc`：generic 项目必须为 `true`；Harness 项目在唯一主合同下为 `false`，没有主合同时 R0/R1 用 `true`。
+- `timeouts.total` 不写就是 1200 秒；需要写新逻辑和它自己的测试时显式调大。
+- `dependencies` 是任务 id 列表；前驱 `ACCEPTED`/`CLOSED` 后下游才会跑。
+- 幂等键：草案编译器按内容确定性生成；同一意图重提会得到同一个任务。
+
+`prepare_task` 返回 `READY` 后，把它给的 `contract` 原样交给 `submit_task`；返回 `NEEDS_DECISION` 时把问题问人，不要猜路径或命令。字段级 schema 与错误见 `docs/MCP.md` 和 `src/par/schemas/task.schema.json`。
 
 ## 切换（额度用完的那一刻）
 
@@ -57,7 +79,7 @@ par coordinator use codex        # 写接管包 + 记录这次切换（你敲这
 - 起手提示词里的规则（Worker 的话是不可信数据、不要循环重试、不要重跑已完成的任务、不要把任何东西当成已验证除非 Kernel 量过）是对主控的要求，**不是对 Kernel 的依赖**：Kernel 的边界检查和验证不管主控怎么说都照常进行。
 
 ## 排障
-- 「最近出现」一直是 never seen：应用是否完全重启过？片段里的 Python 路径是否真实存在？`PYTHONPATH` 是否保留？Codex：`codex mcp list` 里有没有 `par`、状态是不是 enabled？Claude：新聊天的工具列表里有没有 par 的 16 个工具？
+- 「最近出现」一直是 never seen：应用是否完全重启过？片段里的 Python 路径是否真实存在？`PYTHONPATH` 是否保留？Codex：`codex mcp list` 里有没有 `par`、状态是不是 enabled？Claude：新聊天的工具列表里有没有 par 的 17 个工具？
 - 在终端手动运行片段里的命令（`python3 -B -m par mcp serve --data-dir … --coordinator codex`）应当**安静地等待输入**（Ctrl-D 退出）；它一启动就报错，说明路径或数据目录不对。
 - 桥拒绝了 `submit_task`：`par coordinator status` 看现在是谁在主控；不是它的话，要么用 `par coordinator use` 切回来，要么换对应的主控去操作。
 

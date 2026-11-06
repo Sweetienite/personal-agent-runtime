@@ -62,7 +62,7 @@ class BridgeProcess(unittest.TestCase):
         replies = [json.loads(line) for line in lines[:-1]]
         self.assertEqual([r.get("id") for r in replies], [1, 2, 3, None])
         self.assertEqual(replies[0]["result"]["protocolVersion"], "2025-06-18")
-        self.assertEqual(len(replies[1]["result"]["tools"]), 16)
+        self.assertEqual(len(replies[1]["result"]["tools"]), 17)
         self.assertEqual(replies[2]["result"]["isError"], False)
         self.assertEqual(json.loads(replies[2]["result"]["content"][0]["text"]), {"tasks": [], "count": 0, "truncated": False})
         self.assertEqual(replies[3]["error"]["code"], -32700)

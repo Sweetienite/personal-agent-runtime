@@ -23,6 +23,11 @@
 > look at the same patch, so it is not left entirely blind - it still cannot accept for a check-less write task, but it can read the
 > diff and tell the person what it found.
 
+> **Superseded in part (2026-11):** one more tool was added - `prepare_task` - so the tool count is now 17. It compiles
+> a short draft into a strict contract or returns the missing fields as questions; it is read-only, never submits, reads no
+> project file and discovers no command. `get_task_status`/`review_task` also return a derived `derived_state` and
+> `review_task` a short `summary`; `docs/MCP.md` remains the maintained reference.
+
 Read first: `docs/specs/COMMON_RULES.md`, `docs/KERNEL.md`, `src/par/core/kernel.py` (public methods), `src/par/cli_task.py` (`open_kernel`, `session`, `clean`).
 
 ## Goal

@@ -102,6 +102,36 @@ NEXT_ACTIONS: "dict[TaskStatus, tuple[str, ...]]" = {
 }
 
 
+# A derived view for coordinators: one word for what the task needs now. It never replaces TaskStatus,
+# never drives a transition, and is recomputed from the authoritative status plus the pending approvals.
+DERIVED = ("NOT_READY", "READY_TO_RUN", "NEEDS_SCOPE", "NEEDS_PERMISSION", "RUNNING", "NEEDS_REVIEW",
+           "RESULT_VERIFIED", "PAUSED", "BLOCKED", "CANCELED")
+
+
+def derived_state(status: "TaskStatus | str", pending_kinds: "tuple[str, ...]" = ()) -> str:
+    try:
+        s = TaskStatus(status)
+    except ValueError:
+        return "BLOCKED"
+    if s in (S.DRAFT, S.READY):
+        return "NOT_READY"
+    if s == S.QUEUED:
+        return "READY_TO_RUN"
+    if s == S.PERMISSION_WAIT:
+        return "NEEDS_SCOPE" if "WRITE_PERMISSION" in pending_kinds else "NEEDS_PERMISSION"
+    if s in (S.STARTING, S.RUNNING, S.VERIFYING, S.CANCEL_REQUESTED):
+        return "RUNNING"
+    if s == S.REVIEW_REQUIRED:
+        return "NEEDS_REVIEW"
+    if s in (S.ACCEPTED, S.CLOSED):
+        return "RESULT_VERIFIED"
+    if s == S.PAUSED:
+        return "PAUSED"
+    if s == S.CANCELED:
+        return "CANCELED"
+    return "BLOCKED"
+
+
 class IllegalTransition(Exception):
     def __init__(self, src: str, dst: str) -> None:
         super().__init__(f"illegal task status transition {src} -> {dst}")
