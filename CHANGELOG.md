@@ -2,6 +2,15 @@
 
 User-facing summary of real changes. The detailed, line-by-line engineering log this project keeps for its own development (every behavior change, why it was made, what test proves it) is not part of this public repository — this file is the readable summary of that history.
 
+## Unreleased
+
+Documentation and metadata corrections only — no behavior change:
+
+- Install commands in `README.md`, `README.en.md`, `docs/USER_GUIDE.md` and `docs/OPERATIONS.md` no longer assume the author's `~/Documents/Personal Agent Runtime`; they start from `git clone` and a checkout of your own.
+- `pyproject.toml`'s description now says what the package does, instead of naming an internal phase and claiming "no real model calls".
+- `AGENTS.md` points at files this repository actually publishes (root `CHANGELOG.md`; `.ai/` is the author's private task ledger) and says so explicitly.
+- The Antigravity account/terms limitation is stated where the adapters are introduced, and `USER_GUIDE.md` no longer describes the removed web console.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:

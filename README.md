@@ -4,7 +4,7 @@
 
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它**复用并兼容**已有的 AI Harness（Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`），不新建第二份项目记忆。
+本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它**复用**已有的 AI Harness（Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`），不新建第二份项目记忆；当前登记项目要求这两份文件，缺失时 `--scaffold-harness` 会补一份极简模板，绝不覆盖已有文件。
 
 > **版本 `1.0.0`**：真实的写入、批准、验收全流程都已跑通并通过人工验收；Codex 与 Claude Desktop 两种主控都已接入并验证过连通；完整验收记录见 [docs/reports/V1_ACCEPTANCE_REPORT_20261016.md](docs/reports/V1_ACCEPTANCE_REPORT_20261016.md)。
 > 目前有两个真实适配器：Codex（ChatGPT 订阅登录）与 Antigravity（Google 登录，经系统钥匙串）。**默认没有任何适配器**：只有配置里显式启用了 `codex` / `antigravity` 并写明可执行文件的绝对路径才会注册。测试套件全程使用假的 codex / agy 程序，**真实模型调用只在你逐项批准后才会发生**。
@@ -39,7 +39,8 @@
 先用两分钟看一眼全流程是什么样（不需要装任何模型、不需要登录任何账号——全程假 CLI + 一次性夹具项目）：
 
 ```bash
-cd "$HOME/Documents/Personal Agent Runtime"
+git clone https://github.com/Sweetienite/personal-agent-runtime.git
+cd personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .     # 零第三方依赖；没有 uv 时：python3.12 -m venv .venv && .venv/bin/pip install -e .
 # 注意：如果你的 python3.12 本身就是用 `uv python install` 装的，plain venv 会因为 ensurepip 被 PEP 668 挡住而失败——这种情况就用上面那条 uv venv 命令
 python -B tests/tools/smoke_codex.py --self-test        # 全流程演示：真实 Codex 适配器 + 假 codex 程序 + 夹具项目，无模型无额度
@@ -61,7 +62,7 @@ python -B tests/tools/parallel_tests.py                 # 同一套测试，按�
 
 ## 设计边界（来自已拍板的决策，配置与代码都在强制）
 
-- Worker 首批只有 **Codex** 与 **Antigravity（`agy`）**；Codex（P3）固定模型、固定沙箱、不含任何 API key，只接受 ChatGPT 订阅登录；Antigravity（P4）在 attempt 的私有 HOME 里运行（看不到你真实的 `~/.gemini`）、权限预设由 Runtime 写入（只读任务 `strict`）、不含任何 API key。旧 `gemini` CLI 保留安装，但配置校验**拒绝启用**，也不会成为 `agy` 的回退。
+- Worker 首批只有 **Codex** 与 **Antigravity（`agy`）**；Codex（P3）固定模型、固定沙箱、不含任何 API key，只接受 ChatGPT 订阅登录；Antigravity（P4）在 attempt 的私有 HOME 里运行（看不到你真实的 `~/.gemini`）、权限预设由 Runtime 写入（只读任务 `strict`）、不含任何 API key。旧 `gemini` CLI 保留安装，但配置校验**拒绝启用**，也不会成为 `agy` 的回退。Antigravity 走 Google 官方 `agy` CLI 的 headless 模式：该模式会随厂商版本变化，账号与条款风险由使用者自担；它默认不启用，也不是默认推荐的自动路径。
 - 主模型、Worker、角色映射与备用链由你配置。不做模型评分，也不调用额外的 AI 去路由。
 - 配置里**不允许**出现密钥、额外付费（`additional_paid_credits` 只能是 `false`），可执行文件必须是绝对路径，不查 PATH。
 - 并发默认 1；Profile 里的 `max_parallel_workers` 可设为 2（不同项目的任务同时跑；同一个项目一次只做一件事；T17/T18 已测试）。

@@ -3,7 +3,7 @@
 ## 安装、升级与卸载
 
 ```bash
-cd "$HOME/Documents/Personal Agent Runtime"
+cd /path/to/personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12 -m venv .venv && .venv/bin/pip install -e .（如果这个 python3.12 本身是 `uv python install` 装的，plain venv 会被 PEP 668 挡住，用前一条 uv venv 命令即可）
 .venv/bin/par version
 ```
@@ -66,7 +66,7 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 任务的路由由你的配置决定，放在数据目录的 `config/` 下（建议 `chmod 600`）：
 
 ```bash
-cd "$HOME/Documents/Personal Agent Runtime"
+cd /path/to/personal-agent-runtime
 D="$HOME/Library/Application Support/PersonalAgentRuntime/config"
 cp config/profiles.example.toml  "$D/profiles.toml"     # Worker、角色、备用链、失败策略
 cp config/providers.example.toml "$D/providers.toml"    # 哪些 Provider 启用
@@ -234,7 +234,7 @@ par project show simproj --manifest
 - 因为 `~/Library/LaunchAgents` 是 Runtime 不允许写入的位置，安装、卸载都由你本人执行。
 
 ```bash
-cd "$HOME/Documents/Personal Agent Runtime"
+cd /path/to/personal-agent-runtime
 # 1. 先看一遍（分别 44 行与 40 行）：ops/par-harness-patrol.sh  ops/com.par-runtime.harness-patrol.plist.template
 # 2. 渲染并校验
 sed "s#__HOME__#$HOME#g" ops/com.par-runtime.harness-patrol.plist.template > ~/Library/LaunchAgents/com.par-runtime.harness-patrol.plist
