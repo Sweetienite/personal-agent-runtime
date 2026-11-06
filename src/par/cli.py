@@ -9,8 +9,9 @@ import sys
 from pathlib import Path
 
 from par import PHASE, __version__
-from par.config import PROJECT_VCS, HarnessSettings, load_harness_settings
-from par.context.harness import ContextManifest, HarnessContextAdapter, ProjectView, WriteReadiness
+from par.config import PROJECT_CONTEXT_MODES, PROJECT_VCS, HarnessSettings, load_harness_settings
+from par.context.harness import ContextManifest, ProjectView, WriteReadiness
+from par.context.resolver import default_context
 from par.core.policy import PolicyViolation
 from par.core.redact import redact_obj, redact_text
 from par.doctor import render_text, run_doctor
@@ -168,7 +169,7 @@ def _render_project(v: ProjectView, w: WriteReadiness, m: "ContextManifest | Non
                  + (f"; {v.sensitive_sources} sensitive-looking left out" if v.sensitive_sources else "")
                  + (f"; {v.sources_cut} more not listed" if v.sources_cut else ""))
     else:
-        L.append("Sources   none listed (STATE.md has no '## Sources of Truth' pointers)"
+        L.append("Sources   none listed (no '## Sources of Truth' pointers were read)"
                  + (f"; {v.sensitive_sources} sensitive-looking left out" if v.sensitive_sources else ""))
     L.append(f"Base      {_git_line(v.git)}" + (f"  dirty-digest {v.git['dirty_digest'][:12]}" if v.git.get("dirty_digest") else ""))
     for n in v.notes:
@@ -190,12 +191,14 @@ def _render_project(v: ProjectView, w: WriteReadiness, m: "ContextManifest | Non
 
 def _cmd_project_add(args: argparse.Namespace) -> int:
     created = missing_harness_files(args.path) if args.scaffold_harness else ()
+    mode = args.context_mode or ("harness" if args.scaffold_harness else "generic")
     try:
-        entry = add_project(_data_dir(args), args.id, args.path, vcs=args.vcs, scaffold=args.scaffold_harness)
+        entry = add_project(_data_dir(args), args.id, args.path, vcs=args.vcs, scaffold=args.scaffold_harness,
+                            context_mode=mode)
     except PolicyViolation as exc:
         _say_error(str(exc))
         return 1
-    msg = f"registered {entry.id}: {entry.path} (vcs {entry.vcs}; writes disabled)"
+    msg = f"registered {entry.id}: {entry.path} (vcs {entry.vcs}; context {entry.context_mode}; writes disabled)"
     if created:
         msg += f"; created minimal {' and '.join(created)}"
     print(redact_text(msg, home=str(Path.home())))
@@ -218,7 +221,7 @@ def _cmd_project_enable_write(args: argparse.Namespace) -> int:
     if entry.write_enabled:
         print(f"writes to {args.id} are already on (approved {entry.write_approved}); `par project disable-write {args.id}` switches them off")
         return 0
-    a = HarnessContextAdapter(entry)
+    a = default_context(entry, Path.home())
     v = a.view()
     w = a.write_readiness(v, assume_enabled=True)
     print(redact_text(f"{args.id}  {v.root}  {_git_line(v.git)}", home=home))
@@ -227,7 +230,8 @@ def _cmd_project_enable_write(args: argparse.Namespace) -> int:
         for b in w.blockers:
             print(redact_text(f"  - {b.code}: {b.message}", home=home))
         return 1
-    print("ready: the base is clean, STATE.md is healthy, exactly one contract is active, git is the rollback, nothing sensitive is visible to git")
+    print("ready: the base is clean, git is the rollback, nothing sensitive is visible to git"
+          + ("; STATE.md is healthy and exactly one contract is active" if entry.context_mode == "harness" else ""))
     if args.confirm != args.id:
         print("\nSwitching writes on means: a Worker may be asked to change files in a private COPY of this project (never in the project itself),")
         print("only inside the paths of a task you approve one by one; every result is a patch that nothing applies for you; AGENTS.md, CLAUDE.md and .ai/ stay off limits.")
@@ -254,7 +258,7 @@ def _cmd_project_disable_write(args: argparse.Namespace) -> int:
             print(f"writes to {args.id} are already off")
             return 0
         new, backup = set_project_write(_data_dir(args), args.id, False)
-        head = str(HarnessContextAdapter(new).view().git.get("head_full") or "")
+        head = str(default_context(new, Path.home()).view().git.get("head_full") or "")
         log_write_decision(_data_dir(args), args.id, False, head=head)
     except PolicyViolation as exc:
         _say_error(str(exc))
@@ -271,7 +275,7 @@ def _cmd_fixture_create(args: argparse.Namespace) -> int:
         return 1
     print(redact_text(f"created fixture project {info.entry.id}: {info.entry.path}", home=str(Path.home())))
     print(f"  commit {info.commit[:12]}; a throw-away project with one deliberate bug in app/calc.py, holding no real data")
-    print("  fixtures are the only projects the Runtime may write to; every real project stays read-only until P8")
+    print("  fixtures are always writable; a real project stays read-only until you run `par project enable-write ID`")
     print(f"  look at it: par project show {info.entry.id}")
     return 0
 
@@ -284,7 +288,7 @@ def _cmd_project_list(args: argparse.Namespace) -> int:
         return 2
     rows = []
     for pid, entry in sorted(reg.projects.items()):
-        a = HarnessContextAdapter(entry)
+        a = default_context(entry, Path.home())
         v = a.view()
         w = a.write_readiness(v)
         rows.append((v, w))
@@ -295,7 +299,7 @@ def _cmd_project_list(args: argparse.Namespace) -> int:
                 "write_allowed": w.allowed, "blockers": [b.code for b in w.blockers]} for v, w in rows]
         print(json.dumps(redact_obj(doc, home=str(Path.home())), ensure_ascii=False))
         return 0
-    print(f"Registered projects ({len(rows)}) - read-only view; real projects cannot be written, only fixture projects can")
+    print(f"Registered projects ({len(rows)}) - real projects are read-only until you run `par project enable-write ID`")
     for v, w in rows:
         st = f"STATE {v.state.bytes} B" + (" OVERSIZED" if v.state.oversized else "") if v.state else "no STATE"
         writes = "ALLOWED (fixture)" if w.allowed else f"BLOCKED ({len(w.blockers)})"
@@ -313,7 +317,7 @@ def _cmd_project_show(args: argparse.Namespace) -> int:
     except PolicyViolation as exc:
         _say_error(str(exc))
         return 2
-    a = HarnessContextAdapter(reg.projects[args.id])
+    a = default_context(reg.projects[args.id], Path.home())
     v = a.view()
     w = a.write_readiness(v)
     m = a.manifest(v)
@@ -361,14 +365,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("project", help="Harness project registry (read-only view of registered projects)")
     actions = p.add_subparsers(dest="project_command", required=True, metavar="ACTION")
-    c = actions.add_parser("add", help="register a Harness project (writes only the Runtime's own projects.toml)")
+    c = actions.add_parser("add", help="register a project (an ordinary Git repository or a Harness project)")
     c.add_argument("id", help="short id: lowercase letters, digits, underscore")
-    c.add_argument("path", help="project folder; must contain AGENTS.md and .ai/STATE.md")
+    c.add_argument("path", help="project folder; an ordinary Git repository needs no AGENTS.md or .ai/STATE.md")
     c.add_argument("--vcs", choices=sorted(PROJECT_VCS), default="auto",
                    help="'none' when the project's own rules forbid a repository at its root")
+    c.add_argument("--context-mode", choices=sorted(PROJECT_CONTEXT_MODES), default=None,
+                   help="generic reads README/AGENTS/CLAUDE and the Git facts (default); harness requires AGENTS.md and "
+                        ".ai/STATE.md and applies the parent-contract checks")
     c.add_argument("--scaffold-harness", action="store_true",
                    help="create a minimal, generic AGENTS.md / .ai/STATE.md for whichever is missing, then register "
-                        "(never overwrites one that already exists)")
+                        "in the harness context mode (never overwrites one that already exists)")
     c.add_argument("--data-dir", metavar="PATH", help="data directory (default: the standard one)")
     c.set_defaults(func=_cmd_project_add)
     c = actions.add_parser("enable-write", help="switch writes on for a REAL project, after its readiness checks pass and you type its id again")
@@ -390,7 +397,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--json", action="store_true", help="machine-readable output (full manifest)")
     c.add_argument("--data-dir", metavar="PATH", help="data directory (default: the standard one)")
     c.set_defaults(func=_cmd_project_show)
-    p = sub.add_parser("fixture", help="throw-away test projects (the only projects the Runtime may write to before P8)")
+    p = sub.add_parser("fixture", help="throw-away test projects (always writable; never real data)")
     actions = p.add_subparsers(dest="fixture_command", required=True, metavar="ACTION")
     c = actions.add_parser("create", help="make a small fixture project (git repo, Harness files, one deliberate bug) and register it")
     c.add_argument("id", nargs="?", default="fixture", help="project id (default: fixture)")

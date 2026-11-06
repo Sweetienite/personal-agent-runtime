@@ -21,9 +21,9 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 | `par doctor [--json] [--strict] [--data-dir PATH]` | 只读；`--strict` 把 WARN 也当失败 |
 | `par init [--data-dir PATH]` | 创建数据目录与 `config/`，权限 0700；已存在且不安全时拒绝，不会 `chmod` |
 | `par harness check [--json] [--save-baseline] [--no-baseline] [--core P] [--root P] [--max-depth N] [--data-dir P]` | Harness 体检 |
-| `par fixture create [ID]` | 造一个一次性的**夹具项目**（`<数据目录>/fixtures/<ID>/`，默认 `fixture`）：小型 git 仓库 + Harness 文件 + 一个故意的 bug，不含个人数据；登记为可写。它是 P8 之前唯一能被写的项目 |
-| `par project add ID PATH [--vcs auto\|git\|none]` | 登记项目；目录必须含 `AGENTS.md` 与 `.ai/STATE.md`；只追加到 `projects.toml`，整份文件校验通过才写入 |
-| `par project enable-write ID [--confirm ID]` / `disable-write ID` | **P8 的写入开关**（只对真实项目）：`enable-write` 先体检（基线干净、STATE 不超 15 KB、恰好一份生效的主合同、有 git、git 里看不到敏感路径），不通过就列出原因并且什么都不改；通过后加 `--confirm ID`（再敲一遍项目 id）才真的打开。只改 `projects.toml` 里该项目的两行（旧文件留作 `*.par-backup-<时间>`），并在 `logs/project_writes.jsonl` 记一行。`disable-write` 随时可用 |
+| `par fixture create [ID]` | 造一个一次性的**夹具项目**（`<数据目录>/fixtures/<ID>/`，默认 `fixture`）：小型 git 仓库 + Harness 文件 + 一个故意的 bug，不含个人数据；登记为可写。它始终可写（真实项目要你先 `par project enable-write`） |
+| `par project add ID PATH [--vcs auto\|git\|none] [--context-mode generic\|harness]` | 登记项目；默认 generic（普通 Git 仓库，不要求 `AGENTS.md`/`.ai/STATE.md`，也不写项目）；`--context-mode harness` 要求并沿用 Harness 规则；只追加到 `projects.toml`，整份文件校验通过才写入 |
+| `par project enable-write ID [--confirm ID]` / `disable-write ID` | **P8 的写入开关**（只对真实项目）：`enable-write` 先体检（基线干净、有 git、git 里看不到敏感路径；Harness 项目还要求 STATE 不超 15 KB、恰好一份生效的主合同），不通过就列出原因并且什么都不改；通过后加 `--confirm ID`（再敲一遍项目 id）才真的打开。只改 `projects.toml` 里该项目的两行（旧文件留作 `*.par-backup-<时间>`），并在 `logs/project_writes.jsonl` 记一行。`disable-write` 随时可用 |
 | `par project list [--json]` | 已登记项目一览 |
 | `par project show ID [--manifest] [--json]` | 事实、写入就绪、Context Manifest |
 | `par task submit --contract FILE\|-` `[--by user\|coordinator]` `[--check]` | 校验合同并入队；相同幂等键+相同合同返回原任务。`--check`：只做校验，**不入队**——不写任务、不写事件、不记批准，只报告合同是否通过以及会问你批准哪些事项（`WRITE_PERMISSION`/`WORKER_OVERRIDE`），拒绝时和不加 `--check` 报的原因完全一样 |

@@ -278,7 +278,7 @@ class Cli(Base):
         code, out, err = run_cli("fixture", "create", "--data-dir", str(self.data))
         self.assertEqual(code, 0, err)
         self.assertIn("created fixture project fixture", out)
-        self.assertIn("only projects the Runtime may write to", out)
+        self.assertIn("fixtures are always writable", out)
         code, out, _ = run_cli("project", "list", "--data-dir", str(self.data))
         self.assertEqual(code, 0)
         self.assertIn("writes: ALLOWED (fixture)", out)

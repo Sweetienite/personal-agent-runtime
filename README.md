@@ -4,7 +4,7 @@
 
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它**复用**已有的 AI Harness（Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`），不新建第二份项目记忆；当前登记项目要求这两份文件，缺失时 `--scaffold-harness` 会补一份极简模板，绝不覆盖已有文件。
+本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它既支持普通 Git 仓库（默认的 generic 模式，不需要 `AGENTS.md` / `.ai/STATE.md`），也能复用已有的 AI Harness（Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`，用 `--context-mode harness`），不新建第二份项目记忆。
 
 > **版本 `1.0.0`**：真实的写入、批准、验收全流程都已跑通并通过人工验收；Codex 与 Claude Desktop 两种主控都已接入并验证过连通；完整验收记录见 [docs/reports/V1_ACCEPTANCE_REPORT_20261016.md](docs/reports/V1_ACCEPTANCE_REPORT_20261016.md)。
 > 目前有两个真实适配器：Codex（ChatGPT 订阅登录）与 Antigravity（Google 登录，经系统钥匙串）。**默认没有任何适配器**：只有配置里显式启用了 `codex` / `antigravity` 并写明可执行文件的绝对路径才会注册。测试套件全程使用假的 codex / agy 程序，**真实模型调用只在你逐项批准后才会发生**。
@@ -17,7 +17,7 @@
 | `par doctor` | 只读环境报告：Python、数据目录、配置、各 Provider 状态 | 否 |
 | `par init` | 创建运行数据目录（权限 0700） | 仅数据目录 |
 | `par harness check` | 只读 Harness 体检：Core 加全部 Harness 文件夹，可与基线比对 | 仅基线文件，且需 `--save-baseline` |
-| `par project add ID PATH [--scaffold-harness]` | 登记一个 Harness 项目（只记录 id、路径、vcs，登记后写入是关着的；打开写入见 `enable-write`）；项目缺 `AGENTS.md`/`.ai/STATE.md` 时加 `--scaffold-harness` 补一份极简通用模板再注册，绝不覆盖已有文件 | 仅 Runtime 自己的 `projects.toml`；带 `--scaffold-harness` 时额外在项目里补缺失的那两个文件 |
+| `par project add ID PATH [--context-mode generic\|harness] [--scaffold-harness]` | 登记一个项目（只记录 id、路径、vcs、上下文模式，登记后写入是关着的；打开写入见 `enable-write`）。默认 generic：普通 Git 仓库即可，不要求也不写 `AGENTS.md`/`.ai/STATE.md`；`--context-mode harness` 沿用 Harness 规则；`--scaffold-harness` 只在显式要求时补缺失的极简模板，绝不覆盖已有文件 | 仅 Runtime 自己的 `projects.toml`；带 `--scaffold-harness` 时额外在项目里补缺失的那两个文件 |
 | `par project enable-write ID [--confirm ID]` / `disable-write ID` | **写入开关**（真实项目）：先体检，不过关就列原因、什么都不改；过关后再敲一遍项目 id 才生效；留备份与审计行 | `projects.toml`（旧文件留备份）与 `logs/project_writes.jsonl` |
 | `par project list` / `show ID` | 项目事实、**写入就绪**（谁在拦）、给 Worker 的 **Context Manifest** | 否 |
 | `par task submit --contract FILE` | 校验任务合同并入队（幂等）；写任务等你批准 | 仅 Runtime 自己的台账 |

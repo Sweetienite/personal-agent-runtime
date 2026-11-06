@@ -337,6 +337,10 @@ MUTATIONS = [
     ('M629', 'an approval granted for a different worker authorizes the new one', 'src/par/core/kernel.py', '                if approval["payload"].get("worker") == (task["pinned_worker"] or contract.worker):', '                if True:', T + 'test_kernel_control'),
     ('M630', 'a new override request names the worker the retry replaced', 'src/par/core/kernel.py', '                               else {"worker": expected_worker})', '                               else {"worker": contract.worker})', T + 'test_kernel_control'),
     ('M631', 'the Kernel accepts a factory result that does not implement the Context contract', 'src/par/core/kernel.py', '        if not isinstance(context, Context):', '        if False:', T + 'test_context_interface'),
+    ('M632', 'a generic project is treated as a Harness project and must have a parent contract', 'src/par/core/kernel.py', '        if project.context_mode == "generic":', '        if False:', T + 'test_generic_project'),
+    ('M633', 'a Harness project accepts an ad-hoc write task', 'src/par/core/kernel.py', '            if contract.ad_hoc and contract.risk == "R2":', '            if False:', T + 'test_generic_project'),
+    ('M634', 'a generic write starts on a dirty base', 'src/par/context/generic.py', '            if dirty:', '            if False:', T + 'test_generic_context'),
+    ('M635', 'a generic write starts while writes are switched off', 'src/par/context/generic.py', '        if not self.project.write_enabled and not assume_enabled:', '        if False:', T + 'test_generic_context'),
 ]
 
 

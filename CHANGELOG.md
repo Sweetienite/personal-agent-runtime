@@ -10,6 +10,7 @@ Documentation and metadata corrections only — no behavior change:
 - `pyproject.toml`'s description now says what the package does, instead of naming an internal phase and claiming "no real model calls".
 - `AGENTS.md` points at files this repository actually publishes (root `CHANGELOG.md`; `.ai/` is the author's private task ledger) and says so explicitly.
 - The Antigravity account/terms limitation is stated where the adapters are introduced, and `USER_GUIDE.md` no longer describes the removed web console.
+- An ordinary Git repository can now be registered without the Harness convention: `par project add` defaults to `context_mode = "generic"`, which reads `README.md` / `AGENTS.md` / `CLAUDE.md` (when present) and the Git facts, and accepts an `ad_hoc` R2 contract once writes are switched on and the base is clean. `--context-mode harness` keeps the old parent-contract rules; registry entries written before the field keep the Harness behaviour.
 
 ## 1.0.0 — 2026-11
 

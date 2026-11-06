@@ -70,7 +70,7 @@ class CliWorld(KernelWorld):
     def setUp(self):
         super().setUp()
         write_config(self.data)
-        code, out, err = self.par("project", "add", "fixture", str(self.project_path), "--vcs", "git")
+        code, out, err = self.par("project", "add", "fixture", str(self.project_path), "--vcs", "git", "--context-mode", "harness")
         self.assertEqual(code, 0, err)
         self.contract_file = self.base / "contract.json"
         self.scripted = ScenarioSequence(scenarios.success())
@@ -302,7 +302,7 @@ class StoppingARun(KernelWorld):
 
     def test_sigterm_stops_the_worker_and_records_the_interruption(self):
         write_config(self.data)
-        self.assertEqual(run_cli("project", "add", "fixture", str(self.project_path), "--vcs", "git", "--data-dir", str(self.data))[0], 0)
+        self.assertEqual(run_cli("project", "add", "fixture", str(self.project_path), "--vcs", "git", "--context-mode", "harness", "--data-dir", str(self.data))[0], 0)
         tid = self.queued(r1_contract())
         scenario = scenarios.custom("long", ops.message("working"), ops.sleep(60))
         root = str(Path(__file__).resolve().parents[2])

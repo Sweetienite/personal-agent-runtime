@@ -2,7 +2,7 @@
 
 ## 一句话
 
-Runtime 只写自己的数据目录；对**真实项目**只读（不可能对真实项目提交写任务，更不会把补丁应用到任何项目；P3 起可写的只有它自己造的夹具项目）；唯一例外是 `par project add --scaffold-harness`（你显式加这个开关才会发生）：只为项目里缺失的 `AGENTS.md`/`.ai/STATE.md` 各补一份极简通用模板，绝不覆盖已存在的文件，仍受同一套 `WriteGuard`/`protected_roots` 保护；启动的外部程序只有：git（只在它自己建的目录里、干净环境）、进程运行器启动的 Worker 与验收检查（Worker 是 Codex 官方 CLI 或脚本化的测试替身；**真实模型调用只发生在你逐项批准之后**）、Codex 的几个不调用模型的探测子命令与 `codesign`、Core 自带的检查脚本；不读、不复制任何凭据；输出一律先脱敏。
+Runtime 只写自己的数据目录；对**真实项目**默认只读：只有你亲自 `par project enable-write` 打开、并且每个写任务逐项批准后，Worker 才会在**私有副本**里改文件，补丁不会自动应用到项目；唯一由 Runtime 直接写进项目的情况是 `par project add --scaffold-harness`（你显式加这个开关才会发生）：只为项目里缺失的 `AGENTS.md`/`.ai/STATE.md` 各补一份极简通用模板，绝不覆盖已存在的文件，仍受同一套 `WriteGuard`/`protected_roots` 保护；启动的外部程序只有：git（只在它自己建的目录里、干净环境）、进程运行器启动的 Worker 与验收检查（Worker 是 Codex 官方 CLI 或脚本化的测试替身；**真实模型调用只发生在你逐项批准之后**）、Codex 的几个不调用模型的探测子命令与 `codesign`、Core 自带的检查脚本；不读、不复制任何凭据；输出一律先脱敏。
 
 ## 它能写什么、不能写什么
 
@@ -44,14 +44,15 @@ Runtime 只写自己的数据目录；对**真实项目**只读（不可能对�
 
 - 登记只记录 id、路径、vcs，不记录项目里有什么；真实项目的 `write_enabled` 默认 `false`，只有同时带 `write_approved = "YYYY-MM-DD"`（你批准的日期）且 `vcs = "git"`（回滚靠 git 基线）才被接受，别的写法整条丢弃；受保护位置、重复目录、带密钥形键名的条目整条丢弃。
 - 适配器只读：读 `AGENTS.md`、`CLAUDE.md`、`.ai/STATE.md`、active 合同的内容和哈希；事实源指针指向的文件只做 `stat`。其余项目文件不读。
+- generic 项目只读 `README.md`、`AGENTS.md`、`CLAUDE.md`（存在才读）并记录大小/哈希；同样拒绝符号链接逃逸与敏感路径，渲染内联内容时重新校验。
 - 敏感路径与疑似机密的指针只计数、不列名；越界指针（绝对路径、`..`、符号链接逃逸）不跟随。
 - 读取内联内容时重新校验大小与哈希，并拒绝越出项目根或指向敏感路径的条目，伪造的清单无法借此读到别处的文件（有测试）。
-- 写入就绪里的 `WRITE_DISABLED` 在 P1 恒为真，其余条件只是告诉你还差什么。
+- 写入就绪里的 `WRITE_DISABLED` 一直为真，直到你用 `par project enable-write` 打开；其余条件只是告诉你还差什么（generic 项目没有 STATE/主合同这两项）。
 
 ## 夹具项目与真实项目（P3）
 
-- 唯一可写的项目是 `par fixture create` 造的夹具（`<数据目录>/fixtures/<id>/`，git 仓库，一个故意的 bug，不含任何个人数据）。加载器**每次**独立核对：是 `fixtures/` 的直接子目录、文件夹名等于 id、带合法 `.par-fixture.json`（id 一致）、文件夹与标记都不是符号链接；任何一项不符，整条登记被丢弃。`par project add` 永远登记为只读；手改 `write_enabled = true`、把标记文件拷进真实项目、用符号链接伪装、把路径写成 `..` 绕回，都有对应测试。`--scaffold-harness`（显式才生效）是登记之前的一步，不是写入开关：只为缺失的 `AGENTS.md`/`.ai/STATE.md` 各建一份极简模板，已存在的文件原样不动；受保护位置（Harness Core 等）和敏感路径一样拒绝，不会因为加了这个开关就被绕过。
-- 真实项目要**你亲自**打开写入：`par project enable-write ID`（先按 `write_readiness` 体检：基线干净、STATE 健康、恰好一份生效的主合同、有 git、git 里看不到敏感路径；通过后你再敲一遍项目 id 才会生效）。它只改 `projects.toml` 里这个项目的两行，旧文件留作 `projects.toml.par-backup-<时间>`，并在 `logs/project_writes.jsonl` 追加一行（时间、项目、开/关、当时的提交，没有别的内容）；`par project disable-write ID` 随时关掉。 打开之后每个写任务仍然要过：合同的路径白名单（`.ai/`、`AGENTS.md`、`CLAUDE.md` 永远不可写）、你逐项批准的写权限、私有副本里干活、补丁不会被任何代码应用到项目。没打开的项目照旧被 `WRITE_DISABLED` 挡住（有测试，包括同一个 Kernel 对夹具放行、对没打开的真实项目拒绝）。
+- 夹具项目始终可写：`par fixture create` 造的夹具（`<数据目录>/fixtures/<id>/`，git 仓库，一个故意的 bug，不含任何个人数据）。加载器**每次**独立核对：是 `fixtures/` 的直接子目录、文件夹名等于 id、带合法 `.par-fixture.json`（id 一致）、文件夹与标记都不是符号链接；任何一项不符，整条登记被丢弃。`par project add` 登记的真实项目默认为只读；手改 `write_enabled = true`、把标记文件拷进真实项目、用符号链接伪装、把路径写成 `..` 绕回，都有对应测试。`--scaffold-harness`（显式才生效）是登记之前的一步，不是写入开关：只为缺失的 `AGENTS.md`/`.ai/STATE.md` 各建一份极简模板，已存在的文件原样不动；受保护位置（Harness Core 等）和敏感路径一样拒绝，不会因为加了这个开关就被绕过。
+- 真实项目要**你亲自**打开写入：`par project enable-write ID`（先按 `write_readiness` 体检：基线干净、有 git、git 里看不到敏感路径；Harness 项目还要求 STATE 健康、恰好一份生效的主合同，generic 项目不需要这两项；通过后你再敲一遍项目 id 才会生效）。它只改 `projects.toml` 里这个项目的两行，旧文件留作 `projects.toml.par-backup-<时间>`，并在 `logs/project_writes.jsonl` 追加一行（时间、项目、开/关、当时的提交，没有别的内容）；`par project disable-write ID` 随时关掉。 打开之后每个写任务仍然要过：合同的路径白名单（`.ai/`、`AGENTS.md`、`CLAUDE.md` 永远不可写）、你逐项批准的写权限、私有副本里干活、补丁不会被任何代码应用到项目。没打开的项目照旧被 `WRITE_DISABLED` 挡住（有测试，包括同一个 Kernel 对夹具放行、对没打开的真实项目拒绝）。
 
 ## Codex Worker（P3）
 

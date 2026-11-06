@@ -342,13 +342,19 @@ class Kernel(ManualHandoffMixin, TakeoverMixin):
         problems: "list[str]" = []
         if not view.exists:
             return ["the project folder does not exist"]
-        state = view.contract_state
-        if contract.ad_hoc and state != "none":
-            problems.append("this project has an active contract: submit under it (ad_hoc is only for projects without one)")
-        elif not contract.ad_hoc and state == "none":
-            problems.append("the project has no active parent contract; set ad_hoc=true for a read-only diagnostic")
-        elif state == "multiple":
-            problems.append("the project has several active contracts; the Harness Core allows at most one")
+        if project.context_mode == "generic":
+            if not contract.ad_hoc:
+                problems.append("a generic project has no parent contract; set ad_hoc=true (the task's JSON contract is the execution contract)")
+        else:
+            state = view.contract_state
+            if contract.ad_hoc and contract.risk == "R2":
+                problems.append("an ad-hoc task (no parent contract) can only be R0 or R1 in a Harness project; code changes need a parent contract")
+            if contract.ad_hoc and state != "none":
+                problems.append("this project has an active contract: submit under it (ad_hoc is only for projects without one)")
+            elif not contract.ad_hoc and state == "none":
+                problems.append("the project has no active parent contract; set ad_hoc=true for a read-only diagnostic")
+            elif state == "multiple":
+                problems.append("the project has several active contracts; the Harness Core allows at most one")
         if contract.risk in ("R1", "R2") and (manifest.base.get("vcs") != "git" or not manifest.base_git_commit):
             problems.append("this task needs a git base commit to work from, and the project has none (R0 tasks do not)")
         if contract.risk == "R2" and not readiness.allowed:

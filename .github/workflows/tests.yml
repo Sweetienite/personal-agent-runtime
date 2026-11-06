@@ -45,3 +45,5 @@ jobs:
           tests.unit.test_kernel_control
           tests.unit.test_kernel_submit
           tests.unit.test_kernel_policy
+          tests.unit.test_context_interface
+          tests.unit.test_generic_project

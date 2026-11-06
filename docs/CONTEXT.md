@@ -41,24 +41,33 @@ Kernel 派任务时，不会把项目的全部状态塞给 Worker，而是给一
 - **漂移签名**只取真正会改变任务前提的东西：提交（`head`）、规则文件哈希（`rules`）、STATE 哈希（`state`）、父合同哈希（`contract`）；R2 任务另加 `dirty_digest`（写任务要求干净基线）。只读任务不因为你在项目里随手改了无关代码文件而被打断；Worker 看到的是**已提交**的基线克隆，不含未提交的修改。
 - **运行时**重新取清单与签名比对：不同 → `PERMISSION_WAIT` 加 `BASE_DRIFT`；你批准后以当前状态重写 `base`（记 `BASE_REFRESHED`），拒绝则取消任务。
 - **给 Worker 的提示词**里的「Project context」一节就是 `render(manifest)` 的输出：内联条目（规则、健康的 STATE、唯一合同）原文、其余指针。渲染时会重新校验哈希，文件在取清单与渲染之间变了就拒绝运行（`context_changed`）。
-- **父合同规则**：有且仅有一份 active 合同的项目，任务挂在它之下；没有 active 合同的项目只接受 `ad_hoc=true` 的 R0/R1 只读诊断；有多份则一律拒绝。Kernel 从不自己创建权威合同。
+- **父合同规则（Harness 模式）**：有且仅有一份 active 合同的项目，任务挂在它之下；没有 active 合同的项目只接受 `ad_hoc=true` 的 R0/R1 只读诊断；有多份则一律拒绝。Kernel 从不自己创建权威合同。generic 模式没有父合同：任务的 `ad_hoc` 必须为 `true`，R2 在写入开关打开、git 基线干净且逐项批准后同样可以运行。
 
 ## 写入就绪（`write_readiness`）
 
-返回 `allowed` 和一组 `blockers`。**对登记表里的真实项目，`allowed` 恒为假**（登记表不允许 `write_enabled = true`），所以 P2 提交写任务一定被拦；其余原因用来告诉你「还差什么」。测试夹具直接构造 `write_enabled=True` 的项目条目来演练写任务。
+返回 `allowed` 和一组 `blockers`。两种模式都要求：写入开关已打开（`par project enable-write ID`；夹具项目除外）、项目目录存在、git 基线可回滚、工作树干净、git 里看不到敏感路径。Harness 模式额外要求健康的 `STATE.md` 和唯一 active 主合同；generic 模式没有这两项。
 
 | 代码 | 含义 |
 |---|---|
-| `WRITE_DISABLED` | 真实项目的写入要等 P8 的门禁 |
-| `STATE_OVERSIZED` | `STATE.md` 超过 15,000 B：先对账（Core 文档 06 §6），经你确认 |
-| `NO_ACTIVE_CONTRACT` / `MULTIPLE_ACTIVE_CONTRACTS` | 写任务需要唯一的已批准主合同，或你明确的临时流程 |
+| `WRITE_DISABLED` | 写入开关还关着：`par project enable-write ID`（先体检，再敲一遍 id） |
+| `STATE_OVERSIZED` | Harness：`STATE.md` 超过 15,000 B，先对账（Core 文档 06 §6），经你确认 |
+| `NO_ACTIVE_CONTRACT` / `MULTIPLE_ACTIVE_CONTRACTS` | Harness：写任务需要唯一的已批准主合同 |
 | `SENSITIVE_VISIBLE` | git 能看到敏感路径：先补忽略规则 |
 | `DIRTY_BASE` | 有未提交改动：需要干净基线或显式的 dirty manifest |
 | `NO_VCS` / `VCS_MISMATCH` | 没有版本控制可回滚：需要显式的备份或快照流程 |
-| `NO_STATE` / `NO_PROJECT` | 缺 `STATE.md` / 项目目录不存在 |
+| `NO_STATE` / `NO_PROJECT` | Harness 缺 `STATE.md` / 项目目录不存在 |
+
+## Generic 模式（普通 Git 仓库）
+
+`par project add ID PATH` 默认登记为 generic：普通 Git 仓库即可，不要求也不写 `AGENTS.md` / `.ai/STATE.md`。旧 `projects.toml` 里没有 `context_mode` 的条目保持 harness 行为（迁移见 T06）。
+
+- 上下文只读仓库已有的 `README.md`（清单 kind `readme`）、`AGENTS.md`（`rules`）、`CLAUDE.md`（`bridge`），加 git 事实；没有文件也合法。
+- `AGENTS.md` 与 `CLAUDE.md` 同时存在且后者不是 `@AGENTS.md` 时，清单两份都列、写明冲突，不替你决定优先级。两者都是不可信项目数据，不能改 Kernel 权限。
+- 没有父合同：任务合同的 `ad_hoc` 必须为 `true`；R2 仍要 `allowed_paths`、`acceptance.checks`、项目写入开关、干净 git 基线和逐项批准。
+- 内联/指针上限、`digest`、渲染时重新校验哈希、符号链接/越界/敏感路径拒绝，与 Harness 模式一致。
 
 ## 已知限制
 
-- 事实源指针只认英文标题 `## Sources of Truth`。用别的标题或别的语言的项目（例如毕业论文）没有指针，清单里只有规则、STATE 和合同。
+- 事实源指针只认英文标题 `## Sources of Truth`（Harness 模式）。
 - 指针指向的文件只做 `stat`，不读内容。
 - 登记只记录「在哪」，不记录「里面有什么」，不构成第二份项目记忆。

@@ -22,12 +22,13 @@ from pathlib import Path
 
 from par.config import ProjectEntry
 from par.context.types import (Blocker, ContextChanged, ContextManifest, FileFacts, ManifestEntry, ProjectView,
-                               SourcePointer, StateFacts, WriteReadiness)
-from par.core.policy import PolicyViolation, is_sensitive_path
+                               SCHEMA_VERSION, SourcePointer, StateFacts, WriteReadiness)
+from par.context.facts import file_facts, git_facts
+from par.context.rendering import read_inline as read_inline_entries, render_manifest
+from par.core.policy import is_sensitive_path
 from par.core.redact import contains_secret, redact_text
 from par.harness import check as hc
 
-SCHEMA_VERSION = 1
 STATE_INLINE_MAX_BYTES = 15_000  # the limit Core's hygiene applies to STATE.md
 INLINE_MAX_BYTES = 20_000        # any other single entry
 TOTAL_INLINE_MAX_BYTES = 60_000
@@ -55,10 +56,7 @@ class HarnessContextAdapter:
 
     # --- facts ------------------------------------------------------------------------------------
     def _facts(self, rel: str) -> "FileFacts | None":
-        p = self.root / rel
-        if not p.is_file():
-            return None
-        return FileFacts(rel, p.stat().st_size, hc.sha256_file(p))
+        return file_facts(self.root, rel)
 
     def _state(self) -> "tuple[StateFacts | None, str]":
         p = self.root / ".ai" / "STATE.md"
@@ -121,22 +119,7 @@ class HarnessContextAdapter:
         return tuple(listed), cut, sensitive
 
     def _git(self, notes: "list[str]") -> dict:
-        declared, has_git = self.project.vcs, (self.root / ".git").exists()
-        if declared == "none":
-            if has_git:
-                notes.append("vcs is declared 'none' but a .git exists; it is ignored")
-            return {"is_repo": False}
-        if declared == "git" and not has_git:
-            notes.append("vcs is declared 'git' but no repository was found at the project root")
-        if not has_git:
-            return {"is_repo": False}
-        facts = hc.git_facts(self.root, self.home)
-        _, full = hc.git_read(self.root, self.home, "rev-parse", "HEAD")
-        _, status = hc.git_read(self.root, self.home, "status", "--porcelain=v1", "--untracked-files=all")
-        lines = sorted(status.splitlines()[:hc.STATUS_LINE_CAP])
-        facts["head_full"] = full.strip()
-        facts["dirty_digest"] = hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
-        return facts
+        return git_facts(self.project, self.root, self.home, notes)
 
     def view(self) -> ProjectView:
         shown = redact_text(str(self.root), home=str(self.home))
@@ -229,34 +212,10 @@ class HarnessContextAdapter:
 
     # --- reading what a manifest promised -----------------------------------------------------------
     def read_inline(self, manifest: ContextManifest) -> "list[tuple[ManifestEntry, str]]":
-        """The text of every inline entry, verified against the recorded size and hash."""
-        out = []
-        root_real = os.path.realpath(self.root)
-        for e in manifest.inline_entries():
-            target = os.path.realpath(self.root / e.path)
-            if is_sensitive_path(e.path) or not (target == root_real or target.startswith(root_real + os.sep)):
-                raise PolicyViolation("a manifest entry points outside the project or at a sensitive path")
-            data = Path(target).read_bytes()
-            if len(data) != e.bytes or hashlib.sha256(data).hexdigest() != e.sha256:
-                raise ContextChanged(e.path)
-            out.append((e, data.decode("utf-8", errors="replace")))
-        return out
+        return read_inline_entries(self.root, manifest)
 
     def render(self, manifest: ContextManifest) -> str:
-        parts = [f"# Context for project {manifest.project_id} (manifest {manifest.digest[:12]})"]
-        b = manifest.base
-        parts.append(f"# base: {b['vcs']}" + (f" {b['head'][:12]} on {b['branch']}" if b.get("head") else "")
-                     + (f", uncommitted: {sum(b['dirty'].values())}" if sum(b["dirty"].values()) else ""))
-        for e, text in self.read_inline(manifest):
-            parts.append(f"\n## {e.kind}: {e.path}  (sha256 {e.sha256[:12]}, {e.bytes} bytes)\n{text.rstrip()}")
-        pointers = [e for e in manifest.entries if e.mode == "pointer"]
-        if pointers:
-            parts.append("\n## Pointers (not included; read on demand if your permissions allow)")
-            parts += [f"- {e.kind}: {e.path}" + (f" ({e.bytes} bytes)" if e.bytes is not None else "")
-                      + (f" - {e.reason}" if e.reason else "") for e in pointers]
-        if manifest.skipped_sensitive:
-            parts.append(f"\n({manifest.skipped_sensitive} sensitive-looking pointer(s) were left out.)")
-        return "\n".join(parts) + "\n"
+        return render_manifest(self.root, manifest)
 
     # --- may a write task start here? ---------------------------------------------------------------
     def write_readiness(self, view: "ProjectView | None" = None, *, assume_enabled: bool = False) -> WriteReadiness:
