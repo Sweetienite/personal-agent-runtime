@@ -347,6 +347,12 @@ MUTATIONS = [
     ('M639', 'a check program the Kernel cannot run is accepted into the contract', 'src/par/core/draft.py', '            if isinstance(argv, list) and argv and isinstance(argv[0], str) and resolve_executable(argv[0]) is None:', '            if False:', T + 'test_task_draft'),
     ('M640', 'prepare_task tells the coordinator to submit even when the compiler asked a question', 'src/par/mcp/tools.py', '                "agent_next": ["submit_task"] if result.status == "READY" else []}', '                "agent_next": ["submit_task"]}', T + 'test_mcp_tools'),
     ('M641', 'get_task_status always reports a ready-to-run derived state', 'src/par/mcp/tools.py', '            "derived_state": d["derived_state"],', '            "derived_state": "READY_TO_RUN",', T + 'test_mcp_tools'),
+    ('M642', 'a hand-off folder exported for another base is accepted', 'src/par/core/manual.py', '        if marker.get("base") != base:', '        if False:', T + 'test_manual_handoff'),
+    ('M643', 'a copy of the exported workspace is accepted as the export itself', 'src/par/core/manual.py', '        if real != Path(os.path.realpath(packet / "workspace")):', '        if False:', T + 'test_manual_handoff'),
+    ('M644', 'an older hand-off packet is imported after a newer one exists', 'src/par/core/manual.py', '        if latest and latest[-1].get("export") != export:', '        if False:', T + 'test_manual_handoff'),
+    ('M645', 'a hand-off packet whose prompt was edited is still imported', 'src/par/core/manual.py', '                    or hashlib.sha256(prompt_file.read_bytes()).hexdigest() != doc.get("prompt_sha256")):', '                    or False):', T + 'test_manual_handoff'),
+    ('M646', 'a read-only task takes a folder as its result', 'src/par/core/manual.py', '        if not contract.writes and (source is not None or patch is not None):', '        if False:', T + 'test_manual_handoff'),
+    ('M647', 'the hand-off marker is left in the workspace and counted as work', 'src/par/core/attempt.py', '                    if marker.is_file() and not marker.is_symlink():', '                    if False:', T + 'test_manual_handoff'),
 ]
 
 

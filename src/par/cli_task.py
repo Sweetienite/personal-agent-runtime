@@ -359,13 +359,12 @@ def cmd_handoff(args):
     if args.json:
         print(_dump(d))
         return 0
-    print(f"{d['task_id']}  hand-off prepared for {d['to']}  (the task is now {d['status']})")
+    print(f"{d['task_id']}  hand-off prepared for {d['to']}  mode: {d['mode']}  (the task is now {d['status']})")
     print(f"  packet folder : {d['folder']}")
     print(f"  steps (read)  : {d['readme']}")
     print(f"  prompt (paste): {d['prompt']}")
-    if d["workspace"]:
-        print(f"  open in the app: {d['workspace']}   <- a private copy; never the real project")
-    print(f"  when it is done: par task import {d['task_id']} --from \"<that folder>\"   (or --patch FILE, or --text FILE)")
+    for n, action in enumerate(d["next_actions"], 1):
+        print(f"  {n}. {action}")
     return 0
 
 

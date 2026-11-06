@@ -16,6 +16,8 @@ Documentation and metadata corrections only — no behavior change:
 
 - The MCP bridge has a 17th tool, `prepare_task`: a coordinator can turn a short draft into a strict contract and get the missing fields back as questions, without submitting or guessing a path/command. Task status and review answers now carry a derived `derived_state` and a short `summary`; the coordinator starter prompt was shortened and points at `docs/COORDINATORS.md` for the detailed contract examples instead of inlining them.
 
+- Manual hand-offs now say exactly what they need and check what comes back: the export reports its `mode` (`workspace` for a file-changing task, `text` for a written answer), every absolute path, the base commit, the allowed paths and a copyable `next_actions` list. `PROMPT.md` starts with the folder check before any work instruction; the WorkBuddy menu path is labelled as a dated observation rather than a promise. The import now checks the marker against the ledger, the task's base and the packet's own `manifest.json`, and refuses a copy of the folder, an older export or an incomplete older packet by name instead of silently taking it. A failed import can be retried without touching the first attempt's evidence, and the noise rule for app settings folders is stated precisely: only newly added files are ignored.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:

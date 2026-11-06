@@ -28,21 +28,37 @@ par task import TASK --from tasks/TASK/handoff/manual-1/workspace
 par task result TASK ; par task diff TASK ; par task accept TASK      # 之后和别的任务一样
 ```
 
+### 第一次试：用夹具，不用真实项目
+
+`par fixture create` 造的夹具项目只有假的示例文件和一个自带的检查，没有你的代码或密钥，适合先把流程走一遍（真实项目等这一步顺了再试）。交接包的 README 会照常提醒：一旦在 GUI 应用里打开副本，副本里的文件就会发给那家厂商的云端模型——夹具里没有敏感内容，但这个决定仍然由你做出。
+
 ### 导出（`handoff`）做什么
 - 只对已批准的任务（R2 的写权限必须已批准）、项目没有漂移的任务进行；状态须为 `QUEUED / PAUSED / FAILED / INTERRUPTED / RATE_LIMITED / QUOTA_EXHAUSTED / AUTH_REQUIRED / BLOCKED_NO_WORKER`。`QUEUED` 的任务会被**暂停**，防止自动 Worker 在你操作期间抢跑；其他状态不动。
-- `workspace/` 是项目在基线提交时的**私有副本**（不含 `.git`，不含疑似敏感文件；如有上次尝试的已验证改动，已经打在里面），里面放一个 `.par-handoff.json` 标记（任务号 + 导出编号）。**永远不要让应用打开真实项目目录。**
-  **WorkBuddy 实测教训**（2026-10-16，一次真实交接暴露）：WorkBuddy 按「空间」工作，一个空间是对某个真实文件夹的长期绑定；`open -a WorkBuddy <路径>` 对已经在跑的实例完全没有效果（不新建窗口、不新建或切换空间）。光把 `workspace/` 的路径念给人听是不够的——如果侧边栏里已经有一个绑定着真实项目的空间（哪怕名字和这个任务的项目一样），手顺点进去继续聊天比专门打开一个新文件夹容易得多，模型就会直接改真实项目，Runtime 完全看不到也验证不了。正确操作是在 WorkBuddy 里点「新建任务」→「选择工作空间」→「打开本地文件夹」，专门选中这个 `workspace/`；生成的 `README.md` 现在把这步写成了具体菜单路径（且会点名不要点的那个空间叫什么）。
+- 输出是给人和给脚本都能用的：`task_id`、`export_id`、`mode`、`folder`、`workspace_absolute_path`、`prompt_path`、`manifest_path`、`readme_path`、`base_commit`、`allowed_paths`、`next_actions`。`next_actions` 是照抄就能做的短步骤（打开哪个文件夹、粘贴哪个文件、回来运行哪条 `par task import`、最后看哪条 `par task result`）；`--json` 给同样的机器可读版本。
+- `mode` 按任务固定，不靠猜：
+  - `workspace`：任务会改文件（R2）。应用在副本里改，交回文件夹或补丁。
+  - `text`：任务只要文字答案（R0/R1）。R1 仍给一份**只读副本**让它读项目，但只收文字答案，文件改动不会被采用；R0 连副本都没有。
+  - “只读但想要一份可写副本”不在这里自动发生：那需要单独的安全评估，不会顺手把项目文件（更不会带敏感文件）交给应用。
+- `workspace/` 是项目在基线提交时的**私有副本**（不含 `.git`，不含疑似敏感文件；如有上次尝试的已验证改动，已经打在里面），里面放一个 `.par-handoff.json` 标记（任务号、导出编号、基线、模式）。**永远不要让应用打开真实项目目录。**
+  **WorkBuddy 实测教训**（2026-10-16，一次真实交接暴露）：WorkBuddy 按「空间」工作，一个空间是对某个真实文件夹的长期绑定；`open -a WorkBuddy <路径>` 对已经在跑的实例完全没有效果（不新建窗口、不新建或切换空间）。光把 `workspace/` 的路径念给人听是不够的——如果侧边栏里已经有一个绑定着真实项目的空间（哪怕名字和这个任务的项目一样），手顺点进去继续聊天比专门打开一个新文件夹容易得多，模型就会直接改真实项目，Runtime 完全看不到也验证不了。正确操作是在 WorkBuddy 里点「新建任务」→「选择工作空间」→「打开本地文件夹」，专门选中这个 `workspace/`；生成的 `README.md` 把这步写成具体菜单路径，并点名不要点的那个空间叫什么。**菜单名按 WorkBuddy 桌面版 2026-10 的界面记录，GUI 改版后可能不同**——认准「打开本地文件夹」这个动作即可；Runtime 不承诺 `open -a` 能启动或切换应用，也不会替你点这些菜单。
   **Cursor / Windsurf / Cline / Aider（2026-11-02 新增，机制和 WorkBuddy/TRAE 完全一样，还没有真实交接验证过）**：这几个工具没有做过一次真实交接，所以没有像上面那样的实测教训——可能也有类似「侧边栏里已有的会话比新开一个文件夹更顺手」的陷阱，第一次用时按本节开头那句话多留意：**一定要在应用里专门打开 `workspace/` 这个新文件夹，不要在任何已经开着的、指向真实项目的会话/窗口里继续**。`.cursor/`、`.windsurf/`、`.cline/` 这类应用自己写的设置目录已经在导入时的噪声忽略名单里（见下方「导入」）。
-- `PROMPT.md` 是 Kernel 给 Worker 的同一份提示词，外加一节 `## Environment`（你在桌面应用里：只改允许的路径、不要 git、不要装依赖……）。`README.md`（中文）写明步骤和数据去向。`manifest.json` 记录提示词 sha256、基线、允许路径。
-- 事件 `HANDOFF_EXPORTED`；不启动任何程序，不读任何凭据。
+- `PROMPT.md` 是 Kernel 给 Worker 的同一份提示词，外加两件只与人工交接有关的事：最前面的 `## Before you start`（先打开 `.par-handoff.json` 核对 task_id，不对就停手，不许回退到已经开着的项目）和最后的 `## Environment`（你在桌面应用里：只改允许的路径、不要 git、不要装依赖、不要声称跑过检查）。中间仍是具体目标、允许路径、验收标准、Kernel 会怎么检查、要交付什么。 **README 不再和 PROMPT 互相抄步骤**：菜单和数据去向在 README，工作目标和边界在 PROMPT。
+- `manifest.json` 记录模式、基线、允许路径、提示词 sha256、导出编号。事件 `HANDOFF_EXPORTED`；不启动任何程序，不读任何凭据。
 
 ### 导入（`import`）做什么
-- 恰好一种输入：`--from` 文件夹（必须是本任务导出过的 `workspace/`，靠标记核对）、`--patch` 补丁、`--text` 文字答案。文字答案只用于只读/文字任务，写任务必须给文件或补丁。
-- 文件夹先做**私有快照**：不跟随任何链接；含特殊文件（管道/套接字/设备）、疑似敏感文件（不读内容）、总量超过 1 GiB → 直接拒绝。快照里去掉标记文件。应用自己生成的设置目录（`.trae/`、`.workbuddy/`、`.codebuddy/`、`.vscode/`、`.idea/`、`.cursor/`、`.windsurf/`、`.cline/`……）下**新增**的文件按“噪声”忽略；已被跟踪的文件被改了，照常判越界。
+- 恰好一种输入：`--from` 文件夹、`--patch` 补丁、`--text` 文字答案。文字答案只用于只读/文字任务，写任务必须给文件或补丁；R0 文字任务连文件夹都不收。
+- 文件夹先做**三层核对**，任何一层不符都点名拒绝，任务保持原状、不产生尝试：
+  1. `.par-handoff.json` 的 `task_id` 与 `export` 必须与台账里的导出事件一致（伪造的 task/export 是 `wrong_folder`）。
+  2. 标记里的 `base` 必须等于任务当前的基线（不同就是 `stale_base`：项目在导出后换过基线，或这是旧包）。
+  3. 包内 `manifest.json` 的 task/export/base/workspace 必须与台账和标记一致，并且传入路径的 `realpath` **就是**这个包导出的 `workspace/` 本身（复制到别处、搬过家的是 `stale_copy`）。缺 `manifest.json` 或来自更旧版本的包是 `old_packet`，明确要求重新导出，不猜也不“转换”。
+  - 已经有更新的导出包时，旧包会被判为 `stale_export`，不会悄悄覆盖新版本。确实是在旧包里做的，可以把改动做成补丁用 `--patch` 交回（补丁按当前基线应用）。
+- 文件夹再做**私有快照**：不跟随任何链接；含特殊文件（管道/套接字/设备）、疑似敏感文件（不读内容）、总量超过 1 GiB → 直接拒绝。快照里去掉标记文件。
+- 噪声规则说清楚：应用自己生成的设置目录（`.trae/`、`.workbuddy/`、`.codebuddy/`、`.vscode/`、`.idea/`、`.cursor/`、`.windsurf/`、`.cline/`……）下**新增**的文件按“噪声”忽略；这些目录里**原本就有、被修改或删除的文件照常判越界**。忽略规则只对新增文件生效，不会给已有文件打掩护。
 - 补丁：先检查没有碰受保护路径（`.git`、`.ai/`、`AGENTS.md`、敏感路径），再 `--check` 后应用到干净副本。
-- 然后和任何 Worker 的输出一样：逐文件对比基线 → 越界即失败 → Kernel 自己运行合同里的检查 → 通过才是 `REVIEW_REQUIRED`。回来的结果里“测试通过了”这类说法**不算数**。
+- 然后和任何 Worker 的输出一样：逐文件对比基线 → 越界或异常删除即失败 → Kernel 自己运行合同里的检查 → 通过才是 `REVIEW_REQUIRED`。回来的结果里“测试通过了”、`RESULT.md` 里写“PASS”这类说法**不算数**。
+- **不监视、不猜结束**：Runtime 不会盯着这个文件夹，也不会从文件变化推断应用是否做完；只有你运行 `par task import` 时才读取结果。失败可以再来一次：每次 import 是独立的一次尝试，修好后重新 import 会新建下一次尝试，旧尝试的 `prompt.txt`、`changes.json`、`work.patch` 原样保留。
 - 记录：尝试的 `provider = manual_handoff`、`worker = 你给的应用名`、`model = manual`；`prompt.txt` 就是你当时拿到的 `PROMPT.md`；事件 `HANDOFF_IMPORTED`；**不产生 Provider 健康记录**（人不是 Provider）。
-- 任务可以是 `QUEUED` / `PAUSED`（自动恢复）/ 失败类状态（自动按一次 retry 处理）；已经在 `REVIEW_REQUIRED` 的任务不再接收第二份结果。
+- 任务可以是 `QUEUED` / `PAUSED`（自动恢复）/ 失败类状态（自动按一次 retry 处理）；已经在 `REVIEW_REQUIRED` 的任务不再接收第二份结果。若 retry 期间项目基线变了，导入会在开始前以 `stale_base` 拒绝，要求按新基线重新导出。
 
 ### 数据去向（请你自己判断）
 你在这些应用里打开 `workspace/`，应用会把其中的文件内容发给它自己的云端模型服务。WorkBuddy、TRAE 两家官方文档对这件事的说法见 `docs/reports/`（调研）：WorkBuddy 隐私政策写明输入会交给第三方大模型推理、默认不用于训练；TRAE 本地模式下代码如何处理，官方页面没有找到明确说法。Cursor、Windsurf、Cline、Aider 没有做过同样的调研——它们各自的数据处理政策请你自己查证。**这是你的决定，Runtime 只做到：不放敏感文件、不让应用碰真实项目。**
