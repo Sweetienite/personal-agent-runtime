@@ -1,8 +1,8 @@
 # 兼容性证据矩阵（2026-11-06，P3/T13）
 
-> **本文是静态能力研究，缺真实测试。** 本次调查只做了：本机离线 `--version` / `--help`（不调用模型、不联网、不读凭据）、以及公开官方资料的核对。**没有运行任何真实 R1/R2 任务、没有登录、没有消耗额度、没有验证任何账号的条款许可。** 因此本轮**没有任何 `GREEN` 候选**；T14 的状态是 `BLOCKED_BY_EVIDENCE`，不得创建「看起来支持但不会跑」的适配器。
+> **本文的基线是静态能力研究；2026-11-06 追加了一次真实复核，仍然没有 `GREEN`。** T13 那一轮只做了本机离线 `--version` / `--help`（不调用模型、不联网、不读凭据）与公开官方资料的核对。之后用户授权解锁 T14，并选定「用**官方允许的 ChatGPT 订阅 + `codex exec` 路径**做真实复核、**不新增自动 Provider**」：已在非敏感夹具上完成 2 次真实模型调用（R1/R2），拿到真实厂商结构化事件与用量计数；但本宿主无法创建嵌套 macOS Seatbelt 沙箱，CLI 读不到任何文件，R2 被 Kernel 自己的检查判为 `FAILED`，**没有成功的真实 R2**。完整记录见 [reports/CODEX_REAL_REVALIDATION_20261106.md](reports/CODEX_REAL_REVALIDATION_20261106.md)。因此**没有任何 `GREEN` 候选**；T14 按用户决策收口为「不新增自动 Provider」，不得创建「看起来支持但不会跑」的适配器。
 >
-> 「官方存在某个参数」不等于「PAR 在现有隔离与授权模式下能安全工作」。本文每一行都列出证据等级、版本、OS、账号类型、实测方法和**没有测的内容**。可复现的离线探测脚本：`python -B tests/tools/provider_probe.py`（默认只做 `which()`，不启动任何外部程序；`--versions` / `--help-flags` 才执行离线命令）。
+> 「官方存在某个参数」不等于「PAR 在现有隔离与授权模式下能安全工作」。本文每一行都列出证据等级、版本、OS、账号类型、实测方法和**没有测的内容**。可复现的离线探测：`python -B tests/tools/provider_probe.py`（默认只做 `which()`，不启动任何外部程序；`--versions` / `--help-flags` 才执行离线命令），以及 `python -B tests/tools/sandbox_probe.py --json`（只问本宿主能否创建嵌套 OS 沙箱，不调用模型、不联网、不读凭据）。
 
 ## 调查环境
 
@@ -15,6 +15,19 @@
 | 已安装但不在 PATH | ChatGPT.app 内置 `codex-cli 0.166.0-alpha.6`（**alpha 预览版**）、Claude.app（桌面应用，非 CLI） |
 | 未安装 | `agy` 1.3.5（历史私有安装，见 [AGY.md](AGY.md)，本机当前路径已不存在）、Claude Code CLI、OpenCode、任何 ACP agent |
 | 本次运行的外部命令 | 仅 `gemini --version`、`gemini --help`、内置 codex 的 `--version`、`npm ls -g --depth=0`；**零模型调用、零网络请求、零凭据读取** |
+
+### 2026-11-06 追加：真实复核环境（T14 解锁尝试）
+
+| 项 | 值 |
+|---|---|
+| 账号路径 | **ChatGPT 订阅登录**（`codex login status` → `Logged in using ChatGPT`），官方 `codex exec` 明确面向脚本 / CI；非 API key、非按量计费 |
+| 二进制 | ChatGPT.app 内置的**签名**二进制 `…/CodexCLI.app/Contents/MacOS/codex`（Team `2DC432GLL2`），**绝对路径** |
+| 版本 / OS | `codex-cli 0.166.0-alpha.6`（alpha）/ macOS 15.6.1 arm64；模型 `gpt-6-luna` |
+| 真实调用 | **2 次**（R1 只读问答 + R2 限定写），一次性私有数据目录 + 无个人数据的夹具项目 |
+| 实测结果 | R1 干净终态但 Worker 自述读不到文件；R2 厂商 `SUCCESS` 但 Kernel `unit` 检查失败 → `FAILED`，0 文件变更、无补丁、未应用到项目 |
+| 阻塞根因 | 宿主 shell 已在 macOS 沙箱内，`/usr/bin/sandbox-exec` 报 `sandbox_apply: Operation not permitted`（exit 71）；CLI 无法创建嵌套 Seatbelt 沙箱 |
+| 未做的事 | 没用 `--dangerously-bypass-approvals-and-sandbox` / `--yolo` / 任何提权参数；没用个人 Google 账号；没接受 Gemma 条款下载模型；没打 tag / 发 Release |
+| 证据 | [reports/CODEX_REAL_REVALIDATION_20261106.md](reports/CODEX_REAL_REVALIDATION_20261106.md) |
 
 ## 证据等级定义
 
@@ -32,12 +45,12 @@
 | 1 | **Antigravity CLI / `agy`** | `RED` | 官方 FAQ 明确禁止把 `agy` 包在第三方编码 Agent/应用中，且消费者订阅不支持自动账号轮换；PAR 正是第三方 runtime |
 | 2 | **Gemini CLI** | `YELLOW`（偏 RED） | 官方 headless 接口齐全，但 2026-06-18 起免费层 / Google AI Pro / Ultra 已停服；本机 0.44.1 是旧版本，账号类型未确认，未跑真实任务 |
 | 3 | **Claude Code CLI** | `YELLOW` | 官方 `-p` + `stream-json` + `--bare` + 权限模式齐全，但本机未安装 CLI；官方 headless 文档未对消费者订阅的程序化使用给出条款许可；脚本化路径要求 API key 或云凭据 |
-| 4 | **Codex** | `EXISTING` | 已有适配器使用的正是官方 `codex exec --json`；但本机仅内置 alpha 版本，未重新做真实 R1/R2 复核 |
+| 4 | **Codex** | `EXISTING` + `REAL_ATTEMPTED` | 已有适配器用的正是官方 `codex exec --json`；2026-11-06 用 ChatGPT 订阅在内置 alpha 版本做了真实 R1/R2，但宿主无法创建嵌套沙箱、R2 未通过，版本复核未完成；**仍不是 GREEN，也不是新增 Provider** |
 | 5 | **ACP（Agent Client Protocol）** | `YELLOW` | 协议本身公开且权限回调语义明确，但 v2 仍是 draft、本机无任何 ACP agent 可验证；不是「一个能跑的 Provider」 |
 | 6 | **OpenCode** | `YELLOW` | 官方有 `opencode serve` / `run` headless 与 SSE/OpenAPI，但需额外 npm/bun 运行时，与本项目零第三方依赖原则冲突，本机未安装 |
 | 7 | **WorkBuddy / TRAE / GUI-only** | `EXISTING` | 手工交接路径已在 T09 落实并测试；不是自动 Provider，不参与本排序的 GREEN 判定 |
 
-**结论：没有 `GREEN`。T14 = `BLOCKED_BY_EVIDENCE`。** 不新增任何正式自动 Provider，不把「实验」写成「已支持」。要解锁，需要先由用户明确授权：使用哪条账号路径（企业许可 / 官方 API key / 明确允许的订阅用法）、在**非敏感夹具**上完成真实 R1 + R2 + 取消 + 权限 + 额度/错误样本，并记录版本与 OS。
+**结论：仍然没有 `GREEN`。** T13 的静态研究阻塞，已由用户在 2026-11-06 作出范围决策收口为「**不新增自动 Provider**」；随后用官方允许的 ChatGPT 订阅路径做了真实 R1/R2 复核，但受宿主嵌套沙箱限制，**没有成功的真实 R2**，因此也不构成「当前 Codex 版本已验证」。不新增任何正式自动 Provider，不把「实验」写成「已支持」。要真正解锁，需要在允许创建嵌套沙箱的宿主上重跑 [CODEX.md](CODEX.md) §12 的复核清单，或由用户提供付费 Gemini API key / 企业许可后另选一条官方路由；两者都需要新的真实证据，而不是一个配置开关。
 
 ## 逐项证据
 
@@ -77,7 +90,7 @@
 | 没有测的内容 | 安装与版本、认证、任何真实 R1/R2、权限拒绝样本、取消/超时、事件解析、账号条款 |
 | 判定 | 官方接口最完整，但本机没有 CLI、没有授权路径、也没有条款确认；只能 YELLOW |
 
-### 4. Codex — `EXISTING`
+### 4. Codex — `EXISTING` + `REAL_ATTEMPTED`（2026-11-06 更新）
 
 | 项 | 内容 |
 |---|---|
@@ -86,9 +99,14 @@
 | 官方 headless 能力 | `codex exec --json`（JSONL：`thread.started` / `turn.*` / `item.*` / `error`）；默认只读沙箱；`--sandbox read-only\|workspace-write`；`--ask-for-approval`；`--ephemeral`；`--ignore-user-config` / `--ignore-rules`；**`--full-auto` 已不再支持**（官方明确要求改用 `--sandbox workspace-write`）；macOS 用 Seatbelt、Linux 用 bwrap+seccomp |
 | 与现有适配器的一致性 | `src/par/providers/codex.py` 的 `build_argv` 使用 `exec --json --color never --ephemeral --skip-git-repo-check -s <workspace-write\|read-only> -m <model> -C <cwd> -`，**与官方文档一致**，未使用已废弃的 `--full-auto` |
 | 账号 / 条款 | 现有实现依赖 ChatGPT 订阅登录（`CODEX_HOME`）；官方 `codex exec` 明确面向脚本与 CI |
-| 实测方法 | 仅 `codex --version`（离线）；未运行 `codex exec` |
-| 没有测的内容 | 当前 alpha 版本的真实 R1/R2、签名校验、登录状态、`--skip-git-repo-check` 与无 `.git` 副本的配合、额度/取消/错误分类的全部复核 |
-| 判定 | 属于「维护、修正默认安装路径与版本信息，保留已验证边界」，**不是 T14 的新增正式自动路径**。alpha 版本不能冒充已验证版本；升级复核清单见 [CODEX.md §12](CODEX.md) |
+| 实测方法 | T13：`codex --version`（离线）。**2026-11-06 追加**：`codesign` 签名校验、`login status`、`features list`、`mcp list`、`debug models`、`debug prompt-input`、`exec --help`、`PAR_REAL_CODEX_TRUST=1` 的无登录 `exec`，以及 2 次真实 `codex exec`（R1/R2，ChatGPT 订阅额度） |
+| 真实复核结果 | R1 收到干净终态（`thread.started` / `turn.started` / `item.completed` ×2 / `turn.completed`）但 Worker 自述读不到任何文件，0 检查、0 文件变更；R2 厂商终态 `SUCCESS`、退出码 0，但 Kernel 的 `unit` 检查失败 → `FAILED`，`diff_artifact: null`、0 文件变更、未应用到项目。根因是宿主已在 macOS 沙箱内，无法创建嵌套 Seatbelt 沙箱（`sandbox-exec` 独立复现 exit 71）。**不是适配器缺陷，也没有用提权参数绕过** |
+| 没有测的内容 | **成功的真实 R2**（本轮未完成）、当前 alpha 版本在可创建沙箱宿主上的全量复核、取消/超时/断线/输出洪流的真实样本、认证失败与额度/限流分类的真实样本（目前只有 fake CLI 可控样本）、`spawn_agent` / `list_agents` 在 `--disable multi_agent` 后仍出现在基础工具列表（已如实记录，**不宣称子代理已验证关闭**） |
+| 判定 | 属于「维护、版本复核」，**不是 T14 的新增正式自动路径**。alpha 版本不能冒充已验证版本，`TESTED_VERSION` 保持 `0.162.0-alpha.17.2`，`par health --probe` 会继续提示 `untested version`。详见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md) 与 [CODEX.md §12](CODEX.md) |
+
+> 本轮真实复核同时暴露并修正了一处表述问题：只读任务没有任何机械检查时，状态行却写
+> `every check passed`。现在零检查时改为明确写出「没有 Kernel 检查运行，接受前请审阅证据」，
+> 并在 `tests/unit/test_kernel_run.py` 加了回归测试。
 
 ### 5. ACP（Agent Client Protocol） — `YELLOW`
 
@@ -136,15 +154,33 @@ python -B tests/tools/provider_probe.py --versions        # 额外执行 <cli> -
 python -B tests/tools/provider_probe.py --help-flags      # 额外检查 <cli> --help 里的 headless 参数
 ```
 
-输出中 `evidence_level = STATIC_OFFLINE`、`model_calls = 0`、`network_calls = 0`，并显式列出 `not_tested`。`tests/unit/test_provider_probe.py` 保证探测脚本不会偷偷执行外部命令、超时受限、失败被记为事实而不是异常。
+输出中 `evidence_level = STATIC_OFFLINE`、`model_calls = 0`、`network_calls = 0`，并显式列出 `not_tested`。`tests/unit/test_provider_probe.py` 保证探测脚本不会偷偷执行外部命令、超时受限、失败被记为事实而不是异常。宿主沙箱另有独立探测：
 
-## T14 决策
+```bash
+python -B tests/tools/sandbox_probe.py --json   # 只问本宿主能否创建嵌套 OS 沙箱；同样零模型/零网络/零凭据读取
+```
 
-**`BLOCKED_BY_EVIDENCE`**：本轮没有 GREEN 候选，因此不创建新的正式自动适配器，不把 YELLOW 写成「已支持」，不合并任何空实现。解锁条件（需用户明确授权后逐项留证据）：
+## T14 决策（2026-11-06 已由用户作出范围决策）
 
-1. 选定**官方允许**的账号路径（企业许可 / 官方 API key），并书面确认第三方 runtime 使用该接口的条款许可；
-2. 在**非敏感夹具**上完成真实 `probe/no model call`、R1 只读、R2 限定写、取消/超时、认证失败、额度/限流分类、敏感数据边界，记录工具版本与 OS；
-3. 按 [ADAPTERS.md](ADAPTERS.md) 的接入清单实现，默认禁用、用户显式配置才生效，并补齐 fake CLI 与真实样本测试；
-4. 更新本文的证据等级与 [CODEX.md](CODEX.md) / [AGY.md](AGY.md) 的版本记录。
+**结论：`CLOSED_BY_SCOPE_DECISION` —— 不新增自动 Provider；仍然没有 GREEN 候选。**
 
-在上述条件达成前，P3 的发布范围只包含：已有的 Codex（需版本复核）、实验性的 Antigravity（默认禁用、带条款风险提示）、通用人工交接，以及本文的研究结论。**不宣称已实现自动 Supervisor、同项目多个 Worker 并行或自动真实仓库写入。**
+原状态 `BLOCKED_BY_EVIDENCE` 是「缺少用户授权与真实证据」。用户在 2026-11-06 明确授权解锁，
+并在四条官方路由中选定「**用 ChatGPT 订阅 + `codex exec` 官方路径做真实复核，不新增 Provider**」，
+同时要求**先不打 tag**。据此：
+
+1. 已用**官方允许的账号路径**（ChatGPT 订阅，官方 `codex exec` 面向脚本 / CI）在**非敏感夹具**上完成
+   真实 `probe`（无模型调用）、R1、R2，并记录版本与 OS → [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。
+2. 真实 R2 **未通过**：宿主无法创建嵌套 macOS Seatbelt 沙箱，CLI 读不到任何文件；Kernel 正确判 `FAILED`。
+   因此**没有 GREEN**，不创建新的正式自动适配器，不合并任何空实现，不把 YELLOW 写成「已支持」。
+3. 未使用 `--dangerously-bypass-approvals-and-sandbox` 等提权捷径；未使用个人 Google 账号；
+   未接受 Gemma 条款下载本地模型；未打 tag / 发 Release。
+4. `TESTED_VERSION` 保持 `0.162.0-alpha.17.2`；`par health --probe` 的 `untested version` 提示是刻意的
+   版本闸门，不为「看起来全绿」而放宽。
+
+**若将来要真正解锁**，仍需在允许创建嵌套沙箱的宿主上重跑 [CODEX.md](CODEX.md) §12 的 1–3 步
+（含成功的真实 R2、取消/超时/权限/额度样本），或由用户提供付费 Gemini API key / 企业许可后
+按 [ADAPTERS.md](ADAPTERS.md) 的清单另建一条官方路由。两者都需要新的真实证据，而不是一个配置开关。
+
+P3 的发布范围仍只包含：已有的 Codex（版本复核未完成）、实验性的 Antigravity（默认禁用、带条款风险提示）、
+通用人工交接，以及本文的研究与真实复核结论。**不宣称已实现自动 Supervisor、同项目多个 Worker 并行或
+自动真实仓库写入。**

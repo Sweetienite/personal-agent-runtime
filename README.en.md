@@ -86,10 +86,12 @@ From here: configure a provider (`config/providers.example.toml`), register a pr
 
 ## Release status
 
-As of 2026-11-06 the recommendation is **not to tag a new release yet**: there is no GREEN provider
-candidate (T14 is BLOCKED_BY_EVIDENCE), the bundled Codex binary is an alpha, and platform evidence
-is incomplete. The full checklist and unlock conditions are in
-[docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md). Tagging needs a separate approval.
+As of 2026-11-06 the recommendation is **not to tag a new release yet**: there is still no GREEN provider
+candidate (the person decided to close T14 as "no new automatic provider"), the bundled Codex binary is an alpha,
+and its real R2 re-validation could not complete because this host cannot create a nested macOS sandbox.
+See [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md) and the
+[2026-11-06 real re-validation report](docs/reports/CODEX_REAL_REVALIDATION_20261106.md).
+Tagging needs a separate approval, and was explicitly deferred.
 
 ## What the CI badge means
 

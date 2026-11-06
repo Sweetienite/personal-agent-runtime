@@ -105,6 +105,11 @@ generic 项目没有父合同，用 `ad_hoc = true`。两种模式的规则见 [
 - 真实项目写入要你亲自 `par project enable-write ID`（先体检、再敲一遍 id 确认），且**每个写任务**仍逐项批准；
   补丁永远不会自动应用到项目，要你自己 `git apply`。见 [SECURITY.md](SECURITY.md)。
 - 不提供「强行关掉权限」的排障方案；无法运行时 `par health` / `doctor` 会给出原因。
+- 真实 Codex 若报告 `sandbox_apply: Operation not permitted`、读不到任何文件，先跑
+  `python -B tests/tools/sandbox_probe.py --json` 确认宿主能否创建**嵌套** macOS 沙箱。有些 Agent 宿主
+  本身已在沙箱内，这时换普通终端 / 未被沙箱化的 runner 即可，与适配器无关；**不要**用
+  `--dangerously-bypass-approvals-and-sandbox` 之类的提权参数让写测试「通过」。
+  2026-11-06 的实测见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。
 
 ## 7. 测试与贡献
 

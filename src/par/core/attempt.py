@@ -425,8 +425,16 @@ class AttemptRunner:
                 return self._end(kind="validation_failed", end_kind="FAILED", failure_class="EXECUTION_FAILED", stage="validation",
                                  reason=f"check(s) did not pass: {', '.join(bad)}", run=run, events=events, capture=capture,
                                  checks=checks, provider_ok=provider_ok, **common)
+        # A clean terminal event is not proof that the Worker did the work. With no mechanical checks
+        # the status line must not say "every check passed" (a real 2026-11-06 read-only run showed
+        # exactly that: the Worker reported it could not read a single file, yet ran no checks).
+        if checks:
+            reason = f"{who} finished and {len(checks)} Kernel check(s) passed"
+        else:
+            reason = (f"{who} produced a clean terminal event; no Kernel checks ran - "
+                      "review the evidence before accepting")
         return self._end(kind="success", end_kind="COMPLETED", failure_class=None, stage=None,
-                         reason=f"{who} finished and every check passed", run=run, events=events, capture=capture,
+                         reason=reason, run=run, events=events, capture=capture,
                          checks=checks, provider_ok=provider_ok, **common)
 
     # ------------------------------------------------------------------------------------------------------

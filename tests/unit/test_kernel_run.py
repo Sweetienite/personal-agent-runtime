@@ -28,6 +28,20 @@ class ReadOnlyRuns(KernelWorld):
         self.assertEqual((res["outcome"], res["summary"], res["summary_verified"], res["diff_artifact"]), ("completed", "the answer is 42", False, None))
         self.assertEqual(self.statuses(tid), ["READY", "QUEUED", "STARTING", "RUNNING", "VERIFYING", "REVIEW_REQUIRED"])
 
+    def test_a_read_only_success_never_claims_that_checks_passed(self):
+        """Regression for the 2026-11-06 real Codex run: R1 had no checks and the Worker said it
+        could not read anything, yet the status line said 'every check passed'."""
+        self.codex = ScenarioSequence(scenarios.success())
+        self.kernel = self.new_kernel()
+        tid = self.queued(r1_contract())
+        self.assertEqual(self.run_task(tid).status, "REVIEW_REQUIRED")
+        reasons = [e["reason"] for e in self.kernel.events(tid)
+                   if e["type"] == "STATUS_CHANGED" and e["to_status"] == "REVIEW_REQUIRED"]
+        self.assertEqual(len(reasons), 1)
+        self.assertNotIn("every check passed", reasons[0])
+        self.assertIn("no Kernel checks ran", reasons[0])
+        self.assertIn("review", reasons[0].lower())
+
     def test_a_read_only_task_sees_the_project_but_cannot_change_it(self):
         self.codex = ScenarioSequence(scenarios.success())
         self.kernel = self.new_kernel()
@@ -296,6 +310,15 @@ class WriteRuns(KernelWorld):
         self.assertEqual(self.statuses(tid), ["READY", "PERMISSION_WAIT", "QUEUED", "STARTING", "RUNNING", "VERIFYING",
                                               "REVIEW_REQUIRED", "ACCEPTED", "CLOSED"])
         self.assertEqual(self.project_digest(), before)                                     # nothing was ever applied to the project
+
+    def test_a_write_success_reports_how_many_kernel_checks_actually_ran(self):
+        tid = self.queued()
+        self.assertEqual(self.run_task(tid).status, "REVIEW_REQUIRED")
+        reasons = [e["reason"] for e in self.kernel.events(tid)
+                   if e["type"] == "STATUS_CHANGED" and e["to_status"] == "REVIEW_REQUIRED"]
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("1 Kernel check(s) passed", reasons[0])
+        self.assertNotIn("no Kernel checks ran", reasons[0])
 
     def test_the_patch_is_exactly_what_a_person_would_apply(self):
         tid = self.queued()
