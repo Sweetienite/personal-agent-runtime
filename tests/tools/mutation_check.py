@@ -336,6 +336,7 @@ MUTATIONS = [
     ('M628', 'a stale worker override survives a retry that selects another worker', 'src/par/core/kernel.py', '                if approval["kind"] == "WORKER_OVERRIDE" and approval["payload"].get("worker") != expected_worker:', '                if False:', T + 'test_kernel_control'),
     ('M629', 'an approval granted for a different worker authorizes the new one', 'src/par/core/kernel.py', '                if approval["payload"].get("worker") == (task["pinned_worker"] or contract.worker):', '                if True:', T + 'test_kernel_control'),
     ('M630', 'a new override request names the worker the retry replaced', 'src/par/core/kernel.py', '                               else {"worker": expected_worker})', '                               else {"worker": contract.worker})', T + 'test_kernel_control'),
+    ('M631', 'the Kernel accepts a factory result that does not implement the Context contract', 'src/par/core/kernel.py', '        if not isinstance(context, Context):', '        if False:', T + 'test_context_interface'),
 ]
 
 
