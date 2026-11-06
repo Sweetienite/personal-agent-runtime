@@ -71,11 +71,11 @@ P2 起还有：`scenarios.custom(name, *steps)` 加 `ops.*` 步骤构造器（`w
 
 ## 兼容性证据（2026-11-06 更新）
 
-本文的「接入清单」是**工程检查表**，不是兼容性声明。官方接口、版本、账号类型、条款与实测状态统一记在 [COMPATIBILITY.md](COMPATIBILITY.md)：`Antigravity CLI/agy` 判 `RED`（官方禁止第三方封装），Gemini CLI / Claude Code CLI / ACP / OpenCode 判 `YELLOW`，Codex 为 `EXISTING + REAL_ATTEMPTED`，人工交接为 `EXISTING`。**仍然没有任何 `GREEN` 候选**。
+本文的「接入清单」是**工程检查表**，不是兼容性声明。官方接口、版本、账号类型、条款与实测状态统一记在 [COMPATIBILITY.md](COMPATIBILITY.md)：`Antigravity CLI/agy` 判 `RED`，Gemini CLI / Claude Code CLI / ACP / OpenCode 判 `YELLOW`，Codex 为 `EXISTING + GREEN (scoped)`，人工交接为 `EXISTING`。**仍没有跨环境通用 `GREEN` 候选**；T14 的决策「不新增自动 Provider」不变。
 
-2026-11-06 用户授权解锁 T14 后选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」，真实 R1/R2 已跑但受宿主嵌套沙箱限制，**没有成功的真实 R2**；详见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。T14 据此收口为「不新增自动 Provider」：不创建正式自动适配器，不合并空实现，不把 YELLOW 写成「已支持」，也没有打 tag。可复现的离线探测：`python -B tests/tools/provider_probe.py`（不调用模型）与 `python -B tests/tools/sandbox_probe.py --json`（只查宿主能否创建嵌套 OS 沙箱）。
+2026-11-06 两次真实复核：第一次受宿主嵌套沙箱限制、没有成功的真实 R2（[第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)）；第二次在「宿主已由外部 OS 沙箱化」这一 `codex exec --help` 明确写出的适用情形下，用 `-s danger-full-access`（**仅一次性临时副本，主干适配器未改**）取得**成功的真实 R1/R2**，`§12` 复核完成、`TESTED_VERSION` 更新为 `0.166.0-alpha.6`，证据等级为带限定的 `GREEN (scoped)`（[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md)）。**默认 `-s` 模式仍需在允许嵌套沙箱的普通终端复核**，用 `python -B tests/tools/codex_revalidate.py --yes-use-quota --model <slug>`；该脚本在沙箱阻塞宿主上 exit 2、0 次模型调用，绝不用提权参数把结果做绿。可复现的离线探测：`provider_probe.py`、`sandbox_probe.py --json`、`codex_revalidate.py --check-only`（均不调用模型）。没有打 tag / 发 Release。
 
-该轮还暴露了两条接入清单必须记住的教训：**厂商终态 `SUCCESS` + 退出码 0 不等于任务完成**（真实 R2 被 Kernel 检查正确判 FAILED），以及**隔离配方是否生效要按工具定义核对，不能数关键词**（新版 CLI 静态说明文字里仍会出现 `plugin`，但插件/应用/MCP 工具定义确已移除；`spawn_agent` / `list_agents` 仍残留，不宣称子代理已验证关闭）。遇到真实 R2 读不到文件时，先跑沙箱探测，不要用 `--dangerously-bypass-approvals-and-sandbox` 之类提权参数让测试「通过」。
+接入清单必须记住的三条教训：**厂商终态 `SUCCESS` + 退出码 0 不等于任务完成**（第一次 R2 被 Kernel 检查正确判 FAILED）；**隔离配方是否生效要按工具定义核对，不能数关键词**（新版 CLI 静态说明文字仍出现 `plugin`，但插件/应用/MCP 工具定义确已移除；`spawn_agent` / `list_agents` 仍残留，不宣称子代理已验证关闭）；**遇到真实 R2 读不到文件先查宿主沙箱能力**（`sandbox_probe.py` 现在也报告继承沙箱的原始 `sandbox_check` 值），不要一上来就放宽 CLI 权限。
 
 ## 接入真实 Provider 的清单（P3 已对 Codex 逐条落实，P4 对 Antigravity 照做）
 

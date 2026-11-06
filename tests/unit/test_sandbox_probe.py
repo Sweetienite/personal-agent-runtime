@@ -1,7 +1,7 @@
 """The nested-sandbox diagnostic must stay offline and must not invent a pass."""
 import unittest
 
-from tests.tools.sandbox_probe import MARKER, SANDBOX_EXEC, probe_sandbox
+from tests.tools.sandbox_probe import MARKER, SANDBOX_EXEC, inherited_sandbox_check, probe_sandbox
 
 
 class FakeCompleted:
@@ -62,6 +62,21 @@ class OfflineSandboxProbe(unittest.TestCase):
         calls, run = self._calls(FakeCompleted(stdout="", returncode=0))
         out = probe_sandbox(runner=run, system="Darwin")
         self.assertIs(out["nested_sandbox_available"], False)
+
+    def test_the_inherited_sandbox_raw_value_is_reported_not_invented(self):
+        self.assertIsNone(inherited_sandbox_check(system="Linux"))
+        calls, run = self._calls(FakeCompleted(stdout=MARKER + "\n"))
+        out = probe_sandbox(runner=run, system="Darwin")
+        self.assertIn("inherited_sandbox_check", out)
+        self.assertIn(out["inherited_sandbox_check"], (0, 1, None))   # raw OS value, never a guess
+
+    def test_a_blocked_host_reports_the_inherited_sandbox_explanation(self):
+        calls, run = self._calls(FakeCompleted(
+            stdout="", stderr="sandbox-exec: sandbox_apply: Operation not permitted", returncode=71))
+        out = probe_sandbox(runner=run, system="Darwin")
+        self.assertIn("BLOCKED", out["detail"])
+        if out["inherited_sandbox_check"] == 1:
+            self.assertIn("inherits a sandbox", out["detail"])
 
 
 if __name__ == "__main__":

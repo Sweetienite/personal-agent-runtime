@@ -19,7 +19,8 @@
 
 | 报告 | 内容 |
 |---|---|
-| [CODEX_REAL_REVALIDATION_20261106.md](CODEX_REAL_REVALIDATION_20261106.md) | 2026-11-06 用户授权后用官方允许的 ChatGPT 订阅 + `codex exec` 路径做的**真实 R1/R2 复核**：2 次真实模型调用、真实厂商事件与用量、R2 被 Kernel 检查正确判失败、根因为宿主无法创建嵌套 macOS Seatbelt 沙箱。**没有取得 GREEN**，没有新增自动 Provider，没有打 tag。 |
+| [CODEX_REAL_REVALIDATION_20261106.md](CODEX_REAL_REVALIDATION_20261106.md) | 2026-11-06 **第一部分**：用户授权后用官方允许的 ChatGPT 订阅 + `codex exec` 路径做的真实 R1/R2 复核；受宿主嵌套 macOS Seatbelt 沙箱限制，没有成功的真实 R2。 |
+| [CODEX_REVALIDATION_PART2_20261106.md](CODEX_REVALIDATION_PART2_20261106.md) | 2026-11-06 **第二部分**：在宿主已由外部沙箱化这一厂商说明的适用情形下，取得**成功的真实 R1 与 R2**（`MEASURED · checks PASSED`），§12 复核完成、`TESTED_VERSION` 更新；证据等级为带限定的 `GREEN (scoped)`，默认沙箱模式仍需在普通终端复核。 |
 
 ## 当前版本的证据入口
 
@@ -34,5 +35,7 @@
 
 本轮（2026-11）没有新增正式自动 Provider。T14 先因 T13 无 GREEN 候选标记
 `BLOCKED_BY_EVIDENCE`（Issue #16），随后用户明确选定「用既有 Codex 官方路径做真实复核、
-不新增自动 Provider」，本轮据此收口：[真实复核报告](CODEX_REAL_REVALIDATION_20261106.md)
-记录了 R1/R2 的真实尝试与仍缺的证据。没有创建空适配器，也没有宣称 P3 自动执行 Gate 已通过。
+不新增自动 Provider」，据此收口。两次真实复核分别见
+[第一部分](CODEX_REAL_REVALIDATION_20261106.md)（受宿主嵌套沙箱限制、无成功 R2）与
+[第二部分](CODEX_REVALIDATION_PART2_20261106.md)（成功的真实 R1/R2、§12 复核完成、
+`GREEN (scoped)`）。没有创建空适配器，也没有宣称 P3 自动执行 Gate 已通过，没有打 tag。

@@ -56,14 +56,14 @@ python -B tests/tools/smoke_agy.py --self-test          # 同上，Antigravity �
 .venv/bin/par init                                      # 建 ~/Library/Application Support/PersonalAgentRuntime（0700）
 .venv/bin/par doctor                                    # 全部 PASS，Provider 全部 disabled
 .venv/bin/par harness check --save-baseline             # 记录当前 Harness 状态作为基线
-python -B -m unittest discover -s tests -t .            # 约 1545 项测试（单进程，约 6–9 分钟），无需安装、无需网络、不调用模型
+python -B -m unittest discover -s tests -t .            # 约 1558 项测试（单进程，约 6–9 分钟），无需安装、无需网络、不调用模型
 python -B tests/tools/parallel_tests.py                 # 同一套测试，按模块并行跑（约 1 分钟）；日常用这个
 .venv/bin/par health --probe                            # 配置并启用 codex / antigravity 之后：签名、登录、模型目录、额度（见 docs/OPERATIONS.md）
 ```
 
 详细用法、退出码与排障见 [docs/OPERATIONS.md](docs/OPERATIONS.md)。
 
-> **CI 覆盖范围**：GitHub Actions 只有三个明确命名的作业——`smoke_install`（macOS 安装 + doctor + version）、`core_unittests`（macOS 上的状态/合同/审批/交接/候选整合等核心回归）、`linux_security_core`（Ubuntu 上平台无关的纯逻辑安全回归）。**徽章不代表全量 1545 项在 CI 通过**；其余模块只在开发机跑（部分测试假设单用户 macOS 机器、macOS 专属 doctor 检查或更大的 ARG_MAX）。在本机沙箱里 4 个进程终止类模块因无法向子进程组投递信号而失败，未修改基线的失败集合完全相同。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+> **CI 覆盖范围**：GitHub Actions 只有三个明确命名的作业——`smoke_install`（macOS 安装 + doctor + version）、`core_unittests`（macOS 上的状态/合同/审批/交接/候选整合等核心回归）、`linux_security_core`（Ubuntu 上平台无关的纯逻辑安全回归）。**徽章不代表全量 1558 项在 CI 通过**；其余模块只在开发机跑（部分测试假设单用户 macOS 机器、macOS 专属 doctor 检查或更大的 ARG_MAX）。在本机沙箱里 4 个进程终止类模块因无法向子进程组投递信号而失败，未修改基线的失败集合完全相同。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 > **支持范围（2026-11-06 核对）**：正式自动执行路径只有已在配置中启用并写明绝对路径的 Codex；Antigravity 适配器是**实验性、默认禁用**，其官方条款明确禁止第三方封装；Gemini CLI / Claude Code CLI / ACP / OpenCode 尚未在 PAR 的隔离与授权模式下做过真实验证。人工交接（`par task handoff`）适用于 GUI-only 工具。证据等级与未测项见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)，本轮没有新增正式自动 Provider。
 
@@ -101,7 +101,7 @@ ops/           协调者/人工用的小工具：land_task.py（落地已验收�
                cleanup_tasks.py（清理已关闭任务占用）、reliability_report.py（从台账算可靠性数据）、
                contract_skeleton.json（契约模板）、connect_claude_desktop.py（接入 Claude Desktop）；
                定期巡检的 launchd 模板与包装脚本（可选，由你自己安装）——见 docs/OPERATIONS.md
-tests/         unit/（约 1545 项）  integration/（默认跳过：只读真实 Harness；离线核对真实 Codex / agy）  tools/（mutation_check.py 约 250 条变异、parallel_tests.py 并行跑全量测试、provider_probe.py 离线兼容探测、smoke_codex.py、smoke_agy.py）
+tests/         unit/（约 1558 项）  integration/（默认跳过：只读真实 Harness；离线核对真实 Codex / agy）  tools/（mutation_check.py 约 250 条变异、parallel_tests.py 并行跑全量测试、provider_probe.py 离线兼容探测、smoke_codex.py、smoke_agy.py）
                fake_codex.py + fake_codex_exe.py（假 codex 程序）  codex_samples.py（合成的事件流）  fake_agy.py + fake_agy_exe.py（假 agy 程序）  agy_samples.py
 docs/          SECURITY  OPERATIONS  ROLLBACK  ADAPTERS  CONTEXT  KERNEL  CHANGELOG  reports/
 ```
