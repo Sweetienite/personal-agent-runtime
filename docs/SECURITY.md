@@ -6,7 +6,7 @@ Runtime 只写自己的数据目录；对**真实项目**默认只读：只有�
 
 ## 受保护 / 不保证 / 由你负责（P3/T15 审计矩阵，2026-11-06）
 
-> 这张表只描述**Runtime 自己能保证的事**。第三方 CLI 的行为、操作系统隔离、账号条款都不在「受保护」一列里。每条承诺都能追到代码或测试；找不到证据的一律写进「不保证」。证据索引：`tests/unit/test_p3_security_audit.py`（21 项集中负面测试）、`tests/unit/test_policy.py`、`test_contract.py`、`test_workspace.py`、`test_generic_context.py`、`test_providers_fake.py`、`test_redact.py`、`docs/COMPATIBILITY.md`（外部工具的版本/条款）。
+> 这张表只描述**Runtime 自己能保证的事**。第三方 CLI 的行为、操作系统隔离、账号条款都不在「受保护」一列里。每条承诺都能追到代码或测试；找不到证据的一律写进「不保证」。证据索引：`tests/unit/test_p3_security_audit.py`（22 项集中负面测试）、`tests/unit/test_policy.py`、`test_contract.py`、`test_workspace.py`、`test_generic_context.py`、`test_providers_fake.py`、`test_redact.py`、`docs/COMPATIBILITY.md`（外部工具的版本/条款）。
 
 ### A. 受保护（Runtime 自己执行、有回归测试）
 

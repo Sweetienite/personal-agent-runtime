@@ -73,7 +73,8 @@ class PathEscape(unittest.TestCase):
 class TestInfrastructure(unittest.TestCase):
     def test_a_file_disappearing_during_a_digest_does_not_make_the_witness_flaky(self):
         # git's background maintenance creates/removes .git/objects/maintenance.lock while a
-        # test is running; the digest must still be a stable "was the project changed?" witness.
+        # test is running; a skipped transient must not change the "was the project changed?"
+        # answer, while a real content change must still be visible.
         from unittest import mock
         from tests.helpers import tree_digest
         with tempfile.TemporaryDirectory() as tmp:
@@ -81,18 +82,21 @@ class TestInfrastructure(unittest.TestCase):
             (root / "stable.txt").write_text("unchanged")
             (root / "vanishing.tmp").write_text("transient")
             real_lstat = os.lstat
-            gone = str(root / "vanishing.tmp")
 
             def flaky(path, *args, **kwargs):
-                if os.fspath(path) == gone:
-                    raise FileNotFoundError(gone)
+                if os.fspath(path).endswith("vanishing.tmp"):
+                    raise FileNotFoundError(os.fspath(path))
                 return real_lstat(path, *args, **kwargs)
 
             with mock.patch("tests.helpers.os.lstat", side_effect=flaky):
-                digest = tree_digest(root)
-            self.assertEqual(len(digest), 64)
-            (root / "vanishing.tmp").unlink()
-            self.assertNotEqual(tree_digest(root), digest)   # real content changes are still visible
+                during_race = tree_digest(root)
+                repeated_race = tree_digest(root)
+            self.assertEqual(len(during_race), 64)
+            self.assertEqual(during_race, repeated_race)      # a stable witness under the race
+            (root / "stable.txt").write_text("changed and longer")
+            with mock.patch("tests.helpers.os.lstat", side_effect=flaky):
+                changed = tree_digest(root)
+            self.assertNotEqual(changed, during_race)         # real content changes are still detected
 
 
 class UnauthorisedWrite(unittest.TestCase):
