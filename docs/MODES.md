@@ -30,9 +30,12 @@ Kernel 给每次 attempt 新建私有 HOME/TMPDIR 与干净环境，不继承主
 
 ACP、OpenCode 等协议/工具有官方 headless 接口，但 **PAR 本轮没有实现、没有 GREEN 候选**。
 「协议标准存在」不等于「PAR 支持」；版本、账号、条款与未测项见 [COMPATIBILITY.md](COMPATIBILITY.md)。
-T14 已于 2026-11-06 由用户作出范围决策收口为「**不新增自动 Provider**」：真实 R1/R2 已用
-官方允许的 Codex 路径尝试，但宿主无法创建嵌套沙箱、没有成功的真实 R2，因此仍无 GREEN 候选，
-也没有创建空适配器。见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。
+T14 已于 2026-11-06 由用户作出范围决策收口为「**不新增自动 Provider**」：真实 R1/R2 用官方允许的
+Codex 路径尝试了两次，第一次因宿主无法创建嵌套沙箱失败，第二次在宿主已由外部沙箱化的限定条件下
+取得成功的真实 R1/R2（`GREEN (scoped)`，`TESTED_VERSION` = `0.166.0-alpha.6`）。**仍不新增自动 Provider、
+不创建空适配器、不把 YELLOW 写成已支持、不打 tag**；默认沙箱模式还需在普通终端复核。
+见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md) 与
+[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md)。
 
 ### C. 手工接力（通用，已实跑）
 

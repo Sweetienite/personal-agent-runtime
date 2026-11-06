@@ -42,7 +42,14 @@ from par.providers.base import (
 )
 
 BUNDLED_CODEX = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
-TESTED_VERSION = "0.162.0-alpha.17.2"
+# 2026-11-06: interface, flags, isolation recipe, structured events and a real R1/R2 were checked
+# against this build. SCOPE: the host already supplied an OS-level external sandbox, so the real runs
+# used the vendor-documented `-s danger-full-access` (see docs/CODEX.md section 14 and
+# docs/reports/CODEX_REVALIDATION_PART2_20261106.md). The default `-s read-only|workspace-write`
+# could not be exercised on that host (nested Seatbelt returns EPERM); a normal terminal must still
+# re-run section 12 before treating the default sandbox mode as verified. This constant records the
+# CLI build that was examined, not a blanket promise about every deployment.
+TESTED_VERSION = "0.166.0-alpha.6"
 OPENAI_TEAM_ID = "2DC432GLL2"
 MAX_PROMPT_BYTES = 400_000
 MAX_TEXT = 4000

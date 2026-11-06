@@ -1,8 +1,14 @@
 # Codex 真实复核记录（2026-11-06，T14 解锁尝试）
 
-> 本文是**当前版本的实测证据**，不是历史快照。它记录用户授权解锁 T14 后，用
+> 本文是**第一部分的实测证据**，不是历史快照。它记录用户授权解锁 T14 后，用
 > **官方允许的 ChatGPT 订阅 + `codex exec` 路径**在非敏感夹具上做的真实 R1/R2 尝试，
 > 以及为什么这次尝试**没有取得 `GREEN`**。
+>
+> **后续（同日第二次尝试）**：用户追加授权后，在「宿主已由外部沙箱化」这一厂商说明的适用情形下，
+> 已取得**成功的真实 R1 与 R2**，并把 `TESTED_VERSION` 更新为 `0.166.0-alpha.6`；
+> 证据等级为带限定的 `GREEN (scoped)`。请继续阅读
+> [CODEX_REVALIDATION_PART2_20261106.md](CODEX_REVALIDATION_PART2_20261106.md)。
+> 本文描述的「没有成功的真实 R2」是**当时的**结论，保留作为过程记录。
 > 关联：[COMPATIBILITY.md](../COMPATIBILITY.md) · [CODEX.md](../CODEX.md) §12 ·
 > [ADAPTERS.md](../ADAPTERS.md) · [RELEASE_NOTES_2026-11.md](../RELEASE_NOTES_2026-11.md)。
 

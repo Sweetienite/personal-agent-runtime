@@ -106,15 +106,19 @@ generic 项目没有父合同，用 `ad_hoc = true`。两种模式的规则见 [
   补丁永远不会自动应用到项目，要你自己 `git apply`。见 [SECURITY.md](SECURITY.md)。
 - 不提供「强行关掉权限」的排障方案；无法运行时 `par health` / `doctor` 会给出原因。
 - 真实 Codex 若报告 `sandbox_apply: Operation not permitted`、读不到任何文件，先跑
-  `python -B tests/tools/sandbox_probe.py --json` 确认宿主能否创建**嵌套** macOS 沙箱。有些 Agent 宿主
-  本身已在沙箱内，这时换普通终端 / 未被沙箱化的 runner 即可，与适配器无关；**不要**用
-  `--dangerously-bypass-approvals-and-sandbox` 之类的提权参数让写测试「通过」。
-  2026-11-06 的实测见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。
+  `python -B tests/tools/sandbox_probe.py --json`：它会告诉你宿主能否创建**嵌套** macOS 沙箱，
+  以及进程是否本来就继承了宿主沙箱。有些 Agent 宿主本身已在沙箱内，这时换普通终端 /
+  未被沙箱化的 runner，或直接 `python -B tests/tools/codex_revalidate.py --check-only` 一键复核，
+  与适配器无关；**不要**用 `--dangerously-bypass-approvals-and-sandbox` 之类的提权参数让写测试「通过」。
+  2026-11-06 的两次实测见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md) 与
+  [第二部分（成功的真实 R1/R2 及其限定条件）](reports/CODEX_REVALIDATION_PART2_20261106.md)。
+  当前 `TESTED_VERSION` 为 `0.166.0-alpha.6`，但那是带限定的 `GREEN (scoped)`：
+  默认沙箱模式仍需在允许嵌套沙箱的普通终端用 `codex_revalidate.py --yes-use-quota --model <slug>` 复核。
 
 ## 7. 测试与贡献
 
 ```bash
-python3 -B tests/tools/parallel_tests.py       # 全量，按模块并行（本次 68 模块 / 1545 项）
+python3 -B tests/tools/parallel_tests.py       # 全量，按模块并行（本次 70 模块 / 1558 项）
 python3 -B tests/tools/mutation_check.py M70   # 单个变异检查；全部约 250 条
 ```
 

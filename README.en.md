@@ -68,7 +68,7 @@ cd personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .     # or: python3.12 -m venv .venv && .venv/bin/pip install -e .
 .venv/bin/par init                                      # creates its own data directory (mode 0700)
 .venv/bin/par doctor                                    # should be all PASS, providers disabled until you configure one
-python3 -B -m unittest discover -s tests -t .           # ~1545 tests, single process, ~6-9 min, no network, no model calls
+python3 -B -m unittest discover -s tests -t .           # ~1558 tests, single process, ~6-9 min, no network, no model calls
 python3 -B tests/tools/parallel_tests.py                # the same tests, parallelized across modules, ~1 min
 ```
 
@@ -86,18 +86,22 @@ From here: configure a provider (`config/providers.example.toml`), register a pr
 
 ## Release status
 
-As of 2026-11-06 the recommendation is **not to tag a new release yet**: there is still no GREEN provider
-candidate (the person decided to close T14 as "no new automatic provider"), the bundled Codex binary is an alpha,
-and its real R2 re-validation could not complete because this host cannot create a nested macOS sandbox.
-See [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md) and the
-[2026-11-06 real re-validation report](docs/reports/CODEX_REAL_REVALIDATION_20261106.md).
+As of 2026-11-06 the recommendation is **not to tag a new release yet**. A second real re-validation
+did produce a successful real R1/R2 and completed the section-12 version check for the bundled
+`codex-cli 0.166.0-alpha.6`, but the evidence is **`GREEN (scoped)`**: the host already provides an
+OS-level external sandbox, so the runs used the vendor-documented externally-sandboxed mode. PAR's
+default sandbox mode still needs a real run on a normal terminal. T14 remains closed as "no new
+automatic provider", and no general GREEN candidate exists. See
+[docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md) and the
+[part 1](docs/reports/CODEX_REAL_REVALIDATION_20261106.md) /
+[part 2](docs/reports/CODEX_REVALIDATION_PART2_20261106.md) re-validation reports.
 Tagging needs a separate approval, and was explicitly deferred.
 
 ## What the CI badge means
 
 Three named jobs: `smoke_install` (macOS install + doctor + version), `core_unittests`
 (macOS core state/contract/approval/hand-off/integration regressions) and `linux_security_core`
-(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1545-test
+(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1558-test
 suite passes in CI**; the remaining modules run only on a developer's Mac, and four
 process-termination modules fail in the local sandbox with a failure set identical to the unmodified
 baseline. See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/SECURITY.md](docs/SECURITY.md).

@@ -30,6 +30,29 @@ SANDBOX_TIMEOUT = 10
 SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 
 
+def inherited_sandbox_check(*, system: "str | None" = None) -> "int | None":
+    """Raw ``sandbox_check(getpid(), NULL, 0)`` value on macOS, or ``None`` elsewhere/unavailable.
+
+    By the usual convention for this private API, 1 means the calling process already inherits a
+    Seatbelt sandbox. In that case a vendor CLI cannot stack its own sandbox and fails with
+    ``sandbox_apply: Operation not permitted`` (EPERM) -- an inherited *host* property, not a
+    defect in the CLI or in PAR. We report the raw value rather than asserting what it means.
+    """
+    if (system or platform.system()) != "Darwin":
+        return None
+    try:
+        import ctypes
+        import os
+
+        lib = ctypes.CDLL("/usr/lib/libSystem.B.dylib")
+        fn = lib.sandbox_check
+        fn.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+        fn.restype = ctypes.c_int
+        return int(fn(os.getpid(), None, 0))
+    except Exception:                                  # private API may be unavailable in future macOS
+        return None
+
+
 def probe_sandbox(*, runner: Any = None, system: "str | None" = None) -> dict[str, Any]:
     """Return an evidence record. ``runner``/``system`` are injectable so tests never touch the OS."""
     run = runner or subprocess.run
@@ -40,6 +63,7 @@ def probe_sandbox(*, runner: Any = None, system: "str | None" = None) -> dict[st
         "model_calls": 0, "network_calls": 0, "credential_reads": 0, "installs": 0,
         "system": sysname,
         "nested_sandbox_available": None,
+        "inherited_sandbox_check": inherited_sandbox_check(system=sysname),
         "detail": "",
         "not_tested": [
             "any real R1/R2 task or model call", "login / account type / quota / billing state",
@@ -71,6 +95,9 @@ def probe_sandbox(*, runner: Any = None, system: "str | None" = None) -> dict[st
             out["detail"] = "nested Seatbelt sandbox is available"
         elif "sandbox_apply" in text or "Operation not permitted" in text:
             out["detail"] = "nested Seatbelt sandbox is BLOCKED (sandbox_apply / Operation not permitted)"
+            if out["inherited_sandbox_check"] == 1:
+                out["detail"] += ("; the host process inherits a sandbox, so a vendor CLI cannot stack "
+                                  "its own - see docs/CODEX.md section 14")
         else:
             out["detail"] = f"nested Seatbelt sandbox did not start (exit {p.returncode})"
     return out

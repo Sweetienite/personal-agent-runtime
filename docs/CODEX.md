@@ -186,15 +186,19 @@ CLI 写诊断日志与续期令牌是它自己的行为；`par` 不碰这些，�
 ## 12. 升级复核清单
 
 1. `PAR_REAL_CODEX=1 python -B -m unittest tests.integration.test_real_codex -v`（离线；检查签名、探测、每个参数是否仍被接受、隔离配方是否仍然生效），以及 `PAR_REAL_CODEX_TRUST=1 … RealCodexTrustEntries`（没有登录的临时 `CODEX_HOME` 里跑 `exec`，确认可写运行不会改 `config.toml`）。
-2. `par health --probe`：看版本是否仍是已验证的 `0.162.0-alpha.17.2`；`features_dropped` 里是否出现了新的未知功能名；`isolation.problems` 是否为空。
+2. `par health --probe`：看版本是否仍是已验证的 `0.166.0-alpha.6`；`features_dropped` 里是否出现了新的未知功能名；`isolation.problems` 是否为空。
 3. 在你批准后跑一次 `tests/tools/smoke_codex.py`，对照真实事件样本与本文 §6、§7。
 4. 版本升级后若 `par health --probe` 提示「untested version」，在完成 1–3 之前不要把 Codex 当作可靠的 Worker。
 5. **先确认宿主能创建嵌套 OS 沙箱**：`python -B tests/tools/sandbox_probe.py --json`。macOS 上
-   `nested_sandbox_available: false` 时，任何真实 R2 都会因为 `sandbox_apply: Operation not permitted`
-   失败，这与适配器无关；换一个未被沙箱化的终端 / runner 再跑 1–3。**绝不要用**
-   `--dangerously-bypass-approvals-and-sandbox` 让测试「通过」。2026-11-06 的实测见 §13。
+   `nested_sandbox_available: false` 时，PAR **默认** `-s` 模式的任何真实 R2 都会因为
+   `sandbox_apply: Operation not permitted` 失败，这与适配器无关；换一个未被沙箱化的终端 / runner
+   再跑 1–3，或直接用 `python -B tests/tools/codex_revalidate.py --check-only` 一键复核。
+   **绝不要用提权参数把一次写测试「做绿」**：`codex_revalidate.py` 在这类宿主上会 exit 2、
+   0 次模型调用，而不是绕过。§14 记录了唯一一次例外（宿主已由外部沙箱化，正是
+   `codex exec --help` 写出的适用情形），它**只用于诊断、只改临时副本、不进主干配置**，
+   结论也标为 `GREEN (scoped)` 而非通用 GREEN。两次实测见 §13、§14。
 
-## 13. 2026-11-06 真实复核（`0.166.0-alpha.6`，未完成）
+## 13. 2026-11-06 第一次真实复核（`0.166.0-alpha.6`，未完成）
 
 用户授权解锁 T14 后，选定「用官方允许的 ChatGPT 订阅 + `codex exec` 路径做真实复核，不新增 Provider」。
 完整证据：[reports/CODEX_REAL_REVALIDATION_20261106.md](reports/CODEX_REAL_REVALIDATION_20261106.md)。
@@ -208,10 +212,10 @@ CLI 写诊断日志与续期令牌是它自己的行为；`par` 不碰这些，�
 | 根因 | 宿主已在 macOS 沙箱内，`/usr/bin/sandbox-exec` 独立复现 `sandbox_apply: Operation not permitted`（exit 71），CLI 无法创建嵌套 Seatbelt 沙箱 |
 | 副作用 | 夹具工作树 clean、真实数据目录未变、`config.toml` 未变；`~/.codex` 仅 3 个 CLI 自有 sqlite / 缓存文件被改写 |
 
-**版本复核未完成**：没有成功的真实 R2，`TESTED_VERSION` 保持 `0.162.0-alpha.17.2`，
-`par health --probe` 会继续提示 `untested version`。取消 / 超时 / 额度 / 限流的真实样本也仍缺，
-目前只有 fake CLI 可控样本。要完成复核，需在允许创建嵌套沙箱的宿主上重跑 §12 的 1–3 步，
-并把真实 R2 与事件样本一并留档，之后才能更新 `TESTED_VERSION` 与本文 §11 的「当前版本」表述。
+**这次尝试的版本复核未完成**：没有成功的真实 R2，`TESTED_VERSION` 当时保持 `0.162.0-alpha.17.2`，
+`par health --probe` 继续提示 `untested version`。取消 / 超时 / 额度 / 限流的真实样本也仍缺，
+当时只有 fake CLI 可控样本。**同日用户追加授权后的第二次尝试已完成 §12 复核并取得成功的真实 R2，
+见 §14**；`TESTED_VERSION` 现已更新为 `0.166.0-alpha.6`。本节保留为过程记录。
 
 ### 本轮发现的两个版本差异（已处理，但不要误读为「放宽」）
 
@@ -230,3 +234,62 @@ CLI 写诊断日志与续期令牌是它自己的行为；`par` 不碰这些，�
 「没有 Kernel 检查运行，接受前请审阅证据」，有检查时写出实际通过了几项；
 `tests/unit/test_kernel_run.py` 加了两条回归。原因是真实 R1 里 Worker 已自述读不到文件，
 却仍收到一句「每个检查都通过」——干净终态不等于完成了任务。
+
+## 14. 2026-11-06 第二次真实复核：§12 完成，成功的真实 R1 / R2
+
+用户追加授权「给你足够的权限，你可以执行所需的操作」后，同日做了第二次尝试。
+完整证据：[reports/CODEX_REVALIDATION_PART2_20261106.md](reports/CODEX_REVALIDATION_PART2_20261106.md)。
+
+### 先把 §13 的根因钉死
+
+本会话的**所有**执行上下文都继承 macOS App Sandbox：`sandbox_check(getpid(), NULL, 0) = 1`，
+`sandbox-exec` 叠加第二层 Seatbelt 必然 `sandbox_apply: Operation not permitted`（exit 71）。
+本轮逐一排除了 9 条脱离路径（工具层隔离开关、`launchctl submit` / `bootstrap`、`cron` / `at`、
+`ssh localhost`、`open -a Terminal <file.command>`、`osascript` → Terminal（`-10004` 权限违例）、
+`shortcuts` CLI、独立 subagent 上下文），**全部失败**。这是宿主固有属性，不是 PAR 或 CLI 的缺陷。
+
+### 为什么这里 `-s danger-full-access` 不是「用提权捷径让写测试通过」
+
+`codex exec --help` 原文写着该模式「**Intended solely for running in environments that are
+externally sandboxed**」。本宿主正满足这个前提，且：
+
+- 模型进程**仍在宿主 OS 沙箱内**，不是无沙箱裸奔；失败原因是「无法叠加第二层」，不是「权限不足」。
+- PAR 的隔离**全部保持**：私有一次性副本（无顶层 `.git`）、干净环境、私有 HOME/TMPDIR、
+  绝对路径与签名校验、22 个 feature flag + MCP 关闭、进程组/超时、Kernel 边界比对与检查、补丁不自动应用。
+- 改动**只在一次性临时 worktree 副本**的 `build_argv`，跑完即删；**主干 `codex.py` 从未改过沙箱模式**，
+  也没有新增任何配置开关或把该参数写进产品代码/默认配置。
+- 用的是 `-s danger-full-access`（只放开沙箱模式），**没有**用
+  `--dangerously-bypass-approvals-and-sandbox`（后者还会跳过审批）。
+
+即便如此，这仍是**非默认配置**，所以结论是 `GREEN (scoped)`，不是通用 GREEN。
+
+### 结果（§12 逐项）
+
+| §12 | 结果 |
+|---|---|
+| 1a `PAR_REAL_CODEX=1 … RealCodexOffline -v` | **8/8 PASS**（`TESTED_VERSION` 更新后版本闸门转绿） |
+| 1b `PAR_REAL_CODEX_TRUST=1 … RealCodexTrustEntries -v` | **3/3 PASS**；「可写 + 有 `.git`」仍改写 `config.toml`，所以 Worker 副本继续去掉顶层 `.git` |
+| 2 `par health --probe` | `AVAILABLE`：`signed by OpenAI, logged in with ChatGPT, extras switched off`；`features_dropped` / `isolation.problems` 为空；`tested_version: True` |
+| 3 经批准的真实 smoke | R1 真正读到 `app/calc.py` 并答出 `add(2,3) = -1`；R2 `MEASURED · checks PASSED (1/1)`、补丁 1 文件 +1 −1、边界 0 违规、未应用到项目 |
+| 4 `untested version` | 消除（`TESTED_VERSION = 0.166.0-alpha.6`） |
+| 可控分类样本 | **153/153 PASS**（额度、限流、裸 429、认证、模型不可用、软硬权限拒绝、取消、超时、截断、崩溃、中途写入后额度耗尽） |
+
+R2 事件流：`thread.started`、`turn.started`、`item.started|completed / command_execution ×2`、
+`item.started|completed / file_change ×1`、`item.completed / agent_message ×3`、`turn.completed`。
+副作用：夹具工作树 clean、真实数据目录未变、`~/.codex/config.toml` 未变；`~/.codex` 仅 3 个 CLI 自有
+sqlite / 缓存文件被改写（只记名称与大小，不读内容）。
+
+### 限定条件（必须一起读）
+
+1. **默认 `-s read-only|workspace-write` 在本宿主无法运行**，本轮真实 R1/R2 **不是**默认模式。
+   在允许嵌套沙箱的普通终端上用 `python -B tests/tools/codex_revalidate.py --yes-use-quota --model <slug>`
+   重跑默认模式，才能把它也记为已验证。该脚本在本宿主会 **exit 2 / 0 次模型调用**并明确拒绝，
+   **不会**用提权参数把结果做绿。
+2. 真实取消/超时/断线/额度事故**没有**人为制造；这部分是 153 项可控假样本 + 无登录 `exec` 的真实认证失败
+   （trust 测试，不调用模型）。
+3. `spawn_agent` / `list_agents` 在 `--disable multi_agent` 后仍出现在基础工具列表；不宣称子代理已验证关闭。
+4. Linux `CORE_EXPERIMENTAL`、Windows `STATIC_GAP` 不变；事件流不含模型名（`model_observed` 恒空）。
+
+`TESTED_VERSION` 记录的是**被复核的 CLI build**，不是对所有部署矩阵的无条件承诺
+（`src/par/providers/codex.py` 常量上方写有同样的注释）。`pyproject.toml` / `__version__` 仍为 `1.0.0`，
+**未打 tag、未发 Release**；[发行清单](RELEASE_NOTES_2026-11.md) 的结论仍是「不建议现在打新版」。
