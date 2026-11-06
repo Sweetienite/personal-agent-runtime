@@ -1,6 +1,11 @@
 # Profile example. Copy to <data dir>/config/profiles.toml to override.
 #
 # The user decides models and fallback chains; the Runtime never scores or picks models by itself.
+# A role name (code/analysis/review, or any id you choose) is NOT bound to a vendor: it only names a
+# primary worker and its fallbacks. The same tool may be both coordinator and worker in one profile
+# (e.g. coordinator = "codex" with a codex worker); the Kernel keeps their sessions, HOME and audit apart.
+# "surface" (native_cli / acp / manual / programmatic_session) is derived from the provider kind, not
+# written here; no config schema change is needed for T12, and old profiles.toml files keep working.
 # "<RUN-TIME-VERIFIED-SLUG>" is a placeholder and marks the worker as not yet configured. For a Codex worker, pick a slug from
 # the list `par health --probe --json` prints under probes[0].facts.models_in_catalog (a local cache, so a slug missing from it
 # is only a note). Your global Codex settings (for example model_reasoning_effort) keep applying: V1 has no per-worker setting.

@@ -99,6 +99,10 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 
 链条是确定的：合同显式 `worker` → 只用它（不会悄悄换别人）；否则 `role` 的 primary 再依次是 fallback；否则 Profile 的 `default_worker`。每个候选逐项检查：Profile 快照里有无定义、Provider 是否启用且为自动类型（`codex` `antigravity`）、模型 slug 不是占位符、能力与风险等级匹配（R2 需要 `edit`）、**注册了适配器**、没有健康记录挡着。
 
+**角色与厂商解耦（T12）**：role 只是一个名字，映射到 worker primary/fallback；它不隐含「Claude 主控 + Codex Worker」。`WorkerEntry.surface` 与 `ProviderEntry.surface` 由 provider `kind` 派生（`native_cli` / `manual` / `programmatic_session` / `acp` 为描述，不改配置 schema），出现在配置快照里；旧 profiles.toml/providers.toml 与 `codex_manual_takeover` 别名照常可用。同一个软件可以同时是主控和 Worker：两者通过同一座 MCP 桥，但 Worker 使用 Kernel 新建的私有 HOME/TMPDIR，绝不继承主控的 MCP 配置或凭据。
+
+**能力闸门**：`ProviderAdapter.capabilities()` 的八项 `yes/no/unknown` 是**构建期的静态事实**。`AdapterRegistry.register(..., capabilities=...)` 声明它们，路由层据此提前排除「headless 不是 yes」或「R2 但 write 不是 yes」的候选；读取声明**绝不实例化适配器工厂**。Kernel 在运行前再用**本次真正要启动的那个实例**复核一次，未证明的能力会在任何进程启动之前让 attempt 以 `FAILED`（`preflight`）结束。`unknown` 永远不会被当作 `yes`。
+
 配置在**提交时固化**为快照存进任务；之后改 `profiles.toml` 不影响已排队的任务。`par task retry` 是你的显式批准，会采用当前配置（记 `CONFIG_REFRESHED`）。
 
 | 结果 | 任务状态 | 健康记录 |

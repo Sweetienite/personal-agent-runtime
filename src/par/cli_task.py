@@ -45,7 +45,8 @@ def build_adapters(config: "RuntimeConfig | None" = None) -> AdapterRegistry:
         if adapter_cls is not None and entry.enabled and entry.executable:
             models = tuple(w.model for w in config.workers.values() if w.provider == entry.id)
             registry.register(entry.id, lambda entry=entry, models=models, adapter_cls=adapter_cls: adapter_cls.from_entry(
-                ProviderEntry(entry.id, entry.kind, entry.enabled, os.path.expanduser(entry.executable)), models=models))
+                ProviderEntry(entry.id, entry.kind, entry.enabled, os.path.expanduser(entry.executable)), models=models),
+                capabilities=getattr(adapter_cls, "CAPABILITIES", None))
     return registry
 
 

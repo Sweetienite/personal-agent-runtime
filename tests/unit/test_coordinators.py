@@ -33,6 +33,16 @@ class Registry(unittest.TestCase):
         self.assertEqual(KNOWN_COORDINATORS, frozenset({"claude_desktop", "codex", "codex_manual_takeover"}))
         self.assertEqual(C.known_names(), KNOWN_COORDINATORS)
 
+    def test_every_coordinator_has_a_descriptor_with_a_surface_and_the_bridges_capabilities(self):
+        for name in C.known_names():
+            d = C.descriptor(name)
+            self.assertEqual(d["surface"], "mcp_host")
+            self.assertEqual(d["connection"], "mcp")
+            self.assertEqual(set(d["capabilities"]), {"read", "submit", "approve", "reject", "accept", "close", "recover"})
+            self.assertEqual(d["id"], C.normalize(name))
+        with self.assertRaises(ValueError):
+            C.descriptor("something_else")
+
     def test_every_coordinator_says_what_running_out_of_quota_means(self):
         for c in C.COORDINATORS.values():
             self.assertIn("Kernel", c.limit_note)

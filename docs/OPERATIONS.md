@@ -88,6 +88,8 @@ chmod 600 "$D"/*.toml
 - **适配器只在两个条件同时满足时才存在**：Provider 写成 `enabled = true` **并且**给了绝对路径的 `executable`（现在有 `codex`（P3）与 `antigravity`（P4））。其余（`claude_host`、`manual_handoff`、`gemini_legacy`）即使启用，`par health` 也显示 `no adapter is registered`，任务停在 `BLOCKED_NO_WORKER`；`gemini_legacy` 永远不能启用。
 - 模型 slug 保持 `<RUN-TIME-VERIFIED-SLUG>` 占位符时该 Worker 不会被使用，必须等适配器探测出真实可用的名字。
 - `worker_failure_policy`：`ask`（默认）、`pause`、`safe_auto`（只对 R0/R1 自动重试暂时性错误一次、自动换 Worker 一次；R2 永不自动）。
+- **角色不绑定厂商**：`[profiles.<名字>.roles.<角色>]` 里的角色名（如 `code`）只是 primary/fallback 的名字，不要求某个厂商做主控或 Worker。同一个工具可以同时是 `coordinator` 和某个 worker 的 provider；两者的会话、私有 HOME 与审计仍然隔离，`coordinator` 可以是 `claude_desktop` / `codex` / 旧别名 `codex_manual_takeover`。配置 schema 没有变，旧 `profiles.toml` 原样可用；`surface` 由 provider `kind` 派生，只出现在配置快照里。
+- **能力闸门**：自动运行要求适配器声明 `headless = yes`，R2 写任务还要求 `write = yes`。声明是注册时的静态事实（`build_adapters`），Kernel 在运行前用本次实例再复核；`unknown` 不会当成 `yes`，失败发生在任何子进程的模型调用之前。`par task status T` 会写明原因。
 
 ## 接入 Codex（P3）
 

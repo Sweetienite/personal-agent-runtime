@@ -22,6 +22,16 @@ Documentation and metadata corrections only — no behavior change:
 
 - Candidate integration (`par candidate create/show/list`): accepted R2 patches are applied in dependency order to one clean baseline in a Kernel-owned repository, their checks are re-run there, and only a `VERIFIED` candidate may be used by a dependent task (`par task submit --candidate`, `par task rebase`). The real project is never written: accepted, candidate-integrated and applied stay three separate states, and the person still applies the patches. New tasks with an R2 dependency now require that dependency to be integrated; tasks submitted before this change keep the old `ACCEPTED`-is-enough meaning. The `candidates` table is additive (no ledger schema bump), so older builds can still open the ledger.
 
+- Coordinator and Worker are now explicitly two independent roles: a role id names a primary/fallback chain and is
+  not bound to a vendor, one tool may be both coordinator and worker over the same ledger (with separate private
+  HOME/MCP sessions), and provider/worker `surface` values (`native_cli`, `manual`, `programmatic_session`, `acp`)
+  are derived from the provider kind and included in the config snapshot. Coordinator descriptors now expose their
+  surface and bridge capabilities. Old `profiles.toml`/`providers.toml` files and the `codex_manual_takeover` alias
+  keep working; there is no config schema change and no rollback step. Adapter capabilities are static declarations
+  (`register(..., capabilities=...)`) that routing reads without ever instantiating a factory, and the Kernel
+  re-checks the real instance before an attempt: an unproven headless or write capability stops an automatic R2
+  run before any process starts. `unknown` is never promoted to `yes`.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:

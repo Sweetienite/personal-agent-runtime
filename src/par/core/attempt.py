@@ -25,7 +25,7 @@ from par.core.store import Store
 from par.execution import gitops, results as R, workspace as ws
 from par.execution.subprocesses import Limits, RunResult, SpawnError, run_process
 from par.execution.validation import CHILD_PATH, CheckResult, run_checks
-from par.providers.base import FailureClass, ProviderAdapter, ProviderEvent, RunOutcome, RunRequest
+from par.providers.base import Capabilities, FailureClass, ProviderAdapter, ProviderEvent, RunOutcome, RunRequest, Tri
 from par.providers.registry import AdapterRegistry, NoAdapter
 
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
@@ -244,6 +244,15 @@ class AttemptRunner:
         except Exception:
             pass
 
+    @staticmethod
+    def _capabilities(adapter: "ProviderAdapter") -> "Capabilities | None":
+        """The real instance's capability facts; UNKNOWN when it cannot report any (never a guessed YES)."""
+        try:
+            value = adapter.capabilities()
+        except Exception:
+            return Capabilities()
+        return value if isinstance(value, Capabilities) else Capabilities()
+
     def _cancel_requested(self, store: Store, task_id: str) -> bool:
         row = store.get_task(task_id)
         return bool(row and row["cancel_requested"])
@@ -302,6 +311,16 @@ class AttemptRunner:
             return self._end(kind="spawn_failed", end_kind="FAILED", failure_class="EXECUTION_FAILED", stage="spawn",
                              reason=f"no adapter is registered for {route['provider']!r}", run=None, events=[], capture=None,
                              checks=[], **common)
+        # R-04: an unproven capability must never enter the write safety path. Check the *actual*
+        # instance we are about to run - not a registry declaration, and never a second factory call.
+        declared = self._capabilities(adapter)
+        if declared.can_headless != Tri.YES or (contract.writes and declared.can_write != Tri.YES):
+            bad = "headless" if declared.can_headless != Tri.YES else "write"
+            value = (declared.can_headless if bad == "headless" else declared.can_write).value
+            return self._end(kind="spawn_failed", end_kind="FAILED", failure_class="EXECUTION_FAILED", stage="preflight",
+                             reason=f"the adapter declares {bad} {value}; an automatic "
+                                    f"{'write' if contract.writes else 'read-only'} run needs yes",
+                             run=None, events=[], capture=None, checks=[], **common)
         request = RunRequest(task_id, n, prompt_text, prepared.workspace, route["model"], allow_write=contract.writes,
                              allowed_paths=contract.allowed_paths if contract.writes else ())
         refusal = getattr(adapter, "preflight", lambda r: None)(request)

@@ -186,6 +186,19 @@ class Workers(unittest.TestCase):
             pr["workers"]["w1"][field] = value
             self.assertIn(f"workers.w1.{field}", wheres(build(pr), "error"), (field, value))
 
+    def test_a_worker_surface_is_derived_from_its_provider_not_from_a_vendor_name(self):
+        pr = raw_profiles()
+        pr["workers"]["w_manual"] = {"provider": "manual_handoff", "model": "m", "capabilities": ["read"]}
+        ps = raw_providers()
+        ps["providers"]["manual_handoff"] = {"kind": "manual_handoff", "enabled": False}
+        ps["providers"]["claude"] = {"kind": "claude_host", "enabled": True}
+        r = build(pr, ps)
+        self.assertTrue(r.ok, r.errors)
+        self.assertEqual((r.config.providers["codex"].surface, r.config.providers["claude"].surface,
+                          r.config.providers["manual_handoff"].surface),
+                         ("native_cli", "programmatic_session", "manual"))
+        self.assertEqual((r.config.workers["w1"].surface, r.config.workers["w_manual"].surface), ("native_cli", "manual"))
+
     def test_unrecognised_coordinator_is_only_a_warning(self):
         pr = raw_profiles()
         pr["profiles"]["main"]["coordinator"] = "something_else"

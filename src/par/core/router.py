@@ -22,6 +22,7 @@ from typing import Any, Iterable, Mapping
 from par.config import RuntimeConfig, is_placeholder
 from par.core.contract import canonical_json, sha256_text
 from par.core.health import Health
+from par.providers.base import Tri
 from par.providers.registry import AdapterRegistry
 
 AUTOMATIC_KINDS = frozenset({"codex", "antigravity"})   # manual_handoff, claude_host, gemini_legacy never run on their own
@@ -36,9 +37,11 @@ def config_snapshot(config: RuntimeConfig, profile_id: "str | None" = None) -> "
         "worker_failure_policy": profile.worker_failure_policy if profile else "ask",
         "default_worker": profile.default_worker if profile else None,
         "roles": {r: {"primary": e.primary, "fallback": list(e.fallback)} for r, e in (profile.roles.items() if profile else [])},
-        "workers": {w.id: {"provider": w.provider, "model": w.model, "capabilities": list(w.capabilities)}
+        "workers": {w.id: {"provider": w.provider, "model": w.model, "capabilities": list(w.capabilities),
+                           "surface": w.surface}
                     for w in config.workers.values()},
-        "providers": {p.id: {"kind": p.kind, "enabled": p.enabled} for p in config.providers.values()},
+        "providers": {p.id: {"kind": p.kind, "enabled": p.enabled, "surface": p.surface}
+                      for p in config.providers.values()},
     }
     snap["digest"] = sha256_text(canonical_json({k: v for k, v in snap.items() if k != "digest"}))
     return snap
@@ -100,6 +103,16 @@ def evaluate(snapshot: "Mapping[str, Any]", worker_id: str, *, risk: str, adapte
         reasons.append(f"the worker lacks the {need!r} capability")
     if not adapters.has(provider_id):
         reasons.append(f"no adapter is registered for {provider_id!r}")
+    else:
+        # A declaration is a static fact of the adapter build, not of a run: reading it must never
+        # instantiate the factory. When an adapter declares nothing, the runtime gate (which has the
+        # real instance) is what decides; the router never guesses "yes" from silence.
+        caps = adapters.capabilities(provider_id)
+        if caps is not None:
+            if getattr(caps, "can_headless", Tri.UNKNOWN) != Tri.YES:
+                reasons.append(f"the adapter declares headless {caps.can_headless.value}; an automatic run needs yes")
+            if risk == "R2" and getattr(caps, "can_write", Tri.UNKNOWN) != Tri.YES:
+                reasons.append(f"the adapter declares write {caps.can_write.value}; an automatic write run needs yes")
     verdict = health.verdict(provider_id, model)
     if not verdict.usable:
         reasons.append(verdict.describe())

@@ -4,6 +4,10 @@
 # (P3: codex; P4: antigravity). Enabling any other provider here only makes `par health` explain that tasks cannot run yet.
 # Credentials never go here: each vendor CLI keeps its own login, and the Runtime refuses config
 # files that contain secret-looking keys or values.
+# The provider's "surface" (native_cli / manual / programmatic_session / acp) is derived from `kind`:
+# a native CLI can be an automatic Worker, a manual one is only reachable through `par task handoff`.
+# An adapter must also declare its capabilities (headless/write) as static build facts; an unproven
+# capability never enters an automatic R2 write run.
 schema_version = 1
 
 [providers.codex]

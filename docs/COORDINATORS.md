@@ -11,6 +11,8 @@
 
 `codex_manual_takeover` 是 Codex 主控早先的名字，现在等同于 `codex`（配置里还写着它也能用，记录时统一成 `codex`）。别的模型以后要加，只需要在 `src/par/coordinators.py` 里加一项（名字、怎么连、额度说明）。
 
+**主控与 Worker 是两种独立角色，不是两家厂商**：`coordinator` 只决定「你和谁对话」，Worker 由 profile 的 role→worker 链决定。同一个软件（例如 Codex）可以同时出现在两边，不需要第二个账号或新的 Solo 模式。每个主控有一个机器可读的描述符（`par.coordinators.descriptor(id)`）：`surface = mcp_host`、`connection = mcp`、以及桥允许的 capability（`read / submit / approve / reject / accept / close / recover`）——这是**描述，不是授权**，桥仍执行 Kernel 自己的审批并记录 `by="coordinator"`。`par coordinator status` 也显示每个主控的 surface 与 capability。Worker 运行使用 Kernel 新建的私有 HOME/MCP 环境，不会继承主控的配置或 token。
+
 ## 日常
 
 ```bash
