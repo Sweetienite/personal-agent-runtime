@@ -6,14 +6,17 @@ on:
   pull_request:
 
 jobs:
-  # Only checks that the package installs and its own CLI runs - not a substitute for the real
-  # suite. The full 1373-test suite only runs on the author's own Mac: several tests assume a
-  # single-user macOS machine (an adapter's "executable must not be group/world-writable" safety
-  # check correctly refuses GitHub's runner image, where Python is installed group-writable;
-  # others assume macOS-specific doctor checks or a larger ARG_MAX). Loosening any of those would
-  # be a safety-relevant change needing tests/tools/mutation_check.py coverage, not something to
-  # do just to turn this badge green - so it stays narrow instead.
-  install:
+  # Two levels, deliberately separate and named so neither reads as "the full suite":
+  #   smoke_install  - the package installs and its own CLI runs.
+  #   core_unittests - the state, store, contract, approval and policy regressions that a real
+  #                    defect (Issue #1 was one) would trip. Scripted fake workers only: no vendor
+  #                    binary, no network, no real model call.
+  # The rest of the suite still runs only on a developer's Mac: several tests assume a
+  # single-user macOS machine (the real Codex/Antigravity adapters correctly refuse GitHub's
+  # group-writable Python; others assume macOS-specific doctor checks or a larger ARG_MAX).
+  # Loosening any of those would be a safety-relevant change needing mutation_check.py coverage,
+  # not something to do to turn a badge green.
+  smoke_install:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,3 +26,22 @@ jobs:
       - run: pip install -e .
       - run: par doctor
       - run: par version
+
+  core_unittests:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: State, approval, contract and policy regressions
+        run: >-
+          python -B -m unittest
+          tests.unit.test_states
+          tests.unit.test_store
+          tests.unit.test_contract
+          tests.unit.test_kernel_control
+          tests.unit.test_kernel_submit
+          tests.unit.test_kernel_policy
