@@ -15,6 +15,18 @@ python3 -B -m unittest discover -s tests -t .      # full suite, ~1400 tests
 python3 -B tests/tools/parallel_tests.py            # the same, parallelized, faster
 ```
 
+CI runs two separate checks on `macos-latest`, neither of which is the full suite:
+
+- `smoke_install` — `pip install -e .`, `par doctor`, `par version`.
+- `core_unittests` — the state, store, contract, approval and policy regressions:
+
+```bash
+python3 -B -m unittest tests.unit.test_states tests.unit.test_store tests.unit.test_contract \
+    tests.unit.test_kernel_control tests.unit.test_kernel_submit tests.unit.test_kernel_policy
+```
+
+The rest of the suite still runs only on a developer's macOS machine: some tests assume a single-user machine (the real Codex/Antigravity adapters refuse GitHub's group-writable Python), and others expect macOS-specific `doctor` checks or a larger `ARG_MAX`. Those are real safety checks, so CI stays narrow rather than weakening them.
+
 No network access and no real model calls happen in the test suite — everything runs against scripted fake CLIs.
 
 ## Scope
