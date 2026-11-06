@@ -189,3 +189,44 @@ CLI 写诊断日志与续期令牌是它自己的行为；`par` 不碰这些，�
 2. `par health --probe`：看版本是否仍是已验证的 `0.162.0-alpha.17.2`；`features_dropped` 里是否出现了新的未知功能名；`isolation.problems` 是否为空。
 3. 在你批准后跑一次 `tests/tools/smoke_codex.py`，对照真实事件样本与本文 §6、§7。
 4. 版本升级后若 `par health --probe` 提示「untested version」，在完成 1–3 之前不要把 Codex 当作可靠的 Worker。
+5. **先确认宿主能创建嵌套 OS 沙箱**：`python -B tests/tools/sandbox_probe.py --json`。macOS 上
+   `nested_sandbox_available: false` 时，任何真实 R2 都会因为 `sandbox_apply: Operation not permitted`
+   失败，这与适配器无关；换一个未被沙箱化的终端 / runner 再跑 1–3。**绝不要用**
+   `--dangerously-bypass-approvals-and-sandbox` 让测试「通过」。2026-11-06 的实测见 §13。
+
+## 13. 2026-11-06 真实复核（`0.166.0-alpha.6`，未完成）
+
+用户授权解锁 T14 后，选定「用官方允许的 ChatGPT 订阅 + `codex exec` 路径做真实复核，不新增 Provider」。
+完整证据：[reports/CODEX_REAL_REVALIDATION_20261106.md](reports/CODEX_REAL_REVALIDATION_20261106.md)。
+
+| 项 | 结果 |
+|---|---|
+| 签名 / 登录 / 隔离配方 | PASS：`TeamIdentifier=2DC432GLL2`、`Logged in using ChatGPT`、22 个 feature flag 关闭、`node_repl` / `par` 两个 MCP server 关闭、`memories=false` 复核通过 |
+| `RealCodexOffline`（8 项） | 7 PASS / **1 FAIL**：版本漂移闸门（`0.166.0-alpha.6` ≠ `0.162.0-alpha.17.2`）。这是刻意的安全闸门，不是 flaky 测试 |
+| `RealCodexTrustEntries`（3 项） | 3 PASS；记录到「可写运行 + 有 `.git` 的工作副本仍会改写 `config.toml` = True」，所以 Worker 副本继续去掉顶层 `.git` |
+| 真实 R1 / R2 | 各 1 次模型调用。R1 干净终态但 Worker 自述读不到文件；R2 厂商 `SUCCESS`、Kernel `unit` 检查 FAIL → `FAILED`、0 文件变更、无补丁 |
+| 根因 | 宿主已在 macOS 沙箱内，`/usr/bin/sandbox-exec` 独立复现 `sandbox_apply: Operation not permitted`（exit 71），CLI 无法创建嵌套 Seatbelt 沙箱 |
+| 副作用 | 夹具工作树 clean、真实数据目录未变、`config.toml` 未变；`~/.codex` 仅 3 个 CLI 自有 sqlite / 缓存文件被改写 |
+
+**版本复核未完成**：没有成功的真实 R2，`TESTED_VERSION` 保持 `0.162.0-alpha.17.2`，
+`par health --probe` 会继续提示 `untested version`。取消 / 超时 / 额度 / 限流的真实样本也仍缺，
+目前只有 fake CLI 可控样本。要完成复核，需在允许创建嵌套沙箱的宿主上重跑 §12 的 1–3 步，
+并把真实 R2 与事件样本一并留档，之后才能更新 `TESTED_VERSION` 与本文 §11 的「当前版本」表述。
+
+### 本轮发现的两个版本差异（已处理，但不要误读为「放宽」）
+
+- **静态说明文字**：`0.166.0-alpha.6` 的基础指令里仍会出现「plugin」一词，但那不是工具定义。
+  原来的离线断言 `isolated.count("plugin") == 0` 因此是**假失败**。测试已改成结构化核对：
+  plain 中确有 `mcp__cua_repl` / `js` / `js_reset` 工具定义，isolated 中这些定义全部消失、
+  没有任何 `mcp__` 前缀工具、无 `<recommended_plugins>` 段、无原生应用/浏览器控制工具描述。
+  这比数单词更严格。
+- **残留的子代理工具名**：即使 `--disable multi_agent`，基础工具列表仍含
+  `spawn_agent` / `list_agents`（测试会打印隔离后实际可见的工具名）。
+  **本文不宣称「子代理已验证关闭」**；这是后续复核项。
+
+### 一处表述修正（来自真实 R1）
+
+只读任务没有任何机械检查时，状态行原写 `every check passed`。现在零检查时改为明确写出
+「没有 Kernel 检查运行，接受前请审阅证据」，有检查时写出实际通过了几项；
+`tests/unit/test_kernel_run.py` 加了两条回归。原因是真实 R1 里 Worker 已自述读不到文件，
+却仍收到一句「每个检查都通过」——干净终态不等于完成了任务。

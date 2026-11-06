@@ -4,7 +4,12 @@ User-facing summary of real changes. The detailed, line-by-line engineering log 
 
 ## Unreleased
 
-Documentation and metadata corrections only — no behavior change:
+User-facing changes since the last tag. This section is a running summary, not a release; the current recommendation is **not to tag yet** (see [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md)).
+
+- **T14/T13 follow-up (2026-11-06): real Codex re-validation, no new provider.** After the person authorised the unlock and chose the officially permitted ChatGPT-subscription `codex exec` route, a real R1 and a real R2 ran against the bundled signed `codex-cli 0.166.0-alpha.6` on a non-sensitive fixture. R1 produced a clean terminal event while the Worker reported it could read no file; R2's vendor `SUCCESS` was correctly rejected by the Kernel's own `unit` check (`FAILED`, no patch, nothing applied). The cause is environmental: this host already runs inside a macOS sandbox, so a nested Seatbelt sandbox cannot be created (`sandbox-exec` reproduces `sandbox_apply: Operation not permitted`). **There is still no GREEN candidate, no new automatic provider, no empty adapter and no tag.** The full evidence is in [docs/reports/CODEX_REAL_REVALIDATION_20261106.md](docs/reports/CODEX_REAL_REVALIDATION_20261106.md); `docs/COMPATIBILITY.md`, `docs/CODEX.md` (new §13), `docs/ADAPTERS.md` and the release checklist were updated accordingly. `TESTED_VERSION` stays at the older verified build, so `par health --probe` keeps reporting `untested version`.
+- A successful run with **zero mechanical Kernel checks** no longer says `every check passed`. It now says no Kernel checks ran and asks for evidence review; a run with checks reports how many actually passed. Two regression tests in `tests/unit/test_kernel_run.py` and two mutation checks (`M673`, `M674`, both KILLED) pin both cases.
+- New offline diagnostic `tests/tools/sandbox_probe.py` (+ unit tests) answers one question only: can this host enter a nested OS sandbox? No model call, no network, no credential read, no install; non-macOS hosts are reported as `not applicable`. It separates a host-sandbox limitation from a provider incompatibility.
+- The opt-in real-CLI isolation check now compares **tool definitions** structurally instead of counting the word `plugin`: newer Codex builds mention plugins in static instruction prose while genuinely removing the plugin/app/MCP tool definitions. It also records that `spawn_agent` / `list_agents` still appear in the base tool list, without claiming sub-agents are verified off. The version-drift gate deliberately stays failing until a successful real R2 exists.
 
 - Install commands in `README.md`, `README.en.md`, `docs/USER_GUIDE.md` and `docs/OPERATIONS.md` no longer assume the author's `~/Documents/Personal Agent Runtime`; they start from `git clone` and a checkout of your own.
 - `pyproject.toml`'s description now says what the package does, instead of naming an internal phase and claiming "no real model calls".
@@ -37,9 +42,11 @@ Documentation and metadata corrections only — no behavior change:
   real tests**: only offline `--version`/`--help` probes and official documentation were consulted; no model call,
   login, quota use or credential read occurred. Google's official notice (2026-06-18) ends Gemini CLI service for
   free / Google AI Pro / Ultra users and its FAQ prohibits wrapping `agy` in third-party coding agents, so `agy` is
-  RED and stays experimental/disabled. There is **no GREEN candidate**, and T14 is marked `BLOCKED_BY_EVIDENCE` -
-  no empty or untested adapter was added. `tests/tools/provider_probe.py` reproduces the offline probe and asserts
-  it never runs a model, network call or credential read.
+  RED and stays experimental/disabled. There was **no GREEN candidate** in that round, and T14 was marked
+  `BLOCKED_BY_EVIDENCE` - no empty or untested adapter was added. (The static-research description applies
+  to that round only: a real R1/R2 re-validation was attempted on 2026-11-06 and is recorded above; it
+  produced no successful R2 and no GREEN either.) `tests/tools/provider_probe.py` reproduces the offline
+  probe and asserts it never runs a model, network call or credential read.
 
 - Security fix (independent PR): `is_sensitive_path` now splits Windows drive letters, UNC shares and
   backslashes as path separators. On POSIX a backslash is a legal file-name character, so a path such as
@@ -69,7 +76,8 @@ Documentation and metadata corrections only — no behavior change:
   ACCEPTED / CANDIDATE_READY / APPLIED distinction), `docs/reports/README.md` (historical snapshots are
   not current support claims; the old P1-P8 phases are distinct from this round's P0-P3), and
   `docs/RELEASE_NOTES_2026-11.md` with an explicit **recommendation not to tag a new release yet**
-  (T14 is BLOCKED_BY_EVIDENCE, the bundled Codex binary is an alpha, platform evidence is incomplete).
+  (T14 was closed by a scope decision - no new automatic provider - after a real re-validation that
+  produced no successful R2; the bundled Codex binary is an alpha; platform evidence is incomplete).
   README / README.en / CONTRIBUTING / AGENTS were aligned: ~1545 tests, three named CI jobs, a badge that
   does not mean the full suite, no stale private paths, and honest historical-report framing.
 

@@ -378,6 +378,8 @@ MUTATIONS = [
     ('M670', 'reading a capability declaration instantiates the factory', 'src/par/providers/registry.py', '        declared = capabilities if capabilities is not None else getattr(factory, "declared_capabilities", None)', '        declared = self._factories[provider_id]().capabilities()', T + 'test_role_provider_caps'),
     ('M671', 'a worker surface is no longer derived from its provider', 'src/par/config.py', '        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps), providers[prov].surface)', '        workers[wid] = WorkerEntry(wid, prov, model, tuple(caps))', T + 'test_role_provider_caps'),
     ('M672', 'windows separators are not normalised so a sensitive path is missed', 'src/par/core/policy.py', '    raw = os.fspath(path).replace("\\\\", "/")', '    raw = os.fspath(path)', T + 'test_policy'),
+    ('M673', 'a zero-check success again claims that every check passed', 'src/par/core/attempt.py', '            reason = (f"{who} produced a clean terminal event; no Kernel checks ran - "\n                      "review the evidence before accepting")', '            reason = f"{who} finished and every check passed"', T + 'test_kernel_run'),
+    ('M674', 'the Kernel replaces the attempt reason with an unconditional success claim', 'src/par/core/kernel.py', 'go(T.REVIEW_REQUIRED, f"{outcome.reason} - waiting for your review"', 'go(T.REVIEW_REQUIRED, "the Worker finished cleanly and every check passed - waiting for your review"', T + 'test_kernel_run'),
 ]
 
 

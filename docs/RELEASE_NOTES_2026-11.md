@@ -6,11 +6,8 @@
 
 理由（按重要性）：
 
-1. **T14 = `BLOCKED_BY_EVIDENCE`**（Issue #16）：T13 的兼容性研究是静态能力研究，没有 GREEN 候选，
-   没有真实 R1/R2、权限、取消、额度样本。P3 Gate 里的「至少一条新增正式自动执行路径有受支持的厂商接口、
-   可核对版本、真实 smoke」**未达成**。按规划应诚实发布当前范围，不冒充 P3 能力全通过。
-2. **内置 Codex 二进制当前是 `codex-cli 0.166.0-alpha.6`**（alpha 预览）；历史真实烟测对应的是更早的已签名版本。
-   升级后需按 [CODEX.md](CODEX.md) §12 复核清单重跑真实 R1/R2 才能把「当前版本已验证」写进发布说明。
+1. **没有 `GREEN` 的自动执行路径**。T14 原本是 `BLOCKED_BY_EVIDENCE`（Issue #16）：T13 的兼容性研究是静态能力研究，没有 GREEN 候选。2026-11-06 用户授权解锁，并选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」：真实 R1/R2 已跑，但受宿主嵌套 macOS Seatbelt 沙箱限制，**没有成功的真实 R2**，T14 据此收口为「不新增自动 Provider」。P3 Gate 里「至少一条新增正式自动执行路径有受支持的厂商接口、可核对版本、真实 smoke」**仍未达成**。按规划应诚实发布当前范围，不冒充 P3 能力全通过。见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。
+2. **内置 Codex 二进制当前是 `codex-cli 0.166.0-alpha.6`**（alpha 预览）；离线复核 7 PASS / 1 FAIL（版本漂移闸门），真实 R2 未通过，因此 `TESTED_VERSION` 仍保持更早的已签名版本，`par health --probe` 会继续提示 `untested version`。升级复核清单见 [CODEX.md](CODEX.md) §12，本轮结果见 §13。
 3. **Antigravity 条款风险**：官方 FAQ 明确禁止第三方封装；现有 `agy` 适配器只能作为实验性、默认禁用的历史实现保留。
 4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（仅 CI 纯逻辑安全子集）、Windows `STATIC_GAP`。
 5. **本机全量套件不能声称全绿**：4 个进程终止类模块（7 个用例）因沙箱无法向子进程组投递信号而失败；
@@ -37,16 +34,17 @@
 | T11 候选整合 | #13 | `a79d87a` | 干净基线叠加、下游可见；M654–M666 |
 | T12 角色/厂商解耦 | #14 | `e21e109` | surface、能力闸门；M667–M671 |
 | T13 官方接口证据研究 | #15 | `e6b3e79` | 无 GREEN；`docs/COMPATIBILITY.md` |
-| T14 新增自动 Provider | — | Issue #16 | **阻塞**，未创建空实现 |
+| T14 新增自动 Provider | — | Issue #16 | **收口：不新增自动 Provider**；真实复核已跑但无成功 R2，无 GREEN、无空实现 |
 | T15 安全审计与平台分级 | #17 / #18 | `5f27cfb` / `fe3270d` | 独立安全修复 + 安全矩阵 + Linux CI |
 | T16 公开文档与发行审查 | 本 PR | — | QUICKSTART / MODES / 历史归档 / 本清单 |
 
 ## 解锁新版的条件
 
-1. 用户明确选定官方允许的账号路径并授权在**非敏感夹具**上做真实 R1/R2、取消、权限、额度样本（T14 的四项解锁条件）。
-2. Codex 当前版本（含内置 alpha）的真实复核记录，写入 [CODEX.md](CODEX.md) 与 [COMPATIBILITY.md](COMPATIBILITY.md)。
-3. 一个能在干净 Linux 环境跑通 fake CLI 全链路的记录（把 Linux 从 `CORE_EXPERIMENTAL` 升格）。
-4. 用户单独批准打 tag / 发 Release，并确认 `CHANGELOG.md` 的版本号与发行说明。
+1. ~~用户明确选定官方允许的账号路径并授权在非敏感夹具上做真实 R1/R2 样本~~ **已完成（2026-11-06）**：用户选定了 ChatGPT 订阅 + `codex exec`，真实 R1/R2 已跑并留档；但宿主无法创建嵌套沙箱，R2 未通过。剩余条件见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md) §9。
+2. 在**允许创建嵌套 OS 沙箱**的宿主上重跑 [CODEX.md](CODEX.md) §12 的 1–3 步，取得成功的真实 R2、取消/超时/权限/额度样本，写入 [CODEX.md](CODEX.md) 与 [COMPATIBILITY.md](COMPATIBILITY.md)，之后才能更新 `TESTED_VERSION`。
+3. 若要新增（而不是只复核）一个自动 Provider，仍需付费 Gemini API key / 企业许可等**官方允许**的账号路径，并按 [ADAPTERS.md](ADAPTERS.md) 清单实现 + 真实样本；本轮用户已明确决定不新增。
+4. 一个能在干净 Linux 环境跑通 fake CLI 全链路的记录（把 Linux 从 `CORE_EXPERIMENTAL` 升格）。
+5. 用户单独批准打 tag / 发 Release，并确认 `CHANGELOG.md` 的版本号与发行说明。用户本轮明确要求**先不打 tag**。
 
 ## 对外表述的红线
 
@@ -63,3 +61,16 @@
 - 新增 [docs/reports/README.md](reports/README.md)（历史快照归档说明、两套阶段编号的区分、当前证据入口）。
 - 中英 README / CONTRIBUTING / AGENTS / CHANGELOG 对齐：测试数更新为约 1545 项、明确 CI 三个作业、
   明确徽章不代表全量、去过时数字、补新文档索引。
+
+## 2026-11-06 追加：T14 解锁后的真实复核
+
+- 新增 [reports/CODEX_REAL_REVALIDATION_20261106.md](reports/CODEX_REAL_REVALIDATION_20261106.md)：
+  用户授权后用官方允许的 ChatGPT 订阅路径做的真实 R1/R2 记录、副作用核对、根因复现、仍缺的证据。
+  **无 GREEN、无新 Provider、无 tag。**
+- 新增 `tests/tools/sandbox_probe.py`（+ 单测）：区分「宿主不能创建嵌套沙箱」与「Provider 不兼容」，
+  不调用模型、不联网、不读凭据。
+- 修正状态表述：零机械检查的成功不再写「every check passed」；`tests/unit/test_kernel_run.py` 两条回归。
+- 真实 CLI 离线复核测试适配 `0.166.0-alpha.6`：隔离断言改为结构化核对工具定义（更严格），
+  如实记录残留的 `spawn_agent` / `list_agents`；版本漂移闸门保持 FAIL，不为了全绿而放宽。
+- [COMPATIBILITY.md](COMPATIBILITY.md) / [CODEX.md](CODEX.md) §12–13 / [ADAPTERS.md](ADAPTERS.md) /
+  [reports/README.md](reports/README.md) 与本清单同步更新。

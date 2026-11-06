@@ -731,7 +731,9 @@ class Kernel(CandidateMixin, ManualHandoffMixin, TakeoverMixin):
 
         k, fc = outcome.kind, outcome.failure_class
         if k == "success":
-            go(T.REVIEW_REQUIRED, "the Worker finished cleanly and every check passed - waiting for your review"
+            # Use the attempt's own reason: with zero mechanical checks "every check passed" would be
+            # a false claim, even though a clean terminal event is enough to reach review.
+            go(T.REVIEW_REQUIRED, f"{outcome.reason} - waiting for your review"
                + ("; NOTE: the result envelope failed its schema, so it cannot be accepted" if envelope_bad else ""),
                last_failure=None)
             return

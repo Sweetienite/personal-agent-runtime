@@ -69,9 +69,13 @@ P2 起还有：`scenarios.custom(name, *steps)` 加 `ops.*` 步骤构造器（`w
 
 它**不能**通过配置文件注册（`config.py` 没有 `fake` 这种类型），所以生产 Profile 不可能把任务路由给它。
 
-## 兼容性证据（2026-11-06，T13）
+## 兼容性证据（2026-11-06 更新）
 
-本文的「接入清单」是**工程检查表**，不是兼容性声明。官方接口、版本、账号类型、条款与实测状态统一记在 [COMPATIBILITY.md](COMPATIBILITY.md)：本轮是**静态能力研究，缺真实测试**，`Antigravity CLI/agy` 判 `RED`（官方禁止第三方封装），Gemini CLI / Claude Code CLI / ACP / OpenCode 判 `YELLOW`，Codex 为 `EXISTING`（本机仅内置 alpha 版本，未重做真实复核），人工交接为 `EXISTING`。**没有任何 `GREEN` 候选，T14 = `BLOCKED_BY_EVIDENCE`**：不新增正式自动适配器，不把 YELLOW 写成「已支持」。可复现的离线探测：`python -B tests/tools/provider_probe.py`（不调用模型）。
+本文的「接入清单」是**工程检查表**，不是兼容性声明。官方接口、版本、账号类型、条款与实测状态统一记在 [COMPATIBILITY.md](COMPATIBILITY.md)：`Antigravity CLI/agy` 判 `RED`（官方禁止第三方封装），Gemini CLI / Claude Code CLI / ACP / OpenCode 判 `YELLOW`，Codex 为 `EXISTING + REAL_ATTEMPTED`，人工交接为 `EXISTING`。**仍然没有任何 `GREEN` 候选**。
+
+2026-11-06 用户授权解锁 T14 后选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」，真实 R1/R2 已跑但受宿主嵌套沙箱限制，**没有成功的真实 R2**；详见 [真实复核报告](reports/CODEX_REAL_REVALIDATION_20261106.md)。T14 据此收口为「不新增自动 Provider」：不创建正式自动适配器，不合并空实现，不把 YELLOW 写成「已支持」，也没有打 tag。可复现的离线探测：`python -B tests/tools/provider_probe.py`（不调用模型）与 `python -B tests/tools/sandbox_probe.py --json`（只查宿主能否创建嵌套 OS 沙箱）。
+
+该轮还暴露了两条接入清单必须记住的教训：**厂商终态 `SUCCESS` + 退出码 0 不等于任务完成**（真实 R2 被 Kernel 检查正确判 FAILED），以及**隔离配方是否生效要按工具定义核对，不能数关键词**（新版 CLI 静态说明文字里仍会出现 `plugin`，但插件/应用/MCP 工具定义确已移除；`spawn_agent` / `list_agents` 仍残留，不宣称子代理已验证关闭）。遇到真实 R2 读不到文件时，先跑沙箱探测，不要用 `--dangerously-bypass-approvals-and-sandbox` 之类提权参数让测试「通过」。
 
 ## 接入真实 Provider 的清单（P3 已对 Codex 逐条落实，P4 对 Antigravity 照做）
 

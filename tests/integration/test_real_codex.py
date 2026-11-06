@@ -61,7 +61,11 @@ class RealCodexOffline(unittest.TestCase):
         self.assertEqual(r.facts["isolation"]["problems"], [])
         self.assertTrue(r.facts["models_in_catalog"])
         if not r.facts["tested_version"]:
-            self.fail(f"Codex is {r.version}, not the version this adapter was checked against ({C.TESTED_VERSION}): re-check docs/CODEX.md")
+            # Intentional drift gate, not a flaky test: a version bump must not silently inherit the
+            # old version's "verified" status. Real R1/R2 evidence is required before TESTED_VERSION
+            # is moved. See docs/CODEX.md section 12 and the 2026-11-06 re-validation report.
+            self.fail(f"Codex is {r.version}, not the version this adapter was checked against ({C.TESTED_VERSION}): "
+                      "re-run the real R1/R2 re-validation before trusting this version")
 
     def test_every_flag_the_adapter_passes_exists_in_this_version(self):
         _, help_text, _ = self.cli("exec", "--help")
@@ -77,14 +81,50 @@ class RealCodexOffline(unittest.TestCase):
         self.assertIn("Unknown feature flag", err)
 
     def test_the_isolation_recipe_changes_what_the_model_is_told(self):
+        """Structural check, not word counting.
+
+        Codex 0.166.0-alpha.6 still mentions "plugin" in its *static instructions*, so the old
+        ``isolated.count("plugin") == 0`` assertion produced a false failure. What must be true is
+        that no plugin / app / connector / MCP *tool definition* reaches the model.
+        """
         iso = self.adapter.isolation()
         self.assertTrue(iso.verified)
         with tempfile.TemporaryDirectory(prefix="par-real-codex-cwd-") as cwd:
             _, plain, _ = self.cli("debug", "prompt-input", "hello", cwd=cwd)
             _, isolated, _ = self.cli(*iso.flags(), "debug", "prompt-input", "hello", cwd=cwd)
-        self.assertTrue(json.loads(plain) and json.loads(isolated))
+        plain_doc, isolated_doc = json.loads(plain), json.loads(isolated)
+        self.assertTrue(plain_doc and isolated_doc)
         self.assertLess(len(isolated), len(plain))
-        self.assertEqual(isolated.count("plugin"), 0)
+
+        def tool_names(doc):
+            # Tool definitions are nested (namespaces hold their own tool lists), so walk the whole
+            # document rather than only the top-level "tools" array.
+            found: "set[str]" = set()
+
+            def walk(node):
+                if isinstance(node, dict):
+                    name = node.get("name")
+                    if isinstance(name, str):
+                        found.add(name)
+                    for value in node.values():
+                        walk(value)
+                elif isinstance(node, list):
+                    for value in node:
+                        walk(value)
+
+            walk(doc)
+            return found
+
+        plain_tools, isolated_tools = tool_names(plain_doc), tool_names(isolated_doc)
+        for dangerous in ("mcp__cua_repl", "js", "js_reset"):
+            self.assertIn(dangerous, plain_tools)             # the recipe really removes something
+            self.assertNotIn(dangerous, isolated_tools)
+        self.assertFalse(any(n.startswith("mcp__") for n in isolated_tools))
+        self.assertNotIn("<recommended_plugins>", isolated)
+        self.assertNotIn("Control native apps or browsers", isolated)
+        # Recorded, NOT claimed as off: this version still lists sub-agent tools in the base tool
+        # list even with multi_agent disabled. See docs/CODEX.md section 12.
+        print(f"\n[recorded] tool names still visible after isolation: {sorted(isolated_tools)}")
 
     def test_memories_read_false_with_the_recipe_applied(self):
         iso = self.adapter.isolation()
