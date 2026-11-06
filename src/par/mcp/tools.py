@@ -24,13 +24,15 @@ from typing import Any, Mapping
 
 import par
 from par import coordinators as registry
+from par.context.resolver import default_context
+from par.core.draft import compile_draft
 from par.core.kernel import KernelError, Refused, UnknownTask
 from par.core.policy import PolicyViolation
 from par.core.redact import redact_text
 from par.core.states import TaskStatus
 from par.core.store import LedgerError
 
-TOOL_NAMES = ("submit_task", "get_task_status", "get_task_result", "get_task_diff", "cancel_task", "review_task",
+TOOL_NAMES = ("prepare_task", "submit_task", "get_task_status", "get_task_result", "get_task_diff", "cancel_task", "review_task",
              "approve_task", "reject_task", "accept_task", "close_task", "run_task", "list_tasks", "retry_task",
              "pause_task", "resume_task", "recover_task")
 RESULT_MAX_CHARS = 6000
@@ -87,10 +89,28 @@ def _object(properties: "dict[str, Any]", required: "tuple[str, ...]" = ()) -> "
 
 _TASK_ID_SCHEMA = {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", "maxLength": 64,
                    "description": "Task id, for example fixture-0001."}
+_DRAFT_SCHEMA = _object({
+    "project_id": {"type": "string", "maxLength": 40},
+    "title": {"type": "string", "maxLength": 200},
+    "description": {"type": "string", "maxLength": 20000},
+    "risk": {"type": "string", "enum": ["R0", "R1", "R2", "R3"]},
+    "allowed_paths": {"type": "array", "maxItems": 50, "items": {"type": "string", "maxLength": 300}},
+    "acceptance": {"type": "object"},
+    "role": {"type": ["string", "null"], "maxLength": 40},
+    "worker": {"type": ["string", "null"], "maxLength": 80},
+    "timeouts": {"type": "object"},
+    "dependencies": {"type": "array", "maxItems": 20, "items": {"type": "string", "maxLength": 64}},
+    "ad_hoc": {"type": "boolean"},
+    "idempotency_key": {"type": "string", "maxLength": 128},
+})
 _WORKER_ID_SCHEMA = {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,79}$", "maxLength": 80,
                      "description": "A worker id from the current configuration, for example codex_light."}
 
 _TOOLS: "list[tuple[str, str, dict[str, Any]]]" = [
+    ("prepare_task",
+     "Compile a short draft into a strict contract and list what is missing. Never submits; submit the result with "
+     "submit_task.",
+     _object({"draft": _DRAFT_SCHEMA}, ("draft",))),
     ("submit_task",
      "Queue a task contract for a Worker. Recorded as submitted by the coordinator; a write permission waits for approval (approve_task).",
      _object({"contract": {"type": "object", "description": "A task contract, at most 64 KB (see docs/MCP.md)."}}, ("contract",))),
@@ -151,13 +171,14 @@ _TOOLS: "list[tuple[str, str, dict[str, Any]]]" = [
      _object({"task_id": _TASK_ID_SCHEMA, "terminate": {"type": "boolean"}})),
 ]
 _SCHEMAS = {name: schema for name, _, schema in _TOOLS}
-_HANDLERS = {"submit_task": "_submit_task", "get_task_status": "_get_task_status", "get_task_result": "_get_task_result",
+_HANDLERS = {"prepare_task": "_prepare_task", "submit_task": "_submit_task", "get_task_status": "_get_task_status", "get_task_result": "_get_task_result",
              "get_task_diff": "_get_task_diff", "cancel_task": "_cancel_task", "review_task": "_review_task", "approve_task": "_approve_task",
              "reject_task": "_reject_task", "accept_task": "_accept_task", "close_task": "_close_task",
              "run_task": "_run_task", "list_tasks": "_list_tasks", "retry_task": "_retry_task", "pause_task": "_pause_task",
              "resume_task": "_resume_task", "recover_task": "_recover_task"}
 # Lists that may be trimmed (largest first) when an answer would exceed RESULT_MAX_CHARS.
-_SHRINK = {"get_task_result": (("evidence",), ("remaining_issues",), ("boundary", "paths"), ("tests",)),
+_SHRINK = {"prepare_task": (("questions",), ("warnings",)),
+           "get_task_result": (("evidence",), ("remaining_issues",), ("boundary", "paths"), ("tests",)),
            "review_task": (("blockers",), ("tests",)),
            "list_tasks": (("tasks",),),
            "recover_task": (("actions",),)}
@@ -214,6 +235,22 @@ def _reason(value: Any) -> str:
     return value
 
 
+def _draft(value: Any) -> "dict[str, Any]":
+    if not isinstance(value, dict):
+        raise ArgumentProblem("draft must be a JSON object")
+    if _too_deep(value, CONTRACT_MAX_DEPTH):
+        raise ArgumentProblem(f"draft is nested deeper than {CONTRACT_MAX_DEPTH} levels")
+    try:
+        size = len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+    except (TypeError, ValueError):
+        raise ArgumentProblem("draft must be plain JSON data") from None
+    if size > CONTRACT_MAX_BYTES:
+        raise ArgumentProblem(f"draft is larger than {CONTRACT_MAX_BYTES // 1024} KB")
+    if _has_control(value):
+        raise ArgumentProblem("draft contains control characters")
+    return value
+
+
 def _contract(value: Any) -> "dict[str, Any]":
     if not isinstance(value, dict):
         raise ArgumentProblem("contract must be a JSON object")
@@ -228,6 +265,7 @@ def _contract(value: Any) -> "dict[str, Any]":
 
 _VALIDATORS = {
     "contract": _contract,
+    "draft": _draft,
     "task_id": _task_id,
     "attempt": lambda v: _integer(v, "attempt", 1, 2**31 - 1),
     "approval_id": lambda v: _integer(v, "approval_id", 1, 2**31 - 1),
@@ -469,6 +507,25 @@ class Tools:
         }
 
     # ---- handlers -----------------------------------------------------------------------------------------------
+    def _prepare_task(self, draft: "dict[str, Any]") -> "dict[str, Any]":
+        if not isinstance(draft, dict):
+            raise ArgumentProblem("draft must be an object")
+        try:
+            size = len(json.dumps(draft, ensure_ascii=False))
+        except (TypeError, ValueError):
+            raise ArgumentProblem("draft must be plain JSON data") from None
+        if size > CONTRACT_MAX_BYTES:
+            raise ArgumentProblem(f"draft is too large ({size} bytes; at most {CONTRACT_MAX_BYTES})")
+        project = self.kernel.projects.get(draft.get("project_id")) if isinstance(draft.get("project_id"), str) else None
+        state = None
+        if project is not None and project.context_mode == "harness":
+            state = default_context(project, self.kernel.home).view().contract_state
+        result = compile_draft(draft, config=self.kernel.config, projects=self.kernel.projects, contract_state=state)
+        return {"status": result.status, "contract": result.contract,
+                "questions": [self._t(q, PROBLEM_MAX) for q in result.questions][:ISSUES_MAX],
+                "warnings": [self._t(w, PROBLEM_MAX) for w in result.warnings][:ISSUES_MAX],
+                "agent_next": ["submit_task"] if result.status == "READY" else []}
+
     def _submit_task(self, contract: "dict[str, Any]") -> "dict[str, Any]":
         res = self.kernel.submit(contract, submitted_by="coordinator", coordinator_id=self.coordinator)
         d = self.kernel.describe(res.task_id)
@@ -481,6 +538,7 @@ class Tools:
             "task_id": task_id,
             "title": self._t(d["title"], TITLE_MAX),
             "status": d["status"],
+            "derived_state": d["derived_state"],
             "risk": d["risk"],
             "attempts": d["attempt_count"],
             "worker": self._worker(d),
@@ -510,16 +568,23 @@ class Tools:
         return {"task_id": task_id, "status": d["status"]}
 
     def _review_task(self, task_id: str) -> "dict[str, Any]":
-        self.kernel.describe(task_id)                       # an unknown task is reported as one
+        d = self.kernel.describe(task_id)                   # an unknown task is reported as one
         blockers = self.kernel.accept_blockers(task_id, by="coordinator")
         res = self.kernel.result(task_id)
         view = self._envelope_view(res) if res is not None else None
+        tests = view["tests"] if view else []
+        passed = sum(1 for t in tests if t["status"] == "PASS")
         return {
             "task_id": task_id,
+            "derived_state": d["derived_state"],
             "ready_to_accept": not blockers,
             "blockers": [self._t(b, ISSUE_MAX) for b in blockers][:BLOCKERS_MAX],
+            "summary": {"headline": self._t(f"{d['status']}: {passed}/{len(tests)} Kernel checks passed, "
+                                            f"{len(blockers)} blocker(s)", SUMMARY_MAX),
+                        "checks_passed": passed, "checks_total": len(tests), "blockers": len(blockers),
+                        "agent_next": self._agent_next(d)},
             "diff_stat": view["diff_stat"] if view else None,
-            "tests": view["tests"] if view else [],
+            "tests": tests,
             "boundary": view["boundary"] if view else None,
         }
 

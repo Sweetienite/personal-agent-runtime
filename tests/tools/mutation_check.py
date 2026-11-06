@@ -345,6 +345,8 @@ MUTATIONS = [
     ('M637', 'a write draft without checks gets a contract', 'src/par/core/draft.py', '        if not isinstance(checks, list) or not checks:', '        if False:', T + 'test_task_draft'),
     ('M638', 'a generic project is compiled as a Harness ad-hoc task', 'src/par/core/draft.py', '        if project.context_mode == "generic":', '        if False:', T + 'test_task_draft'),
     ('M639', 'a check program the Kernel cannot run is accepted into the contract', 'src/par/core/draft.py', '            if isinstance(argv, list) and argv and isinstance(argv[0], str) and resolve_executable(argv[0]) is None:', '            if False:', T + 'test_task_draft'),
+    ('M640', 'prepare_task tells the coordinator to submit even when the compiler asked a question', 'src/par/mcp/tools.py', '                "agent_next": ["submit_task"] if result.status == "READY" else []}', '                "agent_next": ["submit_task"]}', T + 'test_mcp_tools'),
+    ('M641', 'get_task_status always reports a ready-to-run derived state', 'src/par/mcp/tools.py', '            "derived_state": d["derived_state"],', '            "derived_state": "READY_TO_RUN",', T + 'test_mcp_tools'),
 ]
 
 

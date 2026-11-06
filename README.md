@@ -30,7 +30,7 @@
 | `par task handoff T --to APP` / `par task import T --from DIR\|--patch F\|--text F` | **人工交接**：给 WorkBuddy / TRAE 这类只能人手操作的桌面应用准备一个包（提示词 + 私有副本 + 步骤），再把结果带回来由 Kernel 按普通 Worker 的标准验证（见 [docs/HANDOFF.md](docs/HANDOFF.md)） | 台账与 `tasks/…/handoff/` |
 | `par coordinator status / use NAME / kit NAME / prompt NAME` | **可选主控（路线 A）**：谁在主控、谁最近出现、一条命令切换（写接管包 + 记录）、打印接入片段与起手提示词；候选：Claude、Codex（见 [docs/COORDINATORS.md](docs/COORDINATORS.md)） | 台账与 `takeover/`（`kit`/`prompt`/`status` 只读） |
 | `par takeover export / confirm ID --as NAME / status` | 主控交接：只读接管包（任务树与事实，不含对话和 Worker 的话）+ 显式确认；同一时刻只有一个主控 | 台账与 `takeover/` |
-| `par mcp serve` / `par mcp config` | Claude Desktop 的 MCP 桥（只暴露 16 个受限工具——含调度/恢复/审批/验收/查看 diff，从不暴露配置/健康相关操作；见 [docs/MCP.md](docs/MCP.md)）；`config` 只打印要粘贴的配置，不写任何文件 | 否 |
+| `par mcp serve` / `par mcp config` | Claude Desktop 的 MCP 桥（只暴露 17 个受限工具——含调度/恢复/审批/验收/查看 diff，从不暴露配置/健康相关操作；见 [docs/MCP.md](docs/MCP.md)）；`config` 只打印要粘贴的配置，不写任何文件 | 否 |
 | `par fixture create [ID]` | 造一个一次性的夹具项目（git 仓库、一个故意的 bug、无个人数据）并登记为可写（一次性的演练项目） | 仅数据目录里的 `fixtures/` 与 `projects.toml` |
 
 真实项目的写入由你亲自打开（`par project enable-write ID`，先体检、再敲一遍项目 id 确认）。真实项目默认不能被提交写任务；只有你打开了写入的项目可以，而且**每个写任务**仍要你逐项批准；没有任何代码会把补丁应用到项目（要你自己 `git apply`）。MCP 桥已接进 Codex；接入 Claude Desktop 见 `ops/connect_claude_desktop.py`（详见 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)）。备份、恢复与演练见 [docs/ROLLBACK.md](docs/ROLLBACK.md)。Worker 能读到你磁盘上的任何可读文件（Codex 沙箱不限制读），所以先在没有敏感文件的小项目上试运行；对你其他重要项目，必须先收紧读范围，见 [docs/CODEX.md](docs/CODEX.md)。
@@ -79,7 +79,7 @@ python -B tests/tools/parallel_tests.py                 # 同一套测试，按�
 src/par/
   cli.py  doctor.py  paths.py  config.py
   cli_task.py  `par task …` 与 `par health`    cli_mcp.py  `par mcp …`    cli_coordinator.py  `par coordinator …`    coordinators.py  主控注册表（接入片段、起手提示词）
-  mcp/         protocol.py（逐行 JSON-RPC）  tools.py（16 个受限工具）  server.py（循环）
+  mcp/         protocol.py（逐行 JSON-RPC）  tools.py（17 个受限工具）  server.py（循环）
   core/        policy.py  redact.py  states.py（状态机）  store.py（SQLite 台账）  contract.py  router.py  health.py
                kernel.py（提交、审批、结算、恢复）  attempt.py（一次 attempt）  prompt.py  settings.py  clock.py
                relay.py（接力）  manual.py（人工交接）  takeover.py（主控交接）
@@ -109,7 +109,7 @@ docs/          SECURITY  OPERATIONS  ROLLBACK  ADAPTERS  CONTEXT  KERNEL  CHANGE
 | [docs/KERNEL.md](docs/KERNEL.md) | 状态机、任务合同、台账、一次运行的完整流程、失败策略、崩溃恢复、已知限制 |
 | [docs/ROLLBACK.md](docs/ROLLBACK.md) | P0 到 P7 全部改动的非破坏性回滚 |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | 接力、人工交接（WorkBuddy / TRAE）、主控交接 |
-| [docs/MCP.md](docs/MCP.md) | MCP 桥（任何支持 MCP 的主控都能用）：16 个工具、永远不能做什么、怎么接入 |
+| [docs/MCP.md](docs/MCP.md) | MCP 桥（任何支持 MCP 的主控都能用）：17 个工具、永远不能做什么、怎么接入 |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | **使用指南**：怎么接通 Claude / Codex、每天怎么用、额度用完怎么办、人工交接、出问题怎么办 |
 | [docs/COORDINATORS.md](docs/COORDINATORS.md) | 可选主控：Claude / Codex 的接入、一条命令切换、额度用完时怎么办 |
 | [docs/CODEX.md](docs/CODEX.md) | Codex 适配器：版本兼容记录、命令行逐项依据、隔离配方、沙箱实测、失败分类、升级复核清单 |

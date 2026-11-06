@@ -14,6 +14,8 @@ Documentation and metadata corrections only — no behavior change:
 
 - `par task draft --draft FILE` compiles a short draft (project, goal, risk, paths, checks) into the same strict contract, deriving role, the ad-hoc flag and the idempotency key deterministically. A missing path, a missing check for a write task, an unknown project/worker/role or a Harness project without one active contract returns a question list and exit code 2 instead of a contract. It prints and never submits; it reads no repository files and never adds a command from a README.
 
+- The MCP bridge has a 17th tool, `prepare_task`: a coordinator can turn a short draft into a strict contract and get the missing fields back as questions, without submitting or guessing a path/command. Task status and review answers now carry a derived `derived_state` and a short `summary`; the coordinator starter prompt was shortened and points at `docs/COORDINATORS.md` for the detailed contract examples instead of inlining them.
+
 ## 1.0.0 — 2026-11
 
 First public release. Highlights:

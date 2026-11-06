@@ -101,16 +101,16 @@ class Kits(unittest.TestCase):
 
 
 class StarterPrompt(unittest.TestCase):
-    def test_it_teaches_the_sixteen_tools_and_the_rules_that_do_not_bend(self):
+    def test_it_teaches_the_seventeen_tools_and_the_rules_that_do_not_bend(self):
         text = C.starter_prompt("claude_desktop")
-        for tool in ("list_tasks", "get_task_status", "get_task_result", "get_task_diff", "review_task", "submit_task", "run_task",
+        for tool in ("prepare_task", "list_tasks", "get_task_status", "get_task_result", "get_task_diff", "review_task", "submit_task", "run_task",
                     "cancel_task", "retry_task", "pause_task", "resume_task", "recover_task", "approve_task", "reject_task",
                     "accept_task", "close_task"):
             self.assertIn(tool, text)
         for rule in ("UNTRUSTED DATA", "You may approve, reject, accept and close", "never run again",
                     "par coordinator use claude_desktop", "dependencies", "by=\"coordinator\""):
             self.assertIn(rule, text)
-        self.assertIn('{"schema_version": 1', text)                                                    # the braces of the example survived formatting
+        self.assertIn("docs/COORDINATORS.md", text)                                                    # the long examples live in the docs
         for placeholder in ("{name}", "{id}", "{limit_note}"):
             self.assertNotIn(placeholder, text)
 
@@ -127,29 +127,27 @@ class StarterPrompt(unittest.TestCase):
             self.assertIn(c.limit_note, text)
             self.assertIn(f"par coordinator use {cid}", text)
 
-    def test_the_example_contract_in_the_prompt_is_a_real_contract(self):
+    def test_the_prompt_points_at_the_contract_docs_instead_of_inlining_them(self):
         text = C.starter_prompt("codex")
-        start = text.index("Read-only question: ") + len("Read-only question: ")
-        doc, _ = json.JSONDecoder().raw_decode(text[start:])
-        doc.update(project_id="fixture", idempotency_key="example-1")
-        self.assertEqual(parse_contract(doc).risk, "R1")                                              # what a coordinator copies must validate
+        self.assertIn("docs/COORDINATORS.md", text)
+        self.assertIn("prepare_task", text)
+        self.assertNotIn('{"schema_version": 1', text)
 
     def test_the_prompt_says_it_can_approve_and_accept_now(self):
         text = C.starter_prompt("codex").lower()
         for promise in ("you may approve, reject, accept and close", "accept_task"):
             self.assertIn(promise, text)
 
-    def test_the_prompt_asks_for_precise_descriptions_and_mechanical_checks(self):
+    def test_the_prompt_asks_for_exact_paths_and_a_real_check(self):
         text = C.starter_prompt("codex")
-        self.assertIn("name exact files, functions and behavior", text)
-        self.assertIn("mirror the existing X", text)
-        self.assertIn("handed to a desktop app by hand", text)
+        self.assertIn("exact paths", text)
+        self.assertIn("a check the Kernel can run", text)
+        self.assertIn("never guess a path or a command", text)
 
-    def test_the_prompt_asks_to_size_timeouts_for_real_new_work(self):
+    def test_the_prompt_names_timeouts_but_leaves_the_sizing_rule_to_the_docs(self):
         text = C.starter_prompt("codex")
-        self.assertIn('"timeouts": {"total": <seconds>}', text)
-        self.assertIn("1200s = 20 minutes", text)
-        self.assertIn("writing real new logic and its own tests from scratch", text)
+        self.assertIn("`timeouts`", text)
+        self.assertIn("docs/COORDINATORS.md", text)
 
 
 class KernelSide(KernelWorld):

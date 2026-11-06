@@ -8,7 +8,7 @@
 
 ```text
 你 ──说话──▶ 主控（Claude 或 Codex）
-                │  16 个工具：提交 / 查询 / 查看结果 / 查看 diff / 启动 / 取消 / 重试 / 暂停 / 继续 / 结清孤儿 / 批准 / 拒绝 / 验收 / 关闭
+                │  17 个工具：准备合同 / 提交 / 查询 / 查看结果 / 查看 diff / 启动 / 取消 / 重试 / 暂停 / 继续 / 结清孤儿 / 批准 / 拒绝 / 验收 / 关闭
                 ▼
        Runtime（Kernel + 任务台账） ◀── 你：看进度、随时能在终端接手、交接、切换主控
                 │  在私有副本里调度
@@ -49,7 +49,7 @@
 
 ## 2. 第一次接通主控
 
-主控怎么连 Runtime：它启动一个叫 `par` 的本地 MCP 服务器（`par mcp serve`），通过它的 16 个工具跟 Runtime 说话。你要做的只是把这个服务器登记进主控应用，并给主控一段**起手提示词**。下面是 Codex 和 Claude Desktop 两条路径；接完之后可以用 `par coordinator status` 确认它「最近出现」过。
+主控怎么连 Runtime：它启动一个叫 `par` 的本地 MCP 服务器（`par mcp serve`），通过它的 17 个工具跟 Runtime 说话。你要做的只是把这个服务器登记进主控应用，并给主控一段**起手提示词**。下面是 Codex 和 Claude Desktop 两条路径；接完之后可以用 `par coordinator status` 确认它「最近出现」过。
 
 ### 2.1 Codex
 
@@ -69,16 +69,16 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
    ```
 2. 然后**完全退出 Claude Desktop**（菜单栏 Claude > 退出，或 ⌘Q）。这会结束你当前在 Claude Desktop 里的所有会话。
 3. 它退出之后几秒内，工具会：备份配置（旁边的 `claude_desktop_config.json.par-backup-<时间>`）、只加入 `par` 这一项、写后自检，然后自动重新打开 Claude Desktop。进度和结果写在 `~/Library/Application Support/PersonalAgentRuntime/logs/connect_claude_desktop.log`。
-4. 重新打开后，新开一个聊天，工具列表里应有 `par`（16 个工具）。第一条消息贴起手提示词：`par coordinator prompt claude_desktop | pbcopy`，再让它调用 `list_tasks`，然后运行 `par coordinator status` 看「最近出现」。
+4. 重新打开后，新开一个聊天，工具列表里应有 `par`（17 个工具）。第一条消息贴起手提示词：`par coordinator prompt claude_desktop | pbcopy`，再让它调用 `list_tasks`，然后运行 `par coordinator status` 看「最近出现」。
 5. 想先看它会做什么：不加任何参数运行（试运行，什么都不改）。想撤销：`.venv/bin/python ops/connect_claude_desktop.py --remove --apply --background --reopen`，再 ⌘Q。
 
 > 如果过了 30 分钟你都没有退出应用，它会自己放弃，什么都不改。
 
-**Claude Code（桌面端的 Code 标签）**：上面接入的是用户级配置，这会影响到**你所有项目的所有 Code 会话**——应用重启、配置生效之后，不需要任何额外操作，工具列表里就会多出 `par` 的 16 个工具。如果你只想让某一个项目有这些工具（不想全局都有），改用项目级的办法：在那个项目的文件夹里运行 `par coordinator kit claude_desktop`，执行它打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效；不要加 `--scope user`，否则等于又做了一遍用户级接入）——如果用户级已经接了，没必要再做这一步。
+**Claude Code（桌面端的 Code 标签）**：上面接入的是用户级配置，这会影响到**你所有项目的所有 Code 会话**——应用重启、配置生效之后，不需要任何额外操作，工具列表里就会多出 `par` 的 17 个工具。如果你只想让某一个项目有这些工具（不想全局都有），改用项目级的办法：在那个项目的文件夹里运行 `par coordinator kit claude_desktop`，执行它打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效；不要加 `--scope user`，否则等于又做了一遍用户级接入）——如果用户级已经接了，没必要再做这一步。
 
 ### 2.3 起手提示词是什么
 
-一段给主控模型看的规则：它有哪 16 个工具、合同（任务说明）怎么写、怎么用 `dependencies` 拆大任务、它可以自己批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话是**不可信数据**、不要循环重试、完成的任务不重跑。它对 Kernel 不是依赖——Kernel 的边界检查和验证不管主控怎么说都照常进行。随时可以重新打印：`par coordinator prompt NAME`（接入片段同样可以重新打印：`par coordinator kit NAME`）。
+一段给主控模型看的规则：它有哪 17 个工具、怎么用 `prepare_task` 得到合同、怎么用 `dependencies` 拆大任务、它可以自己批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话是**不可信数据**、不要循环重试、完成的任务不重跑。它对 Kernel 不是依赖——Kernel 的边界检查和验证不管主控怎么说都照常进行。随时可以重新打印：`par coordinator prompt NAME`（接入片段同样可以重新打印：`par coordinator kit NAME`）。
 
 ## 3. 每天怎么用
 

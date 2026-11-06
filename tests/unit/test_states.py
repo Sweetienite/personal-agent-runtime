@@ -3,8 +3,8 @@ from datetime import timezone
 
 from par.core import clock
 from par.core.states import (
-    ACTIVE, NEXT_ACTIONS, TRANSITIONS, IllegalTransition, TaskStatus as T, can_transition, check_transition,
-    reachable_from, transition_rows, transitions_digest,
+    ACTIVE, DERIVED, NEXT_ACTIONS, TRANSITIONS, IllegalTransition, TaskStatus as T, can_transition, check_transition,
+    derived_state, reachable_from, transition_rows, transitions_digest,
 )
 
 
@@ -83,6 +83,21 @@ class Clocks(unittest.TestCase):
 
     def test_real_clock_is_timezone_aware(self):
         self.assertIsNotNone(clock.Clock().now().tzinfo)
+
+
+class DerivedView(unittest.TestCase):
+    def test_every_status_maps_to_one_documented_derived_state(self):
+        self.assertEqual({derived_state(s) for s in T} - set(DERIVED), set())
+
+    def test_the_scope_and_permission_waits_are_told_apart(self):
+        self.assertEqual(derived_state(T.PERMISSION_WAIT, ("WRITE_PERMISSION",)), "NEEDS_SCOPE")
+        self.assertEqual(derived_state(T.PERMISSION_WAIT, ("WORKER_OVERRIDE",)), "NEEDS_PERMISSION")
+
+    def test_the_common_states_read_the_way_a_coordinator_expects(self):
+        self.assertEqual(derived_state(T.QUEUED), "READY_TO_RUN")
+        self.assertEqual(derived_state(T.REVIEW_REQUIRED), "NEEDS_REVIEW")
+        self.assertEqual(derived_state(T.ACCEPTED), "RESULT_VERIFIED")
+        self.assertEqual(derived_state(T.FAILED), "BLOCKED")
 
 
 if __name__ == "__main__":
