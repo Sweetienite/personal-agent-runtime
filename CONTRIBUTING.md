@@ -8,6 +8,17 @@ This is a solo-maintained personal tool, open-sourced as-is. Issues and small, f
 - `docs/specs/*.md` describe the exact contract each module implements; `docs/SECURITY.md` describes what the Runtime is and isn't allowed to touch. If your change affects either, update the doc in the same PR.
 - A change to a safety-relevant line (permissions, path policy, redaction, what a tool is allowed to execute) must keep `python3 -B tests/tools/mutation_check.py` passing for the entries it touches, not just the unit tests.
 
+## Checking documentation links
+
+```bash
+python3 -B tests/tools/link_check.py              # current docs; exits 1 on a missing relative link
+python3 -B tests/tools/link_check.py --historical # also lists known docs/reports archive exclusions
+```
+
+Historical reports under `docs/reports/` link to evidence files that were excluded from the public
+push; each report carries a disclaimer, so the default check skips that archive. External URLs,
+anchors and GitHub-relative links are not treated as file paths.
+
 ## Running the test suite
 
 ```bash
