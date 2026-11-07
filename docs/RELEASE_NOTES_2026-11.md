@@ -103,3 +103,9 @@
 - 现有 Codex 的等级从 `GREEN (scoped)` 升为 **`GREEN`**；仍只覆盖该版本/OS/账号组合，
   **不是**新增自动 Provider，也不是给其它 Provider 升格。T14 的「不新增自动 Provider」结论不变。
 - 仍未打 tag / 发 Release；`TESTED_VERSION` 仍为 `0.166.0-alpha.6`，版本号仍为 `1.0.0`。
+
+**人工交接**：同日用 WorkBuddy 5.9.3 在 macOS 15.6.1 上真实重跑了一次 R2 交接——导出包在
+WorkBuddy 里用「新建任务 → 选择工作空间 → 打开本地文件夹」打开、粘贴 `PROMPT.md`、完成后
+`par task import`；Kernel 自己跑 `unit` 检查 PASS（`MEASURED · boundary CLEAN · checks PASSED (1/1)`，
+1 文件 +1 −1，0 违规），任务停在 `REVIEW_REQUIRED`、未应用到任何项目。没有 UI 自动化或厂商接口。
+见 [reports/WORKBUDDY_REAL_HANDOFF_20261107.md](reports/WORKBUDDY_REAL_HANDOFF_20261107.md)。
