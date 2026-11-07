@@ -233,7 +233,7 @@ par project list
 par project show simproj --manifest
 ```
 
-- 登记表是 `<数据目录>/config/projects.toml` 里的 `[projects.<id>]`。你也可以手工编辑；真实项目的 `write_enabled = true` 只有在同时写了 `write_approved = "YYYY-MM-DD"` 且 `vcs = "git"` 时才被接受，别的写法整条丢弃。**推荐用 `par project enable-write`**（见下一节）。
+- 登记表是 `<数据目录>/config/projects.toml` 里的 `[projects.<id>]`。你也可以手工编辑；真实项目的 `write_enabled = true` 只有在同时写了 `write_approved = "YYYY-MM-DD"` 且 `vcs = "git"` 时才被接受，别的写法整条丢弃。**推荐用 `par project enable-write`**（见下一节）：如果项目是按默认 `vcs = "auto"` 登记的、而根目录确实有 `.git`，开启写入时会把这一行改成 `vcs = "git"`，不需要重新登记。
 - 项目路径不能在受保护位置内（Core、各工具配置、shell 配置）；同一目录不能登记两次。
 - `vcs = "none"` 表示项目自己的规则不允许根目录有仓库，Runtime 不会把「没有 git」当缺陷，但写任务需要显式的备份或快照流程。
 - 清单与写入就绪的含义见 [CONTEXT.md](CONTEXT.md)。

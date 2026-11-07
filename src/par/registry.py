@@ -204,6 +204,17 @@ def set_project_write(data_dir: "str | os.PathLike[str]", project_id: str, enabl
             body.pop()
         body.append(f"write_enabled = {word}\n")
         at = len(body)
+    if enabled and entry.vcs == "auto" and (entry.path / ".git").exists():
+        vcs_at = [i for i, ln in enumerate(body) if re.match(r"^\s*vcs\s*=", ln)]
+        if len(vcs_at) > 1:
+            raise PolicyViolation(f"[projects.{project_id}] has more than one vcs line: edit projects.toml by hand")
+        if vcs_at:
+            m = re.match(r'^(\s*vcs\s*=\s*)(["\'])auto\2(.*)$', body[vcs_at[0]].rstrip("\n"))
+            if not m:
+                raise PolicyViolation(f"the vcs line of [projects.{project_id}] is not the plain form `vcs = \"auto\"`: edit it by hand")
+            body[vcs_at[0]] = f'{m.group(1)}"git"{m.group(3)}\n'
+        else:
+            body.insert(0, 'vcs = "git"\n')
     if enabled:
         body.insert(at, f'write_approved = "{approved}"\n')
     if body and not body[-1].endswith("\n"):

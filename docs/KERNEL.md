@@ -176,6 +176,7 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 - **创建**：`par candidate create --task A [--task B ...]`。只接受 `ACCEPTED`/`CLOSED` 的 **R2** 任务，每个任务都必须有 `acceptance.checks`；项目必须干净，且 HEAD 等于第一个任务的 base（否则 `dirty_project` / `project_moved`）。
 - **来源只有 Kernel 切出的补丁**：读 `attempts/<n>/work.patch`（不是 Worker 自述），记录每个补丁的 sha256、任务/尝试号、允许路径与提交。补丁若碰到 `.git`、`.ai/`、规则文件或敏感路径，直接拒绝。
 - **顺序**：按 `dependencies` 拓扑排序；后一个任务的 base 可以是项目 base（独立任务）或前一个任务产生的候选提交（A→B 链）。其它 base 一律 `base_mismatch`。
+- **provenance**：attempt 结束时 `changes.json` 记录 `patch_sha256`；整合前重新计算 `work.patch` 的哈希并与它比对。补丁在验收后被改动（即使在 allowed_paths 内）会以 `FAILED` 拒绝；没有记录哈希的旧 attempt 以 `missing_provenance` 拒绝。这样候选只使用**当时**被验收的那个补丁。
 - **产物**：`<数据目录>/candidates/<candidate_id>/repo` 是 Kernel 自己的 git 仓库；提交时间固定，所以同样的 base + 同样的补丁会得到同样的 commit（依赖它的任务不会因为重新整合而失效）。`verify/` 是跑检查的一次性副本；`checks/` 留日志。整个目录 0700，真实项目一个字节都不动。
 - **状态**：所有检查通过才是 `VERIFIED`；补丁冲突、受保护路径、缺补丁、检查失败都会留下 `FAILED` 记录与原因（缺补丁这类前置条件在创建记录前就 `Refused`）。失败/重复整合都不会改写旧 candidate 行。
 - **B 如何使用**：`par task submit --contract FILE --candidate ID`，或对已排队但从未运行的任务 `par task rebase TASK --candidate ID`。B 的 `base.commit` 变成候选提交，`candidate_repo` 指向候选仓库；B 的补丁因此只含 B 自己的改动，不重复 A 的。
