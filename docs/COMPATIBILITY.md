@@ -77,7 +77,7 @@
 | 4 | **Codex** | `EXISTING` + `GREEN` | 已有适配器用的正是官方 `codex exec --json`；2026-11-06 第一次真实复核受宿主嵌套沙箱限制，第二次在外部沙箱化条件下成功；**2026-11-07 在普通终端用产品默认 `-s` 模式再次取得成功的真实 R1/R2**，§12 复核完成、`TESTED_VERSION` = `0.166.0-alpha.6`；这不是新增 Provider |
 | 5 | **ACP（Agent Client Protocol）** | `YELLOW` | 协议本身公开且权限回调语义明确，但 v2 仍是 draft、本机无任何 ACP agent 可验证；不是「一个能跑的 Provider」 |
 | 6 | **OpenCode** | `YELLOW` | 官方有 `opencode serve` / `run` headless 与 SSE/OpenAPI，但需额外 npm/bun 运行时，与本项目零第三方依赖原则冲突，本机未安装 |
-| 7 | **WorkBuddy / TRAE / GUI-only** | `EXISTING` | 手工交接路径已在 T09 落实并测试；不是自动 Provider，不参与本排序的 GREEN 判定 |
+| 7 | **WorkBuddy / TRAE / GUI-only** | `EXISTING` | 手工交接路径已在 T09 落实并测试；2026-11-07 用 WorkBuddy 5.9.3 真实重跑 R2 交接通过；不是自动 Provider，不参与本排序的 GREEN 判定 |
 
 **结论：现有 Codex 为 `GREEN`，仍没有其它通用 `GREEN` 候选，也仍不新增自动 Provider。** T13 的静态研究阻塞，已由用户在 2026-11-06 作出范围决策收口为「**不新增自动 Provider**」。两次真实复核：第一次受宿主嵌套沙箱限制没有成功的 R2；第二次在宿主已由外部 OS 沙箱化的限定条件下取得成功；**2026-11-07 在普通终端用产品默认 `-s` 模式补跑成功，默认沙箱限定解除**。该 `GREEN` 仍只覆盖记录中的版本 / OS / 账号组合，不能跨版本或跨平台外推。不新增任何正式自动 Provider，不把「实验」写成「已支持」。若将来要新增（而不是只复核）一个自动 Provider，仍需付费 Gemini API key / 企业许可等官方允许路径与新的真实证据，而不是一个配置开关。
 
@@ -163,7 +163,7 @@
 
 ### 7. 手工交接（WorkBuddy / TRAE / GUI-only） — `EXISTING`
 
-`par task handoff --to APP` 与 `par task import` 已在 T09 落实：导出包给出模式、`workspace_absolute_path`、marker、目标、允许路径、检查与导入指引；导入核对 task/export/base 与真实导出路径，旧包、副本、伪造标记都点名拒绝。见 [HANDOFF.md](HANDOFF.md)。它不依赖任何 UI 自动化或厂商接口，因此不受上述账号/条款变化影响；但**它是人工路径，不是自动 Provider**，也不能用来宣称 P3 的自动执行 Gate 已通过。作者曾在 macOS 上做过一次真实 WorkBuddy 交接（见 [HANDOFF.md](HANDOFF.md) 的实测教训），版本需重核。
+`par task handoff --to APP` 与 `par task import` 已在 T09 落实：导出包给出模式、`workspace_absolute_path`、marker、目标、允许路径、检查与导入指引；导入核对 task/export/base 与真实导出路径，旧包、副本、伪造标记都点名拒绝。见 [HANDOFF.md](HANDOFF.md)。它不依赖任何 UI 自动化或厂商接口，因此不受上述账号/条款变化影响；但**它是人工路径，不是自动 Provider**，也不能用来宣称 P3 的自动执行 Gate 已通过。2026-11-07 用 WorkBuddy 5.9.3 在 macOS 15.6.1 上真实重跑了 R2 交接：Kernel `unit` 检查 PASS、边界 0 违规、任务停在 `REVIEW_REQUIRED`（[报告](reports/WORKBUDDY_REAL_HANDOFF_20261107.md)）。
 
 ## 与平台证据的关系
 
