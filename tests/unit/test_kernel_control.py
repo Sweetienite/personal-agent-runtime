@@ -47,9 +47,13 @@ class Cancelling(KernelWorld):
         self.kernel.accept(tid)
         with self.assertRaises(NotAllowed):
             self.kernel.cancel(tid)
+        with self.assertRaises(NotAllowed):
+            self.kernel.retry(tid)
         self.kernel.close_task(tid)
         with self.assertRaises(NotAllowed):
             self.kernel.cancel(tid)
+        with self.assertRaises(NotAllowed):
+            self.kernel.retry(tid)
 
     def test_a_result_waiting_for_review_can_be_discarded(self):
         tid = self.queued(r1_contract())

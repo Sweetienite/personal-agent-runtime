@@ -10,6 +10,7 @@ built only from patches the Kernel cut and re-checked itself. The person still d
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -79,6 +80,8 @@ class CandidateMixin:
                 n = self._latest_completed_attempt(task)
                 patch_path = self.runner.attempt_dir(task["task_id"], n) / "work.patch"
                 raw = self._candidate_patch(task, patch_path)
+                sha = hashlib.sha256(raw).hexdigest()
+                expected = self._candidate_changes(task["task_id"], n).get("patch_sha256")
                 paths = gitops.patch_paths(self.git, raw)
                 protected = sorted(p for p in paths if forbidden_reason(p))
                 if protected:
@@ -86,9 +89,10 @@ class CandidateMixin:
                 outside = sorted(p for p in paths if not path_allowed(p, contract.allowed_paths))
                 if outside:
                     raise gitops.GitError("the patch changes paths outside the task's allowed_paths: " + ", ".join(outside[:5]))
+                if expected != sha:
+                    raise gitops.GitError(f"the work.patch of {task['task_id']} no longer matches the hash recorded when it was accepted")
                 gitops.apply_patch(self.git, repo, raw, check_only=True, ceiling=repo)
                 gitops.apply_patch(self.git, repo, raw)
-                sha = hashlib.sha256(raw).hexdigest()
                 commit = gitops.commit_all(self.git, repo, f"candidate: {task['task_id']} attempt {n} ({sha[:12]})",
                                            date=CANDIDATE_DATE)
                 applied.append({"task_id": task["task_id"], "attempt": n, "patch_sha256": sha, "commit": commit,
@@ -144,6 +148,8 @@ class CandidateMixin:
         if not isinstance(boundary, Mapping) or boundary.get("violations"):
             raise Refused("bad_result", f"{tid} attempt {n} has no clean boundary record; refusing to integrate it")
         self._candidate_patch(task, self.runner.attempt_dir(tid, n) / "work.patch")   # exists, size, regular file
+        if not isinstance(self._candidate_changes(tid, n).get("patch_sha256"), str):
+            raise Refused("missing_provenance", f"{tid} attempt {n} has no recorded patch hash; refusing to integrate it")
 
     def _latest_completed_attempt(self, task: "Mapping[str, Any]") -> int:
         from par.core.kernel import Refused
@@ -154,6 +160,13 @@ class CandidateMixin:
         if latest["end_kind"] != "COMPLETED" or not isinstance(latest.get("result"), Mapping):
             raise Refused("not_completed", f"{task['task_id']}'s latest attempt ended as {latest['end_kind'] or 'unfinished'}, not COMPLETED")
         return int(latest["n"])
+
+    def _candidate_changes(self, task_id: str, n: int) -> "dict[str, Any]":
+        try:
+            doc = json.loads((self.runner.attempt_dir(task_id, n) / "changes.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return doc if isinstance(doc, dict) else {}
 
     @staticmethod
     def _candidate_patch(task: "Mapping[str, Any]", path: Path) -> bytes:

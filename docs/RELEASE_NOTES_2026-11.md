@@ -11,8 +11,8 @@
 3. **Antigravity 条款风险**：官方 FAQ 明确禁止第三方封装；现有 `agy` 适配器只能作为实验性、默认禁用的历史实现保留。
 4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（仅 CI 纯逻辑安全子集）、Windows `STATIC_GAP`。
 5. **全量套件仍不是 CI 的覆盖范围**：2026-11-06 的受限沙箱里曾有 4 个进程终止类模块（7 个用例）
-   因无法向子进程组投递信号而失败；**2026-11-07 在普通终端全量 1561 项通过（23 skipped）**。
-   CI 仍只跑三个明确命名的作业，不是全量 1561 项。
+   因无法向子进程组投递信号而失败；**2026-11-07 在普通终端全量 1564 项通过（23 skipped）**。
+   CI 仍只跑三个明确命名的作业，不是全量 1564 项。
 
 因此本轮的成果是**文档与证据整理**，适合作为 `main` 上的持续交付；不适合对外宣布一个「P3 全部通过」的版本。
 `pyproject.toml` / `__version__` 保持 `1.0.0`，未改动版本号。
@@ -61,7 +61,7 @@
   fake smoke R1+R2、普通 Git 仓库 generic 登记、手工交接包、以及两处真实摩擦点的诚实记录）。
 - 新增 [MODES.md](MODES.md)（三种角色、三种协作方式、状态词汇对照、不做什么）。
 - 新增 [docs/reports/README.md](reports/README.md)（历史快照归档说明、两套阶段编号的区分、当前证据入口）。
-- 中英 README / CONTRIBUTING / AGENTS / CHANGELOG 对齐：测试数更新为约 1558 项（本轮新增回归后为 1561）、明确 CI 三个作业、
+- 中英 README / CONTRIBUTING / AGENTS / CHANGELOG 对齐：测试数更新为约 1558 项（本轮新增回归后为 1564）、明确 CI 三个作业、
   明确徽章不代表全量、去过时数字、补新文档索引。
 
 ## 2026-11-06 追加：T14 解锁后的两次真实复核
@@ -103,6 +103,12 @@
 - 现有 Codex 的等级从 `GREEN (scoped)` 升为 **`GREEN`**；仍只覆盖该版本/OS/账号组合，
   **不是**新增自动 Provider，也不是给其它 Provider 升格。T14 的「不新增自动 Provider」结论不变。
 - 仍未打 tag / 发 Release；`TESTED_VERSION` 仍为 `0.166.0-alpha.6`，版本号仍为 `1.0.0`。
+
+**普通 Git 仓库**：同日用一个没有 `AGENTS.md` / `.ai/STATE.md` / 父合同的普通 Git 仓库跑了真实
+Codex R2：`demo-0001` 完成、Kernel `unit` PASS（`MEASURED · boundary CLEAN · checks PASSED (1/1)`，
+1 文件 +1 −1，0 违规），任务停在 `REVIEW_REQUIRED`、未应用到项目。过程中发现并修复了
+`vcs = "auto"` 登记后 `enable-write` 被拒绝的 onboarding 缺陷；证据见
+[reports/GENERIC_REAL_R2_20261107.md](reports/GENERIC_REAL_R2_20261107.md)。
 
 **人工交接**：同日用 WorkBuddy 5.9.3 在 macOS 15.6.1 上真实重跑了一次 R2 交接——导出包在
 WorkBuddy 里用「新建任务 → 选择工作空间 → 打开本地文件夹」打开、粘贴 `PROMPT.md`、完成后

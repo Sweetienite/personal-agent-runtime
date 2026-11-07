@@ -164,6 +164,24 @@ class Failures(CandidateWorld):
         self.assertEqual(self.kernel.evidence(a)["integration"], "CANDIDATE_FAILED")
         self.assertEqual(self.project_digest(), before)
 
+    def test_a_tampered_patch_inside_the_allowed_paths_is_refused_by_its_hash(self):
+        a = self.run_accept(self.contract(UNIT), {"app/data.txt": "changed\n"})
+        patch = self.attempt_dir(a) / "work.patch"
+        self.assertIn(b"+changed", patch.read_bytes())
+        patch.write_bytes(patch.read_bytes().replace(b"+changed", b"+tampered"))
+        before = self.project_digest()
+        cand = self.kernel.candidate_create([a])
+        self.assertEqual(cand["status"], "FAILED")
+        self.assertIn("no longer matches the hash recorded when it was accepted", cand["reason"])
+        self.assertEqual(self.project_digest(), before)
+
+    def test_a_patch_without_a_recorded_hash_is_refused_as_missing_provenance(self):
+        a = self.run_accept(self.contract(UNIT), {"app/api.py": API})
+        (self.attempt_dir(a) / "changes.json").unlink()
+        with self.assertRaises(Refused) as ctx:
+            self.kernel.candidate_create([a])
+        self.assertEqual(ctx.exception.code, "missing_provenance")
+
     def test_a_tampered_patch_that_leaves_the_allowed_paths_is_refused(self):
         a = self.run_accept(self.contract(UNIT), {"app/api.py": API})
         patch = self.attempt_dir(a) / "work.patch"

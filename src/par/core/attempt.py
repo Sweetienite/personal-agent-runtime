@@ -515,7 +515,7 @@ class AttemptRunner:
             "violations": [{"path": v.path, "status": v.status, "reason": v.reason, "protected": v.protected} for v in cls.violations],
             "noise_count": len(cls.noise), "noise": sorted(cls.noise)[:MAX_NOISE_LISTED],
             "left_out_of_the_copy": list(cap.excluded), "patch": "work.patch" if cap.patch else None, "stat": cap.stat,
-            "error": cap.error,
+            "patch_sha256": hashlib.sha256(cap.patch).hexdigest() if cap.patch else None, "error": cap.error,
         }
 
     # ------------------------------------------------------------------------------------------------------

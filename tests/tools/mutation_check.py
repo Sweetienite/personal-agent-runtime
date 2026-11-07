@@ -382,6 +382,7 @@ MUTATIONS = [
     ('M674', 'the Kernel replaces the attempt reason with an unconditional success claim', 'src/par/core/kernel.py', 'go(T.REVIEW_REQUIRED, f"{outcome.reason} - waiting for your review"', 'go(T.REVIEW_REQUIRED, "the Worker finished cleanly and every check passed - waiting for your review"', T + 'test_kernel_run'),
     ('M913', 'a context file that is a symlink is read like a regular file', 'src/par/context/facts.py', 'if p.is_symlink() or not p.is_file() or is_sensitive_path(rel):', 'if not p.is_file() or is_sensitive_path(rel):', T + 'test_generic_context'),
     ('M914', 'a context file reached through a symlinked folder is read from outside the project', 'src/par/context/facts.py', 'if real != root_real and not real.startswith(root_real + os.sep):', 'if False:', T + 'test_context_harness'),
+    ('M915', 'a tampered accepted patch is integrated without checking its recorded hash', 'src/par/core/candidate.py', '                if expected != sha:', '                if False:', T + 'test_candidate_integration'),
 ]
 
 

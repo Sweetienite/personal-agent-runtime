@@ -71,6 +71,13 @@ class Base(unittest.TestCase):
 
 
 class Registry(Base):
+    def test_an_auto_registered_git_project_can_be_enabled_without_re_registering(self):
+        auto = make_git_project(self.home / "Documents" / "Auto", self.home)
+        add_project(self.data, "auto", auto, vcs="auto", home=self.home)
+        entry, _ = set_project_write(self.data, "auto", True, day="2026-11-07", home=self.home)
+        self.assertEqual((entry.vcs, entry.write_enabled, entry.write_approved), ("git", True, "2026-11-07"))
+        self.assertIn('vcs = "git"', self.text())
+
     def test_enabling_changes_only_the_two_lines_of_that_project_and_keeps_the_old_file(self):
         before = self.text()
         entry, backup = set_project_write(self.data, "real", True, day="2026-10-15", home=self.home)

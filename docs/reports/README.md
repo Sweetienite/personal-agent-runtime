@@ -23,6 +23,7 @@
 | [CODEX_REVALIDATION_PART2_20261106.md](CODEX_REVALIDATION_PART2_20261106.md) | 2026-11-06 **第二部分**：在宿主已由外部沙箱化这一厂商说明的适用情形下，取得**成功的真实 R1 与 R2**（`MEASURED · checks PASSED`），§12 复核完成、`TESTED_VERSION` 更新；当时的证据等级为带限定的 `GREEN (scoped)`。 |
 | [CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md](CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md) | 2026-11-07 **第三部分**：在 `sandbox_check=0` 的普通终端上，用产品默认 `-s read-only\|workspace-write` 补跑真实 R1/R2 成功（`MEASURED · checks PASSED (1/1)`）；现有 Codex 升为 `GREEN`，仍不是新增 Provider。 |
 | [WORKBUDDY_REAL_HANDOFF_20261107.md](WORKBUDDY_REAL_HANDOFF_20261107.md) | 2026-11-07 **WorkBuddy 真实人工交接重跑**：WorkBuddy 5.9.3 / macOS 15.6.1，导出包 → GUI 打开 `workspace/` → 粘贴 prompt → 导入；Kernel `unit` PASS、边界 0 违规、`REVIEW_REQUIRED`、未应用到项目。 |
+| [GENERIC_REAL_R2_20261107.md](GENERIC_REAL_R2_20261107.md) | 2026-11-07 **普通 Git 仓库真实 R2**：generic context（无 AGENTS/STATE/父合同），Codex `gpt-6-luna` 真实调用，Kernel `unit` PASS、边界 0 违规、未应用到项目；同时修复了 `auto` 登记后 `enable-write` 的 onboarding 缺陷。 |
 
 ## 当前版本的证据入口
 

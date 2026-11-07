@@ -11,7 +11,7 @@ This is a solo-maintained personal tool, open-sourced as-is. Issues and small, f
 ## Running the test suite
 
 ```bash
-python3 -B -m unittest discover -s tests -t .      # full suite, ~1561 tests
+python3 -B -m unittest discover -s tests -t .      # full suite, ~1564 tests
 python3 -B tests/tools/parallel_tests.py            # the same, parallelized, faster
 ```
 
