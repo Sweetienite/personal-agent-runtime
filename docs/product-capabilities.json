@@ -246,10 +246,10 @@
       "name": "Linux (ubuntu-latest, GitHub Actions)",
       "status": "CORE_EXPERIMENTAL",
       "install": "pip install -e . in linux_security_core (smoke_install itself is macOS)",
-      "cli_core": "PASS: linux_security_core, 150 tests (run 42588469528)",
+      "cli_core": "PASS: linux_security_core, 150 tests (run 42591934521)",
       "fake_smoke": "NOT_RUN",
       "real_provider": "NOT_SUPPORTED (adapters are macOS-specific)",
-      "cancel_timeout": "PASS: linux_process_control, 89 tests (run 42588469528)",
+      "cancel_timeout": "PASS: linux_process_control, 102 tests (run 42591934521)",
       "sandbox": "No OS sandbox",
       "last_verified": "2026-11-09",
       "evidence_url": "finalization/RELEASE_READINESS.md"

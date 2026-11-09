@@ -186,7 +186,7 @@ MCP 是**主控接入协议**，不是自动 Worker 协议；一个客户端能�
 | 宿主 | 状态 | 证据 | 未验证 |
 |---|---|---|---|
 | macOS 15.6.1 arm64 | `VERIFIED` | 安装、doctor、fake R1/R2、真实 Codex R1/R2（2026-11-07）、取消/超时脚本回归 | 其它版本、真实 Windows/Linux |
-| Linux（`ubuntu-latest` CI） | `CORE_EXPERIMENTAL` | 2026-11-09 run 42588469528：`linux_security_core` 150 tests + 文档检查；`linux_process_control` 89 tests | 完整 fake CLI E2E、真实 Provider |
+| Linux（`ubuntu-latest` CI） | `CORE_EXPERIMENTAL` | 2026-11-09 run 42591934521：`linux_security_core` 150 tests + 文档检查；`linux_process_control` 102 tests | 完整 fake CLI E2E、真实 Provider |
 | Windows WSL2 | `NOT_TESTED` | 无 | 安装、进程组、文件权限、完整流程 |
 | Windows 原生 | `NOT_SUPPORTED` | 静态缺口（进程组/信号、权限位、签名、路径语义） | 全部 |
 

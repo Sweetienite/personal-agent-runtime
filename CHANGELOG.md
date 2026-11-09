@@ -4,7 +4,10 @@ User-facing summary of real changes. The detailed, line-by-line engineering log 
 
 ## Unreleased
 
-User-facing changes since the last tag. This section is a running summary, not a release; the current recommendation is **not to tag yet** (see [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md)).
+User-facing changes since the last tag. This section is a running summary, not a release. No tag or
+GitHub Release exists; the release-candidate evidence is in
+[finalization/RELEASE_READINESS.md](finalization/RELEASE_READINESS.md), and merge/tag/Release/PyPI
+remain the Maintainer's decision (see [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md)).
 
 - **2026-11-09 final productization: coordinator lease enforcement, one capability fact source, and a bilingual product entry.** The Kernel now refuses every coordinator decision (approve/reject/accept/close) unless the caller is a known coordinator that still holds the current lease, and re-checks the lease, mode and grant inside the same write transaction. A replaced bridge also cannot submit, run, retry, resume, terminate, create a candidate or rebase; viewing, pausing and cancelling stay open. `par init` states the default `approval_mode` out loud. The product pages are now English [README.md](README.md) with a Chinese [README.zh-CN.md](README.zh-CN.md); [README.en.md](README.en.md) is a compatibility pointer. New English onboarding and reference pages live under [docs/en/](docs/en/), the machine-readable facts are in [docs/product-capabilities.json](docs/product-capabilities.json), and `tests/tools/docs_contract.py` fails the build when the READMEs, adapter manifests, MCP tool count, CI job list or approval default drift. `tests/tools/link_check.py` now also checks heading anchors and path case. No automatic provider, GUI, auto-supervisor or automatic repository apply was added.
 

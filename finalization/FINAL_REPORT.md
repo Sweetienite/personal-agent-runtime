@@ -27,7 +27,7 @@ No tag, GitHub Release or PyPI upload was created.
 | README/docs drift/tables/anchors | rewrite + contract checks | `1cedd1c`, docs_contract/link_check |
 | No English onboarding | `docs/en/*` | `1cedd1c` |
 | No capability source | `docs/product-capabilities.json` | `1cedd1c` |
-| Linux process control unverified | real GitHub job PASS | Actions run 42588469528 |
+| Linux process control unverified | real GitHub job PASS | Actions run 42591934521 (102 tests) |
 | Windows/WSL2 unverified | documented `NOT_SUPPORTED` / `NOT_TESTED` | compatibility JSON/matrix |
 | No wheel test | wheel built and installed | `/tmp/par_dist_final`, `/tmp/par_wheel_final` |
 
@@ -37,8 +37,8 @@ No tag, GitHub Release or PyPI upload was created.
   NOT_RUN / 2 BLOCKED; this round did not rewrite its historical results. New F00–F10 assertions
   map to the numbered gates in `RELEASE_READINESS.md`.
 - Full suite: **recorded in `RELEASE_READINESS.md`** (local run at the final code state).
-- CI: PR #28, run [42588469528](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528) — all four jobs PASS at `1cedd1c`: smoke_install, linux_security_core (150 tests + docs checks), linux_process_control (89 tests), core_unittests (384 tests).
-- Mutation: M921–M926 6/6 detected; full mutation result in `RELEASE_READINESS.md`.
+- CI: PR #28, run [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) — all four jobs PASS at `e473739`: smoke_install, linux_security_core (150 tests + docs checks), linux_process_control (102 tests), core_unittests (384 tests).
+- Mutation: **352/352 detected, 0 problems** (full run, exit 0); M921–M926 and M227/M620 are KILLED.
 - Docs: `link_check.py` 0 broken; `docs_contract.py` OK; deliberate stale tool count and bad anchor both turned checks red and were reverted.
 - Package: wheel installs in a clean venv; `par version/doctor` correct; sdist contains docs/examples/tests.
 - Zero-account lifecycle: `UAT_LOG.md` UAT-A (export → human edit → import → Kernel check → accept; fixture untouched).

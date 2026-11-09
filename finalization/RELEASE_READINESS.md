@@ -6,12 +6,12 @@ Status vocabulary: `PASS`, `FAIL`, `NOT_RUN`, `BLOCKED`. A configuration existin
 HEAD at the start of this ledger: `6ef1bab` plus the uncommitted productization/docs commit that
 will follow. The final SHA is recorded here after the commit.
 
-CI run for PR #28: `1cedd1c`, GitHub Actions run
-[42588469528](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528) —
-all four jobs PASS: `smoke_install` 14 s (install + `par doctor` + `par version`),
-`linux_security_core` 10 s with **150 tests OK** plus `0 broken relative link or anchor(s)` and
-`docs_contract: OK`, `linux_process_control` 33 s with **89 tests OK**, `core_unittests` 2 m 50 s
-with **384 tests OK**.
+CI run for PR #28 (final code/workflow commit): `e473739`, GitHub Actions run
+[42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) —
+all four jobs PASS: `smoke_install` 13 s (install + `par doctor` + `par version`),
+`linux_security_core` 11 s with **150 tests OK** plus `0 broken relative link or anchor(s)` and
+`docs_contract: OK`, `linux_process_control` 1 m 9 s with **102 tests OK**, `core_unittests`
+3 m 29 s with **384 tests OK**.
 
 ## Gate A — security and integrity
 
@@ -24,7 +24,7 @@ with **384 tests OK**.
 | SEC-05 | R2 not write-enabled, outside paths, protected paths, symlink/absolute escape, dirty repo | PASS | `test_policy.py`, `test_workspace.py`, `test_kernel_policy.py`, `test_p3_security_audit.py` |
 | SEC-06 | Worker claims tests pass, but Kernel check fails/does not exist | PASS | `test_evidence_summary.py`, `test_kernel_run.py`, `test_validation_results.py` |
 | SEC-07 | Candidate patch tampered or missing provenance | PASS | `test_candidate_integration.py` (hash mismatch, missing provenance), `M915` |
-| SEC-08 | Cancel/timeout/recovery process groups | PASS on macOS and Ubuntu | local `test_kernel_control`, `test_validation_results`, `test_subprocesses`, `test_kernel_recovery` → 142 tests OK; GitHub `linux_process_control` PASS ([job](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528/job/129063923128)) |
+| SEC-08 | Cancel/timeout/recovery process groups | PASS on macOS and Ubuntu | local 142 tests OK; GitHub `linux_process_control` PASS with **102 tests** ([job](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521/job/129075381799)) |
 | SEC-09 | MCP can trigger candidate/check code | PASS (scoped, documented) | `candidate_create` requires current lease, records `actor`, warning in tool description and `docs/SECURITY.md` action matrix; tests in `test_authorization_lease.py` |
 | SEC-10 | `human_only` wording vs host shell | PASS | `docs/SECURITY.md` §审批模式 and `docs/en/SECURITY.md` §5 explicitly deny OS-level identity |
 | SEC-11 | Provider account/permission/quota failure | PASS | Adapter tests, `test_adapters`, `par health`; no auto credit purchase or privilege escalation |
@@ -45,7 +45,7 @@ with **384 tests OK**.
 | UAT-08 | Same tool as coordinator and worker, one subscription | PASS (design + docs); real session NOT_RUN | `docs/en/INTEGRATIONS.md` §2, `test_role_provider_caps.py` |
 | UAT-09 | Switch coordinator; new reads packet; old cannot decide | PASS | `test_authorization_lease.py`, `test_takeover.py` |
 | UAT-10 | English/Chinese independent README demo | PASS (manual checklist); independent reader not available | Language switch, 5-question checklist below |
-| UAT-11 | Linux install/fake/process control | PASS (CI install + security + process control); full fake E2E NOT_RUN | `linux_security_core` and `linux_process_control` PASS ([run](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528)); no full Linux fake CLI end-to-end |
+| UAT-11 | Linux install/fake/process control | PASS (CI install + security + process control); full fake E2E NOT_RUN | `linux_security_core` 150 tests and `linux_process_control` 102 tests PASS ([run](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521)); no full Linux fake CLI end-to-end |
 | UAT-12 | Windows native / WSL2 | NOT_RUN / NOT_SUPPORTED | Matrix is honest; not a claimed feature |
 
 ## Gate C — docs and developer experience
@@ -69,9 +69,9 @@ with **384 tests OK**.
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| REL-01 | The PR's CI actually runs | PASS | PR #28, run [42588469528](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528), all four jobs PASS at `1cedd1c` |
+| REL-01 | The PR's CI actually runs | PASS | PR #28, run [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521), all four jobs PASS at `e473739` |
 | REL-02 | Full suite in a controlled environment | PASS locally; CI scope documented | **1596 tests OK, 23 skipped, 493 s** (macOS 15.6.1 arm64, Python 3.12.12, `1cedd1c` + docs-only edits); CI runs the named subsets, not the full suite |
-| REL-03 | Mutation tests | PASS locally on new entries; full run below | M921–M926 → 6/6 detected, 0 problems; full run recorded below |
+| REL-03 | Mutation tests | PASS | full run: **352/352 mutations detected, problems: 0**; M921–M926 and M227/M620 verified KILLED |
 | REL-04 | macOS + Linux matrix | PASS for the claimed levels | Local macOS; Linux `linux_security_core` + `linux_process_control` PASS; no Linux real-provider claim |
 | REL-05 | wheel + sdist clean install | PASS | `/tmp/par_dist_final` built from the clean clone; wheel installed in a fresh venv; `par version`/`doctor` OK; sdist contains docs (49 entries) |
 | REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.0.0`, untagged partial; CHANGELOG and release notes use the same wording |
@@ -91,12 +91,10 @@ with **384 tests OK**.
 
 ## Final run records
 
-Filled after the final commit and CI run:
-
-- HEAD:
-- Full suite:
-- Mutation:
-- link_check:
-- docs_contract:
-- Clean clone + wheel:
-- GitHub Actions URLs:
+- HEAD: `e473739` (code/workflow); finalization updates are a docs-only commit after it.
+- Full suite: 1596 tests OK, 23 skipped, 493 s (macOS 15.6.1 arm64, Python 3.12.12).
+- Mutation: **352/352 detected, 0 problems** (full run, exit 0).
+- link_check: 0 broken relative links or anchors.
+- docs_contract: OK.
+- Clean clone + wheel: PASS (`/tmp/par_final_clone`, `/tmp/par_dist_final`, `/tmp/par_wheel_final`).
+- GitHub Actions: run [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) — all four jobs PASS.

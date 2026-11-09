@@ -62,10 +62,10 @@ imply any OS is supported.
 | Windows WSL2 | `NOT_TESTED` | `NOT_TESTED` | Not run | Not run | `NOT_TESTED` | `NOT_TESTED` |
 | Windows native | `NOT_SUPPORTED` | `STATIC_GAP` | Not run | `NOT_SUPPORTED` | `NOT_SUPPORTED` | `NOT_SUPPORTED` |
 
-The Linux jobs ran on 2026-11-09 (run 42588469528): `linux_security_core` passed 150 tests plus the
-docs checks, and `linux_process_control` passed 89 cancellation/timeout/process-group tests. This is
-still not a full Linux fake-CLI end-to-end run, and real providers remain macOS-only. Windows process
-group, signal, file-mode, signing and path semantics are untested.
+The Linux jobs ran on 2026-11-09 (run 42591934521): `linux_security_core` passed 150 tests plus the
+docs checks, and `linux_process_control` passed 102 cancellation/timeout/process-group/recovery
+tests. This is still not a full Linux fake-CLI end-to-end run, and real providers remain macOS-only.
+Windows process group, signal, file-mode, signing and path semantics are untested.
 
 ## 4. What PAR does **not** claim
 
