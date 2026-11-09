@@ -100,6 +100,8 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
 
 批准、验收都走**终端**（`par task approve/reject/accept/close`）或**主控**（通过 MCP 桥的 `approve_task`/`reject_task`/`accept_task`/`close_task`，每次决定都带着理由记进台账）；`par task status 编号` 随时能看当前状态、待决批准的具体内容（允许改哪些路径等）、结果、检查、边界。
 
+**主控租约先于审批模式**：`par coordinator use NAME` 切换后，旧主控的桥不能再批准/拒绝/验收/关闭，也不能提交、启动、重试、继续、终止或构建候选；查看、暂停和取消仍然可用。三种 `approval_mode` 都先过租约，`coordinator_autonomous` 不是绕过租约的开关。详见 [SECURITY.md](SECURITY.md) 与 [COORDINATORS.md](COORDINATORS.md)。
+
 1. `par task list --waiting`（2026-11-03 新增）只列出「需要你处理」的任务——待批准、待验收、待恢复（Kernel 消失留下的 attempt）、或者卡在额度/登录/限速上（不加 `--waiting` 看全部任务）：
    - 改文件的任务先停在「**待批准**」——`par task status 编号` 能看清楚允许改哪些路径，批准：`par task approve 编号`（拒绝：`par task reject 编号`），或者交给主控处理。
 2. 任务排队后，由主控或你自己启动：`par task run 编号`。**真实的 Worker 会调用厂商模型、消耗你的额度**。

@@ -137,13 +137,12 @@ _TOOLS: "list[tuple[str, str, dict[str, Any]]]" = [
      "Put a paused task back into the queue (or back to waiting for a permission it still needs).",
      _object({"task_id": _TASK_ID_SCHEMA}, ("task_id",))),
     ("recover_task",
-     "Settle an attempt whose Kernel is gone. Never starts a second writer. `terminate` stops the orphaned process, verified first by PID "
-     "and start time; it is refused to a coordinator that was replaced. Omit `task_id` for every orphan.",
+     "Settle an attempt whose Kernel is gone. Never starts a second writer. `terminate` stops the verified orphaned process; a "
+     "replaced coordinator may not use it. Omit `task_id` for every orphan.",
      _object({"task_id": _TASK_ID_SCHEMA, "terminate": {"type": "boolean"}})),
     ("create_candidate",
-     "Apply accepted R2 tasks' own patches to one clean baseline and run their checks in a Kernel-owned clone. This executes the tasks' "
-     "acceptance commands with the local user's permissions (no OS sandbox). VERIFIED candidates can be used by later tasks; nothing is "
-     "applied to the real project.",
+     "Apply accepted R2 tasks' patches to one clean baseline and run their checks in a Kernel clone (local user permissions, "
+     "no OS sandbox). Nothing is applied to the real project.",
      _object({"tasks": _TASKS_SCHEMA, "note": _NOTE_SCHEMA}, ("tasks",))),
     ("show_candidate",
      "One candidate: status, base, tasks, patches and checks. Read-only.",

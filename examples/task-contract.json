@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "project_id": "example",
+  "title": "Fix add()",
+  "description": "Make add() return the sum of its two arguments.",
+  "role": "code",
+  "worker": null,
+  "risk": "R2",
+  "allowed_paths": ["app/"],
+  "acceptance": {
+    "criteria": ["the example's unit test passes"],
+    "checks": [
+      {
+        "name": "unit",
+        "argv": ["python3", "-m", "unittest", "-q"],
+        "timeout": 60,
+        "expect_exit": 0
+      }
+    ]
+  },
+  "dependencies": [],
+  "ad_hoc": true,
+  "idempotency_key": "example-fix-add-1"
+}

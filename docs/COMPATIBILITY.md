@@ -8,6 +8,16 @@
 >
 > 「官方存在某个参数」不等于「PAR 在现有隔离与授权模式下能安全工作」。本文每一行都列出证据等级、版本、OS、账号类型、实测方法和**没有测的内容**。可复现的离线探测：`python -B tests/tools/provider_probe.py`（默认只做 `which()`）、`python -B tests/tools/sandbox_probe.py --json`（能否创建嵌套 OS 沙箱、以及继承沙箱的原始 `sandbox_check` 值），以及 `python -B tests/tools/codex_revalidate.py --check-only`（一键跑 §12 离线复核，零模型调用）。
 
+## 主控客户端（MCP，与自动 Worker 分开）
+
+| 客户端 | 角色 | 真实证据 | 日期 | 限制 |
+|---|---|---|---|---|
+| Claude Desktop | MCP 主控 | 工具发现 + 一次真实只读 `list_tasks`（返回真实任务） | 2026-10-16 | 真实客户端里的提交/批准/验收未联调；这些路径由脚本化 MCP 测试覆盖 |
+| Codex CLI | MCP 主控（同时可作 Worker） | `codex exec` 中一次真实只读 `list_tasks` | 2026-10-16 | 同上；Worker 证据另见下方 Codex 行 |
+| 其他 MCP 客户端 | 协议可接入 | 无 | — | 接口已实现，不代表任何品牌已验证 |
+
+MCP 是**主控接入协议**，不是自动 Worker 协议；一个客户端能调用 21 个工具，不代表它能被 PAR 自动派发代码任务。真实客户端证据见 [V1 验收附录](reports/V1_ACCEPTANCE_REPORT_20261016.md)。机器可读事实源为 [product-capabilities.json](product-capabilities.json)。
+
 ## 调查环境
 
 | 项 | 值 |

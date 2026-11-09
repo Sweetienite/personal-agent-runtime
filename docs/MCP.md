@@ -123,7 +123,7 @@
 
 ## 已知限制
 
-- 桥只在测试中用模拟的协调者验证了协议；尚未与真实的 Claude Desktop 联调。这一步需要你在本机按上面的步骤手工确认。
+- 2026-10-16 已在真实 Claude Desktop 与 Codex 中各调用过一次 `list_tasks`（只读，返回真实任务；见 [V1 验收附录](reports/V1_ACCEPTANCE_REPORT_20261016.md)）。**真实客户端里的提交/批准/验收路径仍未联调**，这些工具由脚本化 MCP 测试覆盖；厂商版本变化后需要重新确认。
 - `cancel_task` 对「处于 `RECOVERY_REQUIRED`」的任务，沿用 Kernel 的取消行为：若找到已失去主人的 Worker 进程组且能确认领头进程，会把它停止。这与 `par task cancel` 完全相同，但它是协调者可以触发的动作，请留意。
 - `recover_task` 的 `terminate=true` 同理：只停 Kernel 能确认身份的进程，这与 `par task recover --terminate` 完全相同，现在协调者也能直接触发。
 - Claude Desktop 启动服务器时不在任何特定目录：`par mcp config` 打印的片段里带着 `env.PYTHONPATH`（指向 `par` 所在目录），不要删掉它，除非你已经把 `par` 安装进那个 Python。

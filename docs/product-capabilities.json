@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "product": "personal-agent-runtime",
+  "display_name": "Personal Agent Runtime",
+  "tagline": "A local, verifiable execution and coordination layer for AI coding agents.",
+  "version": "1.0.0",
+  "phase": "RELEASE",
+  "release_status": "untagged; P3 gate partial (Codex automatic + manual hand-off)",
+  "license": "MIT",
+  "repository": "https://github.com/Sweetienite/personal-agent-runtime",
+  "runtime": {
+    "python": ">=3.11",
+    "third_party_dependencies": 0,
+    "entry_point": "par",
+    "network_calls_from_src": false,
+    "mcp_tools": 21,
+    "default_approval_mode": "coordinator_autonomous",
+    "ci_workflow": ".github/workflows/tests.yml",
+    "ci_jobs": ["smoke_install", "linux_security_core", "linux_process_control", "core_unittests"]
+  },
+  "integration_modes": [
+    {
+      "id": "native_worker",
+      "name": "Native execution (automatic worker)",
+      "summary": "A built-in adapter starts a CLI coding agent non-interactively and collects structured events.",
+      "requires": "a provider manifest in this build, the vendor CLI installed and signed in, and an absolute executable path configured",
+      "human_in_the_loop": "configuring the provider and approving each write task's permission",
+      "evidence_level": "integration-specific",
+      "limitations": "Only the adapters listed under worker_adapters have code. MCP does not make a tool a native worker."
+    },
+    {
+      "id": "protocol_coordinator",
+      "name": "Protocol-connected coordinator",
+      "summary": "An MCP-capable client calls the Kernel's 21 tools over stdio to submit, follow and review tasks.",
+      "requires": "an MCP client that can start a stdio server and pass tool calls",
+      "human_in_the_loop": "installing the MCP snippet and choosing the approval_mode/grant policy",
+      "evidence_level": "client-specific",
+      "limitations": "MCP connects a coordinator to PAR. It is not a generic automatic-worker protocol, and each client brand needs its own evidence."
+    },
+    {
+      "id": "manual_handoff",
+      "name": "Manual hand-off",
+      "summary": "PAR exports a private workspace plus PROMPT.md; a person runs a GUI/web/mobile tool and imports a workspace, patch or text result.",
+      "requires": "the external tool can open the exported workspace, or read/write a supported patch, or return text",
+      "human_in_the_loop": "opening the tool, doing the work, exporting/importing the result",
+      "evidence_level": "client-specific for VERIFIED_MANUAL; otherwise a generic conditional path",
+      "limitations": "A text-only tool can participate in R0/R1; a code change needs an importable patch or workspace and is still re-checked by the Kernel."
+    }
+  ],
+  "worker_adapters": [
+    {
+      "id": "codex",
+      "name": "OpenAI Codex CLI",
+      "role": "native worker",
+      "interface": "native_adapter",
+      "status": "VERIFIED_AUTO",
+      "tested_version": "codex-cli 0.166.0-alpha.6",
+      "os": "macOS 15.6.1 arm64",
+      "auth": "ChatGPT subscription login",
+      "last_verified": "2026-11-07",
+      "evidence_url": "docs/reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md",
+      "limitations": "Only this version/OS/account combination; the vendor CLI is alpha; reads are not restricted by its sandbox; not verified on Linux or Windows."
+    },
+    {
+      "id": "antigravity",
+      "name": "Google Antigravity CLI (agy)",
+      "role": "native worker",
+      "interface": "native_adapter",
+      "status": "EXPERIMENTAL",
+      "tested_version": "agy 1.3.5",
+      "os": "macOS arm64 (historical smoke, 2026-10-15)",
+      "auth": "Google login via the system keychain",
+      "last_verified": "2026-10-15",
+      "evidence_url": "docs/AGY.md",
+      "limitations": "Disabled by default. The vendor FAQ prohibits wrapping agy in third-party coding agents under consumer plans; not a recommended automatic path."
+    }
+  ],
+  "coordinator_clients": [
+    {
+      "id": "claude_desktop",
+      "name": "Claude Desktop",
+      "role": "coordinator",
+      "interface": "mcp",
+      "status": "VERIFIED_COORDINATOR",
+      "tested_version": "Claude Desktop build connected on 2026-10-16",
+      "os": "macOS 15.6.1 arm64",
+      "last_verified": "2026-10-16",
+      "evidence_url": "docs/reports/V1_ACCEPTANCE_REPORT_20261016.md",
+      "limitations": "Real evidence covers tool discovery and a read-only list_tasks call. Submit/decision tools are covered by scripted MCP tests, not by a real Claude session; vendor builds change."
+    },
+    {
+      "id": "codex",
+      "name": "Codex CLI (as coordinator)",
+      "role": "coordinator",
+      "interface": "mcp",
+      "status": "VERIFIED_COORDINATOR",
+      "tested_version": "codex-cli 0.166.0-alpha.6",
+      "os": "macOS 15.6.1 arm64",
+      "last_verified": "2026-10-16",
+      "evidence_url": "docs/reports/V1_ACCEPTANCE_REPORT_20261016.md",
+      "limitations": "Real evidence covers tool discovery and a read-only list_tasks call through codex exec. Submit/decision tools are scripted-tested only."
+    },
+    {
+      "id": "other_mcp_hosts",
+      "name": "Other MCP-capable clients",
+      "role": "coordinator",
+      "interface": "mcp",
+      "status": "GENERIC_MCP",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/en/INTEGRATIONS.md",
+      "limitations": "The protocol is implemented and the tool schemas are public, but no other client brand has been verified; do not read this as per-brand support."
+    },
+    {
+      "id": "human_cli",
+      "name": "A person at the CLI",
+      "role": "coordinator",
+      "interface": "cli",
+      "status": "VERIFIED_COORDINATOR",
+      "tested_version": "par 1.0.0",
+      "os": "macOS 15.6.1 arm64",
+      "last_verified": "2026-11-09",
+      "evidence_url": "finalization/UAT_LOG.md",
+      "limitations": "The CLI 'user' identity is a protocol-level actor label, not unforgeable human authentication."
+    }
+  ],
+  "manual_clients": [
+    {
+      "id": "workbuddy",
+      "name": "WorkBuddy",
+      "role": "manual worker",
+      "interface": "workspace",
+      "status": "VERIFIED_MANUAL",
+      "tested_version": "WorkBuddy 5.9.3",
+      "os": "macOS 15.6.1 arm64",
+      "last_verified": "2026-11-07",
+      "evidence_url": "docs/reports/WORKBUDDY_REAL_HANDOFF_20261107.md",
+      "limitations": "One real R2 hand-off sample; not an automated adapter and not re-verified on other versions."
+    },
+    {
+      "id": "trae",
+      "name": "TRAE",
+      "role": "manual worker",
+      "interface": "workspace",
+      "status": "GENERIC_MANUAL",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/HANDOFF.md",
+      "limitations": "Documented conditional path; no dated export/import evidence in this repository."
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "role": "manual worker",
+      "interface": "workspace",
+      "status": "GENERIC_MANUAL",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/HANDOFF.md",
+      "limitations": "Conditional on opening the exported workspace and returning an importable result; not verified."
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "role": "manual worker",
+      "interface": "workspace",
+      "status": "GENERIC_MANUAL",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/HANDOFF.md",
+      "limitations": "Conditional on opening the exported workspace and returning an importable result; not verified."
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "role": "manual worker",
+      "interface": "workspace",
+      "status": "GENERIC_MANUAL",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/HANDOFF.md",
+      "limitations": "Conditional on opening the exported workspace and returning an importable result; not verified."
+    },
+    {
+      "id": "aider",
+      "name": "Aider",
+      "role": "manual worker",
+      "interface": "patch",
+      "status": "GENERIC_MANUAL",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/HANDOFF.md",
+      "limitations": "Conditional on producing a valid patch within the task's allowed paths; not verified."
+    },
+    {
+      "id": "web_mobile_chat",
+      "name": "Web or mobile chat assistants",
+      "role": "manual worker",
+      "interface": "text",
+      "status": "GENERIC_TEXT",
+      "tested_version": null,
+      "os": null,
+      "last_verified": null,
+      "evidence_url": "docs/en/INTEGRATIONS.md",
+      "limitations": "Text-only participation in R0/R1. Without a workspace or a valid patch they cannot perform a verified R2 code change."
+    }
+  ],
+  "protocols": [
+    {
+      "id": "mcp",
+      "name": "Model Context Protocol (stdio)",
+      "status": "IMPLEMENTED",
+      "evidence_url": "docs/MCP.md",
+      "limitations": "Coordinator connection only."
+    },
+    {
+      "id": "acp",
+      "name": "Agent Client Protocol",
+      "status": "RESEARCH_ONLY",
+      "evidence_url": "docs/COMPATIBILITY.md",
+      "limitations": "Not implemented in this build."
+    }
+  ],
+  "host_os": [
+    {
+      "id": "macos",
+      "name": "macOS 15.6.1 arm64",
+      "status": "VERIFIED",
+      "install": "PASS",
+      "cli_core": "PASS",
+      "fake_smoke": "PASS",
+      "real_provider": "Codex VERIFIED_AUTO (0.166.0-alpha.6); Antigravity EXPERIMENTAL",
+      "cancel_timeout": "PASS (scripted Worker)",
+      "sandbox": "No OS sandbox; private clone only",
+      "last_verified": "2026-11-09",
+      "evidence_url": "finalization/UAT_LOG.md"
+    },
+    {
+      "id": "linux",
+      "name": "Linux (ubuntu-latest, GitHub Actions)",
+      "status": "CORE_EXPERIMENTAL",
+      "install": "CI smoke_install is macOS-only; Linux CI installs with pip install -e .",
+      "cli_core": "PASS in linux_security_core (awaiting the 2026-11-09 run record)",
+      "fake_smoke": "NOT_RUN",
+      "real_provider": "NOT_SUPPORTED (adapters are macOS-specific)",
+      "cancel_timeout": "CI linux_process_control (awaiting the 2026-11-09 run record)",
+      "sandbox": "No OS sandbox",
+      "last_verified": "2026-11-09",
+      "evidence_url": ".github/workflows/tests.yml"
+    },
+    {
+      "id": "windows_wsl2",
+      "name": "Windows WSL2",
+      "status": "NOT_TESTED",
+      "install": "NOT_RUN",
+      "cli_core": "NOT_RUN",
+      "fake_smoke": "NOT_RUN",
+      "real_provider": "NOT_RUN",
+      "cancel_timeout": "NOT_RUN",
+      "sandbox": "NOT_TESTED",
+      "last_verified": null,
+      "evidence_url": "docs/COMPATIBILITY.md"
+    },
+    {
+      "id": "windows_native",
+      "name": "Windows native",
+      "status": "NOT_SUPPORTED",
+      "install": "NOT_RUN",
+      "cli_core": "STATIC_GAP",
+      "fake_smoke": "NOT_RUN",
+      "real_provider": "NOT_SUPPORTED",
+      "cancel_timeout": "NOT_SUPPORTED",
+      "sandbox": "NOT_SUPPORTED",
+      "last_verified": null,
+      "evidence_url": "docs/SECURITY.md"
+    }
+  ],
+  "not_supported": [
+    "Every coding assistant being automatically supported",
+    "Native execution on all operating systems",
+    "Automatic application of patches to a real project",
+    "MCP as a generic automatic-worker protocol",
+    "OS-level sandboxing of Workers or check commands",
+    "Unforgeable human identity for the CLI 'user' actor"
+  ]
+}

@@ -1,0 +1,63 @@
+name: Bug report
+description: Something in PAR is broken or behaves differently from the documentation.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, tokens, private project data or personal paths. For a security
+        boundary issue, use the private channel in `.github/SECURITY.md` instead.
+  - type: input
+    id: version
+    attributes:
+      label: PAR version
+      description: Output of `par version --json`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Host OS + architecture, Python version, install method (venv/pip -e, uv, wheel)
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command or MCP tool call
+      description: The full command, or tool name + arguments
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include the exit code and the relevant output. Redact secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: task
+    attributes:
+      label: Task evidence (if applicable)
+      description: Task id, `par task status`, relevant event types, result/diff excerpt
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I used an isolated PAR_DATA_DIR or confirmed the existing data directory does not contain secrets.
+          required: true
+        - label: I read docs/en/TROUBLESHOOTING.md.
+          required: false
+        - label: This is not a private security report.
+          required: true

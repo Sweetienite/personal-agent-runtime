@@ -7,6 +7,14 @@
 > `CLOSED_BY_SCOPE_DECISION`，不再以“新增 Provider”作为发行门槛，也不宣称多厂商自动执行。
 > 逐项 59 项证据见 [acceptance/P0-P3-results.md](../acceptance/P0-P3-results.md)。修订不改变“未打 tag / 未发版”的结论。
 
+> **2026-11-09 产品化冲刺（release candidate 准备）**：Kernel 现在对四种决策强制检查协调者租约，
+> 并在同一写事务内重核；被替换的桥不能再提交/启动/重试/继续/终止/构建候选/rebase。产品入口改为英文
+> [README.md](../README.md) + 中文 [README.zh-CN.md](../README.zh-CN.md)，英文入门页在
+> [docs/en/](en/)，机器可读事实源为 [product-capabilities.json](product-capabilities.json)。
+> `docs_contract` 与升级后的链接/锚点检查已接入 CI。**这仍是未打 tag 的发布候选**：真实 Windows /
+> WSL2、真实 Claude/Codex 决策流、真实取消/额度事故仍未验证；最终状态以
+> [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md) 为准。
+
 ## 结论：**不建议现在打新 tag / 发新版**
 
 理由（按重要性）：
