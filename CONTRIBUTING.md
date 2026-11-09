@@ -48,8 +48,11 @@ For a stranger-machine reproduction of the whole zero-account path, see [docs/QU
   `par version`, then the platform-independent security regressions in `docs/SECURITY.md`'s matrix
   (states, contract, policy, redaction, paths, provider probe, `test_p3_security_audit`,
   `test_approval_grants`, `test_authorization_lease`), followed by `link_check.py` and `docs_contract.py`.
-- `linux_process_control` (Ubuntu) — the scripted cancellation/timeout/process-group regressions
-  (`test_kernel_control`, `test_validation_results`) on real Linux signal behaviour.
+- `linux_process_control` (Ubuntu) — the scripted cancellation/timeout/process-group and orphan
+  recovery regressions (`test_kernel_control`, `test_validation_results`, `test_kernel_recovery`) on
+  real Linux signal behaviour. `test_subprocesses` stays on macOS: one case deliberately feeds a
+  large synthetic event stream through argv, and Linux's smaller per-argument limit is an ARG_MAX
+  assumption rather than a process-control semantic.
 
 ```bash
 python3 -B -m unittest tests.unit.test_states tests.unit.test_store tests.unit.test_contract \
