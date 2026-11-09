@@ -37,7 +37,7 @@ No tag, GitHub Release or PyPI upload was created.
   NOT_RUN / 2 BLOCKED; this round did not rewrite its historical results. New F00–F10 assertions
   map to the numbered gates in `RELEASE_READINESS.md`.
 - Full suite: **recorded in `RELEASE_READINESS.md`** (local run at the final code state).
-- CI: PR #28, run [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) — all four jobs PASS at `e473739`: smoke_install, linux_security_core (150 tests + docs checks), linux_process_control (102 tests), core_unittests (384 tests).
+- CI: PR #28, runs [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) (code/workflow `e473739`) and [42593601356](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42593601356) (final docs tree `67ea705`) — all four jobs PASS: smoke_install, linux_security_core (150 tests + docs checks), linux_process_control (102 tests), core_unittests (384 tests).
 - Mutation: **352/352 detected, 0 problems** (full run, exit 0); M921–M926 and M227/M620 are KILLED.
 - Docs: `link_check.py` 0 broken; `docs_contract.py` OK; deliberate stale tool count and bad anchor both turned checks red and were reverted.
 - Package: wheel installs in a clean venv; `par version/doctor` correct; sdist contains docs/examples/tests.

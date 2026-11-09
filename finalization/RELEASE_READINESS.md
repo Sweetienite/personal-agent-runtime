@@ -6,12 +6,16 @@ Status vocabulary: `PASS`, `FAIL`, `NOT_RUN`, `BLOCKED`. A configuration existin
 HEAD at the start of this ledger: `6ef1bab` plus the uncommitted productization/docs commit that
 will follow. The final SHA is recorded here after the commit.
 
-CI run for PR #28 (final code/workflow commit): `e473739`, GitHub Actions run
-[42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) —
-all four jobs PASS: `smoke_install` 13 s (install + `par doctor` + `par version`),
-`linux_security_core` 11 s with **150 tests OK** plus `0 broken relative link or anchor(s)` and
-`docs_contract: OK`, `linux_process_control` 1 m 9 s with **102 tests OK**, `core_unittests`
-3 m 29 s with **384 tests OK**.
+CI runs for PR #28:
+- code/workflow commit `e473739`: run
+  [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) —
+  all four jobs PASS: `smoke_install` 13 s, `linux_security_core` 11 s with **150 tests OK** plus
+  `0 broken relative link or anchor(s)` and `docs_contract: OK`, `linux_process_control` 1 m 9 s
+  with **102 tests OK**, `core_unittests` 3 m 29 s with **384 tests OK**.
+- final docs-only commit `67ea705`: run
+  [42593601356](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42593601356) —
+  all four jobs PASS (smoke_install 10 s, linux_security_core 11 s with docs checks,
+  linux_process_control 1 m 6 s, core_unittests 3 m 11 s).
 
 ## Gate A — security and integrity
 
@@ -91,10 +95,10 @@ all four jobs PASS: `smoke_install` 13 s (install + `par doctor` + `par version`
 
 ## Final run records
 
-- HEAD: `e473739` (code/workflow); finalization updates are a docs-only commit after it.
+- HEAD: `67ea705` (final docs/evidence tree; code and workflow are `e473739`).
 - Full suite: 1596 tests OK, 23 skipped, 493 s (macOS 15.6.1 arm64, Python 3.12.12).
 - Mutation: **352/352 detected, 0 problems** (full run, exit 0).
 - link_check: 0 broken relative links or anchors.
 - docs_contract: OK.
 - Clean clone + wheel: PASS (`/tmp/par_final_clone`, `/tmp/par_dist_final`, `/tmp/par_wheel_final`).
-- GitHub Actions: run [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) — all four jobs PASS.
+- GitHub Actions: runs [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521) and [42593601356](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42593601356) — all four jobs PASS.
