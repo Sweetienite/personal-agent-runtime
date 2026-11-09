@@ -8,7 +8,7 @@ import platform
 import sys
 from pathlib import Path
 
-from par import PHASE, __version__
+from par import PHASE, RELEASE_STATUS, __version__
 from par.config import PROJECT_CONTEXT_MODES, PROJECT_VCS, HarnessSettings, load_harness_settings
 from par.context.harness import ContextManifest, ProjectView, WriteReadiness
 from par.context.resolver import default_context
@@ -39,6 +39,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
         "name": "par",
         "version": __version__,
         "phase": PHASE,
+        "release_status": RELEASE_STATUS,
         "python": platform.python_version(),
         "platform": platform.platform(),
     }
@@ -46,6 +47,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
         print(json.dumps(info, ensure_ascii=False))
     else:
         print(f"par {info['version']} (phase {info['phase']})")
+        print(f"release status: {info['release_status']}")
         print(f"python {info['python']} on {info['platform']}")
     return 0
 
@@ -73,6 +75,9 @@ def _cmd_init(args: argparse.Namespace) -> int:
         return 1
     where = redact_text(str(status.path), home=str(Path.home()))
     print(f"data directory ready: {where} (mode {status.mode:04o})" if existed else f"created data directory: {where} (mode {status.mode:04o})")
+    print("approval mode: coordinator_autonomous (built-in default) - an MCP coordinator may approve, reject, accept and close "
+          "inside the active coordinator lease; set approval_mode = coordinator_scoped or human_only in profiles.toml to keep "
+          "decisions with a person (see docs/SECURITY.md)")
     return 0
 
 

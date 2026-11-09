@@ -11,6 +11,7 @@ import re
 from typing import Callable
 
 from par.providers.base import ProviderAdapter
+from par.providers.manifests import AdapterManifest
 
 _ID = re.compile(r"[a-z][a-z0-9_]*\Z")
 
@@ -23,10 +24,11 @@ class AdapterRegistry:
     def __init__(self) -> None:
         self._factories: "dict[str, Callable[[], ProviderAdapter]]" = {}
         self._capabilities: "dict[str, object]" = {}
+        self._manifests: "dict[str, AdapterManifest]" = {}
 
     def register(self, provider_id: str, factory: "Callable[[], ProviderAdapter]", *,
-                 capabilities: "object | None" = None) -> None:
-        """Register a factory and, optionally, its static capability declaration.
+                 capabilities: "object | None" = None, manifest: "AdapterManifest | None" = None) -> None:
+        """Register a factory and, optionally, its static capability declaration and manifest.
 
         Capabilities are facts of the build, not of a run: reflecting them must never instantiate the
         factory (a factory may hand out one scripted scenario per call). A factory object may also carry
@@ -40,6 +42,8 @@ class AdapterRegistry:
         declared = capabilities if capabilities is not None else getattr(factory, "declared_capabilities", None)
         if declared is not None:
             self._capabilities[provider_id] = declared
+        if manifest is not None:
+            self._manifests[provider_id] = manifest
 
     def has(self, provider_id: str) -> bool:
         return provider_id in self._factories
@@ -64,6 +68,12 @@ class AdapterRegistry:
         if provider_id not in self._factories:
             raise NoAdapter(provider_id)
         return self._capabilities.get(provider_id)
+
+    def manifest(self, provider_id: str) -> "AdapterManifest | None":
+        """The manifest this provider was registered with, or None for an adapter without one."""
+        if provider_id not in self._factories:
+            raise NoAdapter(provider_id)
+        return self._manifests.get(provider_id)
 
 
 def default_registry() -> AdapterRegistry:

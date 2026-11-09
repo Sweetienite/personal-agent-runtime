@@ -1,0 +1,72 @@
+name: Provider or client compatibility report
+description: Record a real run of an AI tool with PAR, successful or not.
+title: "[compat] "
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Compatibility claims in PAR are evidence-based. A report is not a verification by itself,
+        but it is how a new verified entry starts. Do not include credentials or private project data.
+  - type: input
+    id: tool
+    attributes:
+      label: Tool and version
+      description: For example `codex-cli 0.166.0-alpha.6`, `WorkBuddy 5.9.3`, a Claude Desktop build
+    validations:
+      required: true
+  - type: dropdown
+    id: route
+    attributes:
+      label: Route
+      options:
+        - Native worker (automatic adapter)
+        - MCP coordinator
+        - Manual hand-off (workspace)
+        - Manual hand-off (patch)
+        - Manual hand-off (text)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Host OS and architecture
+    validations:
+      required: true
+  - type: input
+    id: account
+    attributes:
+      label: Account / login type
+      description: Subscription, API key, enterprise, or "not applicable"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you ran
+      description: Commands, exported folder, MCP tools, and the exact version.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Result
+      description: Status transitions, Kernel checks, boundary result, and whether anything touched a real project.
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: What was not tested
+    validations:
+      required: true
+  - type: checkboxes
+    id: honesty
+    attributes:
+      label: Confirmation
+      options:
+        - label: I am reporting what actually ran, not what should work.
+          required: true
+        - label: This run did not use credentials or project data I am not allowed to share.
+          required: true

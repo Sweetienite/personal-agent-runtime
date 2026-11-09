@@ -1,0 +1,18 @@
+include README.md
+include README.zh-CN.md
+include README.en.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include SECURITY.md
+include SUPPORT.md
+include CODE_OF_CONDUCT.md
+include pyproject.toml
+
+recursive-include docs *.md *.json
+recursive-include examples *.md *.py *.json
+recursive-include tests *.py *.json
+recursive-include acceptance *.md
+recursive-include finalization *.md
+recursive-include config *.toml
+recursive-include ops *.py *.json *.sh *.plist

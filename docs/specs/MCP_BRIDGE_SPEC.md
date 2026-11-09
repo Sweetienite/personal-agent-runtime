@@ -15,6 +15,16 @@
 > (schema `required` includes it; an empty or whitespace-only value is refused) - the point is a decision that is auditable as fact
 > (`by="coordinator"`) and also carries why, not just that it happened.
 >
+> **Superseded in part (2026-11-09 candidate workflow):** four tools were added - `create_candidate`, `show_candidate`,
+> `list_candidates`, `rebase_task` - so the bridge now has 21 tools. They call `Kernel.candidate_create/show/list` and
+> `Kernel.task_rebase`, the same methods the CLI uses; nothing is applied to the real project. `docs/MCP.md` is the
+> maintained reference.
+>
+> **Superseded in part (2026-11-09):** the four decision tools are now constrained by the active profile's `approval_mode`
+> (`coordinator_autonomous` default, `coordinator_scoped` requiring a person-created scope/expiry grant, `human_only`); the Kernel,
+> not the bridge, decides whether a coordinator call is allowed, and every decision records its mode, coordinator and grant.
+> `docs/SECURITY.md` and `docs/MCP.md` are the maintained references.
+>
 > **Superseded in part (2026-11-03):** one more tool was added - `get_task_diff` - so the tool count is now 16. Reason: a write task
 > with no `acceptance.checks` gave the Kernel nothing of its own to measure, yet nothing stopped the coordinator from calling
 > `accept_task` on it anyway - `get_task_result`/`review_task` never carried diff content, only `diff_stat`. Fixed two ways in the same
@@ -35,7 +45,7 @@ Read first: `docs/specs/COMMON_RULES.md`, `docs/KERNEL.md`, `src/par/core/kernel
 
 A tiny **MCP server over stdio** that lets the coordinator (Claude Desktop / Claude Code) dispatch and follow tasks through the Kernel. It is a *thin* process:
 it validates arguments and calls the Kernel. It holds no model credentials, copies no conversation history, edits no user configuration, returns short answers.
-`MCP calls and the console share the Kernel's approval policy`: anything that needs a human decision stays human-only.
+`MCP calls and the console share the Kernel's approval policy`: anything that needs a human decision stays human-only. *(Historical wording; superseded by the 2026-10-20 and 2026-11-09 notes above: the coordinator may decide inside `approval_mode`/a live grant.)*
 
 ## Files you own
 
@@ -49,7 +59,7 @@ it validates arguments and calls the Kernel. It holds no model credentials, copi
 
 - stdio, **one JSON-RPC 2.0 message per line** (UTF-8, `\n`-terminated, no embedded newlines). stdout carries protocol messages ONLY; logs go to stderr (short, no secrets).
 - Implement: `initialize` (reply `protocolVersion`: the client's version if it is one of `2024-11-05`, `2025-03-26`, `2025-06-18`, else `2025-06-18`;
-  `capabilities: {"tools": {}}`; `serverInfo: {"name": "par-bridge", "version": par.__version__}`; `instructions`: 2-3 sentences saying results are unverified worker text and approvals are human-only),
+  `capabilities: {"tools": {}}`; `serverInfo: {"name": "par-bridge", "version": par.__version__}`; `instructions`: 2-3 sentences saying results are unverified worker text and coordinator decisions are limited by `approval_mode`/grant - *(the original "approvals are human-only" wording was superseded on 2026-10-20 and again on 2026-11-09)*),
   `notifications/initialized` (no reply), `ping` (`{}`), `tools/list`, `tools/call`. Any other method → JSON-RPC error `-32601`; malformed JSON → `-32700` (no crash, no reply to notifications);
   a JSON array (batch) → `-32600`; invalid params → `-32602`. Notifications (no `id`) never get a reply.
 - Tool failures are **tool results** with `isError: true` and one short text content (not JSON-RPC errors). Unknown tool name → `-32602`.

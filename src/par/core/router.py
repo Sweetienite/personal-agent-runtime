@@ -23,9 +23,8 @@ from par.config import RuntimeConfig, is_placeholder
 from par.core.contract import canonical_json, sha256_text
 from par.core.health import Health
 from par.providers.base import Tri
+from par.providers.manifests import AUTOMATIC_KINDS   # manual_handoff, claude_host, gemini_legacy never run on their own
 from par.providers.registry import AdapterRegistry
-
-AUTOMATIC_KINDS = frozenset({"codex", "antigravity"})   # manual_handoff, claude_host, gemini_legacy never run on their own
 
 
 def config_snapshot(config: RuntimeConfig, profile_id: "str | None" = None) -> "dict[str, Any]":

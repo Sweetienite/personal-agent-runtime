@@ -6,10 +6,12 @@ prompt. Nothing here edits any application's configuration or starts any applica
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from par import coordinators as registry
 from par.cli_task import _dump, clean, handled, session
+from par.core.approvals import APPROVAL_KINDS, DECISION_ACTIONS, RISK_TIERS
+from par.core.clock import iso
 
 
 def add_parser(sub) -> None:
@@ -41,6 +43,63 @@ def add_parser(sub) -> None:
     c.add_argument("--data-dir", metavar="PATH", help="(accepted for uniformity; the prompt does not depend on it)")
     c.set_defaults(func=cmd_coordinator, json=False)
 
+    c = actions.add_parser("grant", help="let NAME decide inside an explicit scope and expiry (a person's CLI action; recorded in the ledger)")
+    c.add_argument("name", choices=names)
+    c.add_argument("--action", action="append", choices=DECISION_ACTIONS, required=True, dest="grant_actions",
+                   help="which decisions the grant covers (repeatable)")
+    c.add_argument("--approval-kind", action="append", choices=APPROVAL_KINDS, dest="grant_kinds",
+                   help="limit approve/reject to these approval kinds (default: any)")
+    c.add_argument("--project", metavar="ID", help="limit the grant to one registered project (default: any)")
+    c.add_argument("--risk", action="append", choices=RISK_TIERS, dest="grant_risks",
+                   help="limit the grant to these risk tiers (default: R0, R1, R2)")
+    c.add_argument("--expires", required=True, metavar="TIME",
+                   help="when it stops being valid: an ISO time, or a duration such as 1h, 24h, 7d")
+    c.add_argument("--note", metavar="TEXT")
+    common(c)
+    c.set_defaults(func=cmd_coordinator)
+    c = actions.add_parser("grants", help="active coordinator grants (with --all: revoked and expired ones too)")
+    c.add_argument("--all", action="store_true", help="include revoked and expired grants")
+    common(c)
+    c.set_defaults(func=cmd_coordinator)
+    c = actions.add_parser("revoke", help="revoke a coordinator grant immediately (a person's CLI action)")
+    c.add_argument("grant_id", type=int, metavar="N")
+    c.add_argument("--note", metavar="TEXT")
+    common(c)
+    c.set_defaults(func=cmd_coordinator)
+
+
+def _expiry(text: str) -> str:
+    """``24h``/``7d`` from now, or an ISO-8601 time. A time without a zone is read as local time."""
+    raw = text.strip().lower()
+    try:
+        if raw.endswith("h") and raw[:-1].replace(".", "", 1).isdigit():
+            return iso(datetime.now(timezone.utc) + timedelta(hours=float(raw[:-1])))
+        if raw.endswith("d") and raw[:-1].replace(".", "", 1).isdigit():
+            return iso(datetime.now(timezone.utc) + timedelta(days=float(raw[:-1])))
+    except ValueError:
+        pass
+    try:
+        moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("expires must be an ISO time (2026-11-10T00:00:00+08:00) or a duration such as 24h or 7d") from None
+    if moment.tzinfo is None:
+        moment = moment.astimezone()
+    return iso(moment)
+
+
+def render_grants(rows: "list[dict]") -> str:
+    if not rows:
+        return "no coordinator grants"
+    lines = []
+    for g in rows:
+        state = "active" if g["active"] else ("revoked" if g["revoked_at"] else "expired")
+        scope = ", ".join(g["actions"])
+        if g["approval_kinds"]:
+            scope += " (" + ", ".join(g["approval_kinds"]) + ")"
+        lines.append(f"#{g['grant_id']:<4} {g['coordinator']:<15} {state:<8} {scope:<40} "
+                     f"project {(g['project_id'] or '*'):<12} risk {','.join(g['risk_tiers']):<7} until {g['expires_at'] or 'revoked'}")
+    return "\n".join(lines)
+
 
 def _ago(iso: "str | None", now: "datetime | None" = None) -> str:
     if not iso:
@@ -62,6 +121,10 @@ def render_status(st: dict) -> str:
         lines.append(f"  {c['id']:<15} {c['name']:<26} {_ago(c['last_seen'])}" + ("   <- coordinating now" if c["is_current"] else ""))
     conf = st["configured"]
     lines.append(f"configured: default {conf['default'] or '-'}, suggested fallback {conf['fallback'] or '-'}")
+    lines.append(f"approval mode: {st['approval_mode']}" + ("   (coordinator decisions allowed)"
+                 if st["approval_mode"] == "coordinator_autonomous" else
+                 "   (a live grant is required)" if st["approval_mode"] == "coordinator_scoped" else
+                 "   (only a person can decide)"))
     for h in st["history"][:3]:
         lines.append(f"  switch {h['at']}: {h['from'] or '-'} -> {h['to']}  ({h['takeover_id']})" + (f"  {clean(h['note'])}" if h.get("note") else ""))
     other = next((c["id"] for c in st["coordinators"] if not c["is_current"]), None)
@@ -91,6 +154,24 @@ def cmd_coordinator(args) -> int:
         if command in ("status", "list"):
             st = kernel.coordinator_status()
             print(_dump(st) if args.json else render_status(st))
+        elif command == "grant":
+            try:
+                expires_at = _expiry(args.expires)
+            except ValueError as exc:
+                print(f"error: {exc}", file=__import__("sys").stderr)
+                return 2
+            grant = kernel.grant_create(args.name, actions=args.grant_actions, project_id=args.project,
+                                         approval_kinds=args.grant_kinds or (), risk_tiers=args.grant_risks or RISK_TIERS,
+                                         expires_at=expires_at, note=args.note or "")
+            print(_dump(grant) if args.json else
+                  f"grant #{grant['grant_id']} recorded for {grant['coordinator']}: {', '.join(grant['actions'])} "
+                  f"until {grant['expires_at']}")
+        elif command == "grants":
+            rows = kernel.grant_list(include_inactive=args.all)
+            print(_dump(rows) if args.json else render_grants(rows))
+        elif command == "revoke":
+            grant = kernel.grant_revoke(args.grant_id, note=args.note or "")
+            print(_dump(grant) if args.json else f"grant #{grant['grant_id']} revoked")
         elif command == "use":
             done = kernel.coordinator_switch(args.name, note=args.note or "")
             if args.json:

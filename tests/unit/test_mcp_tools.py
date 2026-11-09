@@ -1,4 +1,4 @@
-"""The seventeen MCP tools: the exact list, strict schemas, argument checks before the Kernel is touched, and what each tool
+"""The twenty-one MCP tools: the exact list, strict schemas, argument checks before the Kernel is touched, and what each tool
 does to a real Kernel (its fake Workers come from par.providers.fake, its child process is a mock)."""
 import ast
 import json
@@ -19,7 +19,7 @@ from tests.world import sample_config, sample_contract
 
 TOOLS = ["prepare_task", "submit_task", "get_task_status", "get_task_result", "get_task_diff", "cancel_task", "review_task", "approve_task",
         "reject_task", "accept_task", "close_task", "run_task", "list_tasks", "retry_task", "pause_task", "resume_task",
-        "recover_task"]
+        "recover_task", "create_candidate", "show_candidate", "list_candidates", "rebase_task"]
 # Actions still outside this bridge entirely: health and configuration. Neither may be an identifier anywhere in
 # src/par/mcp/ (see the source-scan test). approve/reject/accept/close_task moved OUT of this set on 2026-10-20
 # (Maintainer-directed - see .ai/tasks/archive/TASK-009-*.md): they are now bridge tools too, each recorded with
@@ -79,7 +79,7 @@ def bridge_sources():
 class Surface(unittest.TestCase):
     """Nothing here touches a Kernel: a Tools object without one must still refuse bad input on its own."""
 
-    def test_the_tool_list_is_exactly_the_seventeen_documented_names(self):
+    def test_the_tool_list_is_exactly_the_twenty_one_documented_names(self):
         self.assertEqual([t["name"] for t in Tools(None).list_tools()], TOOLS)
         self.assertEqual(list(T.TOOL_NAMES), TOOLS)
 
@@ -146,6 +146,15 @@ class Surface(unittest.TestCase):
     def test_status_and_project_filters_must_be_known_values(self):
         self.assertIn("unknown status", text_of(Tools(None).call("list_tasks", {"status": "DONE"})))
         self.assertTrue(Tools(None).call("list_tasks", {"project_id": "Bad Id"})["isError"])
+
+    def test_candidate_arguments_are_checked_before_the_kernel_is_touched(self):
+        self.assertTrue(Tools(None).call("create_candidate", {"tasks": []})["isError"])
+        self.assertTrue(Tools(None).call("create_candidate", {"tasks": ["x-1"] * 21})["isError"])
+        self.assertTrue(Tools(None).call("create_candidate", {"tasks": ["not a task"]})["isError"])
+        self.assertTrue(Tools(None).call("create_candidate", {"tasks": ["x-1"], "note": "a\nb"})["isError"])
+        self.assertTrue(Tools(None).call("show_candidate", {"candidate": "cand-nope"})["isError"])
+        self.assertTrue(Tools(None).call("rebase_task", {"task_id": "x-1", "candidate": "cand-nope"})["isError"])
+        self.assertIn("tasks must be a non-empty list", text_of(Tools(None).call("create_candidate", {"tasks": []})))
 
     def test_a_cancel_reason_is_one_short_line(self):
         self.assertTrue(Tools(None).call("cancel_task", {"task_id": "x-1", "reason": "x" * 201})["isError"])
@@ -324,7 +333,7 @@ class ToolsOnTheKernel(KernelWorld):
         pending = self.kernel.describe(task_id)["pending_approvals"]
         out = payload_of(self.ask("get_task_status", task_id=task_id))
         self.assertEqual(set(out), {"task_id", "title", "status", "derived_state", "risk", "attempts", "worker", "candidate",
-                                    "pending_approvals", "agent_next", "last_problem"})
+                                    "pending_approvals", "decisions", "agent_next", "last_problem"})
         self.assertIsNone(out["candidate"])
         self.assertEqual(out["pending_approvals"], [{"id": pending[0]["id"], "kind": "WRITE_PERMISSION"}])
         self.assertEqual(out["agent_next"], ["cancel_task", "approve_task", "reject_task"])
@@ -410,8 +419,8 @@ class ToolsOnTheKernel(KernelWorld):
         task_id = self.queued(r1_contract())
         before = self.ledger()
         out = payload_of(self.ask("review_task", task_id=task_id))
-        self.assertEqual(set(out), {"task_id", "derived_state", "ready_to_accept", "blockers", "summary", "evidence_summary",
-                                    "diff_stat", "tests", "boundary"})
+        self.assertEqual(set(out), {"task_id", "derived_state", "ready_to_accept", "decisions", "blockers", "summary",
+                                    "evidence_summary", "diff_stat", "tests", "boundary"})
         self.assertEqual((out["evidence_summary"]["level"], out["evidence_summary"]["checks"]["status"]), ("UNKNOWN", "NOT_RUN"))
         self.assertEqual(set(out["summary"]), {"headline", "checks_passed", "checks_total", "blockers", "agent_next"})
         self.assertFalse(out["ready_to_accept"])
@@ -435,6 +444,39 @@ class ToolsOnTheKernel(KernelWorld):
         decided = [e for e in self.kernel.events(task_id) if e["type"] == "APPROVAL_DECIDED"]
         self.assertEqual(len(decided), 1)
         self.assertIn("approved by coordinator", decided[0]["reason"])
+
+    def test_a_scoped_profile_refuses_before_a_grant_and_offers_the_decision_only_after_one(self):
+        self.kernel = self.new_kernel(config=sample_config(approval_mode="coordinator_scoped"))
+        self.tools = Tools(self.kernel)
+        task_id = self.submit_r2("scoped-1")
+        out = self.ask("approve_task", task_id=task_id, reason="checked the paths")
+        self.assertTrue(out["isError"])
+        self.assertIn("no_grant", text_of(out))
+        status = payload_of(self.ask("get_task_status", task_id=task_id))
+        self.assertEqual(status["decisions"]["mode"], "coordinator_scoped")
+        self.assertEqual(status["decisions"]["allowed_actions"], [])
+        self.assertNotIn("approve_task", status["agent_next"])
+        self.kernel.grant_create("claude_desktop", actions=["approve"], project_id="fixture",
+                                 approval_kinds=["WRITE_PERMISSION"], risk_tiers=["R2"], expires_at="2099-01-01T00:00:00Z")
+        status = payload_of(self.ask("get_task_status", task_id=task_id))
+        self.assertIn("approve", status["decisions"]["allowed_actions"])
+        out = payload_of(self.ask("approve_task", task_id=task_id, reason="the grant covers this"))
+        self.assertEqual(out["status"], "QUEUED")
+        decided = [e for e in self.kernel.events(task_id) if e["type"] == "APPROVAL_DECIDED"]
+        self.assertEqual(decided[-1]["data"]["decision_grant"], 1)
+        self.assertEqual(decided[-1]["data"]["decision_coordinator"], "claude_desktop")
+
+    def test_human_only_refuses_every_decision_tool_in_the_bridge(self):
+        self.kernel = self.new_kernel(config=sample_config(approval_mode="human_only"))
+        self.tools = Tools(self.kernel)
+        task_id = self.submit_r2("human-1")
+        out = self.ask("approve_task", task_id=task_id, reason="should not decide")
+        self.assertTrue(out["isError"])
+        self.assertIn("approval_mode", text_of(out))
+        status = payload_of(self.ask("get_task_status", task_id=task_id))
+        self.assertEqual(status["decisions"]["allowed_actions"], [])
+        self.assertNotIn("approve_task", status["agent_next"])
+        self.assertNotIn("reject_task", status["agent_next"])
 
     def test_approve_task_without_an_id_works_when_exactly_one_is_pending_and_errors_when_ambiguous(self):
         task_id = self.submit_r2("approve-2")

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/Sweetienite/personal-agent-runtime/security/advisories/new
+    about: Do not report a safety-boundary bypass in a public issue.
+  - name: Usage and troubleshooting
+    url: https://github.com/Sweetienite/personal-agent-runtime/blob/main/docs/en/TROUBLESHOOTING.md
+    about: Check the symptom → diagnosis → recovery guide first.

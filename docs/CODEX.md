@@ -291,8 +291,8 @@ sqlite / 缓存文件被改写（只记名称与大小，不读内容）。
 4. Linux `CORE_EXPERIMENTAL`、Windows `STATIC_GAP` 不变；事件流不含模型名（`model_observed` 恒空）。
 
 `TESTED_VERSION` 记录的是**被复核的 CLI build**，不是对所有部署矩阵的无条件承诺
-（`src/par/providers/codex.py` 常量上方写有同样的注释）。`pyproject.toml` / `__version__` 仍为 `1.0.0`，
-**未打 tag、未发 Release**；[发行清单](RELEASE_NOTES_2026-11.md) 的结论仍是「不建议现在打新版」。
+（`src/par/providers/codex.py` 常量上方写有同样的注释）。`pyproject.toml` / `__version__` 为 `1.0.0`；
+2026-11-09 已按 Maintainer 授权发布 `v1.0.0`，发布范围仍受本节限定。
 
 ## 15. 2026-11-07 默认沙箱复核：`GREEN` 升级
 

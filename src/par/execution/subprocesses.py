@@ -35,7 +35,8 @@ MAX_EVENTS = 10_000
 MAX_EVENT_BYTES = 32 * 1024 * 1024        # of output text that produced retained events (errors/terminal/usage always kept)
 KEEP_KINDS = frozenset({"error", "terminal", "usage"})
 STDERR_TAIL_CHARS = 4000
-PS = "/bin/ps"
+PS = next((p for p in ("/bin/ps", "/usr/bin/ps", "/opt/homebrew/bin/ps", "/usr/local/bin/ps")
+           if os.path.isfile(p) and os.access(p, os.X_OK)), None)
 
 
 class SpawnError(Exception):
@@ -77,6 +78,8 @@ class RunResult:
 # --- process facts ---------------------------------------------------------------------------------------------------
 def process_identity(pid: int) -> "str | None":
     """The start time of a process as ``ps`` reports it. With the pid it identifies a process even after pid reuse."""
+    if PS is None:
+        return None
     try:
         out = subprocess.run([PS, "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, timeout=5,
                              env={"LC_ALL": "C", "PATH": "/bin:/usr/bin"}, check=False).stdout.strip()

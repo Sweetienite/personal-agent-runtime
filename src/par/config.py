@@ -28,6 +28,12 @@ SURFACES = frozenset({"native_cli", "acp", "manual", "programmatic_session"})
 PROVIDER_SURFACE = {"codex": "native_cli", "antigravity": "native_cli", "manual_handoff": "manual",
                     "claude_host": "programmatic_session", "gemini_legacy": "native_cli"}
 FAILURE_POLICIES = frozenset({"ask", "pause", "safe_auto"})
+# Who may decide a task's approvals and acceptance. ``coordinator_autonomous`` keeps the 2026-10-20
+# Maintainer decision (the bridge may decide, always recorded); ``coordinator_scoped`` requires a
+# ledger grant with a matching scope; ``human_only`` refuses every coordinator decision.
+APPROVAL_MODES = frozenset({"coordinator_autonomous", "coordinator_scoped", "human_only"})
+DEFAULT_APPROVAL_MODE = "coordinator_autonomous"
+
 from par.coordinators import known_names as _known_coordinator_names
 KNOWN_COORDINATORS = _known_coordinator_names()        # claude_desktop, codex (and the older name codex_manual_takeover): see par/coordinators.py
 MAX_PARALLEL_WORKERS_ALLOWED = 2  # the most attempts that may run at once (a profile asks for 1 or 2; 1 is the default)
@@ -84,6 +90,7 @@ class ProfileEntry:
     worker_failure_policy: str
     additional_paid_credits: bool
     roles: "dict[str, RoleEntry]" = field(default_factory=dict)
+    approval_mode: str = DEFAULT_APPROVAL_MODE
 
 
 @dataclass(frozen=True)
@@ -324,7 +331,7 @@ def _parse_profiles(raw: Any, workers: "dict[str, WorkerEntry]", c: _Issues) -> 
             c.err(where, "must be a table")
             continue
         _unknown_keys(p, {"coordinator", "fallback_coordinator", "default_worker", "max_parallel_workers",
-                          "worker_failure_policy", "additional_paid_credits", "roles"}, where, c)
+                          "worker_failure_policy", "additional_paid_credits", "roles", "approval_mode"}, where, c)
         bad = False
         coord = p.get("coordinator")
         if not isinstance(coord, str) or not coord.strip():
@@ -353,9 +360,13 @@ def _parse_profiles(raw: Any, workers: "dict[str, WorkerEntry]", c: _Issues) -> 
         if paid is not False:
             c.err(f"{where}.additional_paid_credits", "must be false: V1 never buys credits or switches to metered billing")
             bad = True
+        approval_mode = p.get("approval_mode", DEFAULT_APPROVAL_MODE)
+        if approval_mode not in APPROVAL_MODES:
+            c.err(f"{where}.approval_mode", f"must be one of {sorted(APPROVAL_MODES)} (found {approval_mode!r})")
+            bad = True
         roles = _parse_roles(p.get("roles"), workers, f"{where}.roles", c)
         if not bad:
-            profiles[pid] = ProfileEntry(pid, coord, fb_coord, dw, mpw, policy, False, roles)
+            profiles[pid] = ProfileEntry(pid, coord, fb_coord, dw, mpw, policy, False, roles, approval_mode)
     return profiles
 
 

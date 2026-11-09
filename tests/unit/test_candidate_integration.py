@@ -1,10 +1,12 @@
 """T11: a candidate is a verified, traceable baseline - accepted is not integrated, and integrated is not applied."""
+import json
 import os
 import unittest
 from unittest import mock
 from pathlib import Path
 
 from par.core.kernel import NotAllowed, Refused
+from par.mcp.tools import Tools
 from par.providers.fake import ops, scenarios
 from tests.kernel_fixture import FIXED_CALC, KernelWorld, r1_contract
 from tests.unit.test_kernel_policy import using
@@ -310,6 +312,30 @@ class Records(CandidateWorld):
         self.kernel.close_task(a)
         self.assertEqual(self.kernel.candidate_show(cand["candidate_id"])["applied_to_real_project"], False)
         self.assertFalse((self.project_path / "app" / "api.py").exists())
+
+
+class McpCandidateWorkflow(CandidateWorld):
+    def payload(self, out):
+        self.assertFalse(out["isError"], out["content"][0]["text"])
+        return json.loads(out["content"][0]["text"])
+
+    def test_the_bridge_can_create_show_list_and_rebase_on_a_verified_candidate(self):
+        a = self.api_task()
+        tools = Tools(self.kernel)
+        cand = self.payload(tools.call("create_candidate", {"tasks": [a], "note": "audit window"}))
+        self.assertEqual((cand["status"], cand["applied_to_project"]), ("VERIFIED", False))
+        self.assertEqual([(t["task_id"], t["attempt"]) for t in cand["tasks"]], [(a, 1)])
+        self.assertEqual([(c["task_id"], c["name"], c["status"]) for c in cand["checks"]],
+                         [(a, "unit", "PASS"), (a, "sees_api", "PASS")])
+        listed = self.payload(tools.call("list_candidates", {}))
+        self.assertEqual([(c["candidate"], c["status"], c["tasks"]) for c in listed["candidates"]],
+                         [(cand["candidate"], "VERIFIED", 1)])
+        shown = self.payload(tools.call("show_candidate", {"candidate": cand["candidate"]}))
+        self.assertEqual(shown["commit_sha"], cand["commit_sha"])
+        b = self.queued(self.contract(UNIT))                                      # queued, no attempt yet
+        out = self.payload(tools.call("rebase_task", {"task_id": b, "candidate": cand["candidate"], "note": "use A"}))
+        self.assertEqual(out["status"], "QUEUED")
+        self.assertEqual(self.kernel.describe(b)["base"]["commit"], cand["commit_sha"])
 
 
 if __name__ == "__main__":

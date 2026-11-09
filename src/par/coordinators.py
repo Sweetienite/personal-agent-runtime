@@ -110,7 +110,7 @@ def connection_kit(coordinator_id: str, *, python: str, data_dir: str, package_p
                 "检查：让它调用 list_tasks；然后运行 `par coordinator status`——这个主控的「最近出现」时间应该是刚刚。"],
             "snippet": {"format": "json", "text": text},
             "command": one_line,
-            "notes": ["这条命令是给 Claude Code 用的：不加 `--scope` 时只对你当前所在的项目生效（加 `--scope user` 才会让你所有项目的所有会话都多出这 17 个工具）；你的版本不同的话请看 `claude mcp --help`。项目里的 .mcp.json 也接受同一个条目。",
+            "notes": ["这条命令是给 Claude Code 用的：不加 `--scope` 时只对你当前所在的项目生效（加 `--scope user` 才会让你所有项目的所有会话都多出这 21 个工具）；你的版本不同的话请看 `claude mcp --help`。项目里的 .mcp.json 也接受同一个条目。",
                       "Claude Desktop 会逐次询问你是否允许工具调用：这是在 Kernel 自己的批准之前多出的一道人工关口，不能代替它们。",
                       _PYTHON_NOTE]}
     exe = codex_executable if codex_executable else "codex"
@@ -129,7 +129,7 @@ def connection_kit(coordinator_id: str, *, python: str, data_dir: str, package_p
         "snippet": {"format": "toml", "text": text},
         "command": cmd,
         "notes": ["如果 `codex` 不在你的 PATH 上，ChatGPT 应用里自带的程序就是同一个 Codex：上面的命令在 Codex provider 配了路径时已经用了那个路径。",
-                  "取决于它的批准模式，Codex 可能不经询问就调用 MCP 工具：Kernel 自己的批准（写入权限、验收）照常生效，而且桥里没有任何会批准事情的工具。",
+                  "取决于它的批准模式，Codex 可能不经询问就调用 MCP 工具：Kernel 自己的写权限/验收闸门照常生效；主控能否自行决定由 profile 的 `approval_mode` 约束（默认 `coordinator_autonomous`，可用 `coordinator_scoped` 或 `human_only` 收回），见 docs/SECURITY.md。",
                   _PYTHON_NOTE]}
 
 
@@ -172,7 +172,10 @@ the Kernel measured counts. You are {name}; the person decides everything that m
 - `review_task`: a short `summary`, `ready_to_accept`, `blockers`, the Kernel's check results and boundary.
 - `run_task` starts ONE attempt of a QUEUED task and returns; `cancel_task`, `pause_task`, `resume_task`,
   `retry_task`, `recover_task` control it. Retry never bypasses a cooldown or a missing permission.
-- `approve_task` / `reject_task` / `accept_task` / `close_task`: your decisions. You may approve, reject, accept and close a task yourself; each is recorded as `by="coordinator"` with the reason you give.
+- `approve_task` / `reject_task` / `accept_task` / `close_task`: decisions, subject to the profile's `approval_mode`.
+  In `coordinator_autonomous` you may decide them yourself; in `coordinator_scoped` only inside a live grant covering
+  the action, project, risk tier and approval kind; in `human_only` the Kernel refuses and the person decides at the CLI.
+  Each decision is recorded as `by="coordinator"` with your identity, the mode and the grant used, plus the reason you give.
 
 ## Workflow
 1. Collect only what the draft needs: project, goal, read-only or write, exact paths, and a check the Kernel can run.
@@ -198,6 +201,7 @@ the Kernel measured counts. You are {name}; the person decides everything that m
   predecessor changed files a verified candidate must include it (par candidate create; then candidate= on submit_task). Split along
   real boundaries, not for the sake of smaller pieces.
 - A real reason is required on every decision. "Continue" is not authorization to widen scope or permissions.
+  You cannot create, widen or revoke a grant: only the person can, with `par coordinator grant/revoke`.
 - Keep answers short and factual: task id, status, what the Kernel measured, what the person can do. Answer in the
   language the person uses.
 

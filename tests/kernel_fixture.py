@@ -60,6 +60,7 @@ class KernelWorld(unittest.TestCase):
     agy_enabled = True
     register_adapters = True
     parallel = 1                   # the profile's max_parallel_workers (1 or 2)
+    approval_mode = "coordinator_autonomous"
 
     # ---- fixture project ------------------------------------------------------------------------------
     def git(self, cwd, *args):
@@ -115,7 +116,8 @@ class KernelWorld(unittest.TestCase):
         return reg
 
     def config(self):
-        return sample_config(policy=self.policy, codex=self.codex_enabled, agy=self.agy_enabled, parallel=self.parallel)
+        return sample_config(policy=self.policy, codex=self.codex_enabled, agy=self.agy_enabled, parallel=self.parallel,
+                             approval_mode=self.approval_mode)
 
     def new_kernel(self, **kw):
         kw.setdefault("config", self.config())

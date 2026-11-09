@@ -28,6 +28,7 @@ from par.context.interface import Context
 from par.context.resolver import default_context
 from par.context.types import ContextChanged, ContextManifest
 from par.core import relay
+from par.core.approvals import ApprovalMixin
 from par.core.attempt import AttemptOutcome, AttemptRunner, private_dirs, remove_scratch, write_private
 from par.core.candidate import CandidateMixin, INTEGRATION_MODE
 from par.core.clock import Clock, iso, parse_iso
@@ -35,10 +36,14 @@ from par.core.contract import Contract, ContractError, parse_contract
 from par.core.health import Health
 from par.core.manual import ManualHandoffMixin
 from par.core.prompt import build_prompt
+from par.core.recovery import RecoveryAction, RecoveryMixin
+from par.core.reading import ReadingMixin
 from par.core.redact import redact_text
+from par.core.review import ReviewMixin
 from par.core.router import config_snapshot, route as route_task
 from par.core.settings import KernelSettings
 from par.core.states import ACTIVE, NEXT_ACTIONS, TRANSITIONS, TaskStatus as T, derived_state
+from par.core.submission import SubmissionMixin, SubmitResult, ValidateResult
 from par.core.takeover import TakeoverMixin
 from par.core.store import IdempotencyConflict, LedgerError, LockBusy, NotFound, Store, VersionConflict
 from par.execution import gitops, results as R, subprocesses as sp, workspace as ws
@@ -52,7 +57,7 @@ PAUSABLE = frozenset({T.READY, T.QUEUED, T.PERMISSION_WAIT, T.BLOCKED_NO_WORKER,
 RETRYABLE = frozenset({T.FAILED, T.INTERRUPTED, T.BLOCKED_NO_WORKER, T.AUTH_REQUIRED, T.RATE_LIMITED, T.QUOTA_EXHAUSTED,
                        T.RECOVERY_REQUIRED, T.CANCELED, T.PAUSED})
 SUPERSEDABLE = ("FALLBACK_SWITCH", "PERMISSION_RETRY")   # offers a retry may withdraw; real permissions must be decided by name
-CANCEL_ON_REJECT = frozenset({"WRITE_PERMISSION", "WORKER_OVERRIDE", "BASE_DRIFT", "PERMISSION_RETRY"})
+
 
 
 class KernelError(Exception):
@@ -79,36 +84,11 @@ class Busy(KernelError):
 
 
 @dataclass(frozen=True)
-class SubmitResult:
-    task_id: str
-    status: str
-    created: bool
-    deduplicated: bool
-    warnings: "tuple[str, ...]" = ()
-    pending_approvals: "tuple[int, ...]" = ()
-
-
-@dataclass(frozen=True)
-class ValidateResult:
-    """What `submit()` would do, without doing it: no task, no event, no approval is recorded."""
-    warnings: "tuple[str, ...]" = ()
-    would_approvals: "tuple[str, ...]" = ()
-
-
-@dataclass(frozen=True)
 class RunReport:
     task_id: str
     status: str
     attempt: "int | None"
     reason: str
-
-
-@dataclass(frozen=True)
-class RecoveryAction:
-    task_id: str
-    attempt: int
-    action: str             # orphaned | alive | terminated | skipped
-    detail: str
 
 
 class _MissingGit:
@@ -119,7 +99,8 @@ class _MissingGit:
         raise gitops.GitError(self._message)
 
 
-class Kernel(CandidateMixin, ManualHandoffMixin, TakeoverMixin):
+class Kernel(SubmissionMixin, ApprovalMixin, ReviewMixin, RecoveryMixin, ReadingMixin, CandidateMixin, ManualHandoffMixin,
+             TakeoverMixin):
     def __init__(self, data_dir: "str | os.PathLike[str]", *, config: RuntimeConfig, projects: "Mapping[str, ProjectEntry]",
                  adapters: AdapterRegistry, clock: "Clock | None" = None, home: "str | os.PathLike[str] | None" = None,
                  settings: "KernelSettings | None" = None, kernel_id: "str | None" = None,
@@ -209,247 +190,6 @@ class Kernel(CandidateMixin, ManualHandoffMixin, TakeoverMixin):
         if task["submitted_by"] == "coordinator" and contract.worker:
             needed.append("WORKER_OVERRIDE")
         return [kind for kind in needed if kind not in granted]
-
-    # ------------------------------------------------------------------------------------------------------
-    # submit
-    def submit(self, source: "str | bytes | Mapping[str, Any]", *, submitted_by: str = "user",
-               coordinator_id: "str | None" = None, candidate: "str | None" = None) -> SubmitResult:
-        if submitted_by not in ("user", "coordinator"):
-            raise ValueError("submitted_by must be 'user' or 'coordinator'")
-        if submitted_by == "coordinator" and coordinator_id is not None:
-            holder = self.coordinator_lease()["coordinator"]          # two coordinators must not schedule against one ledger (plan 6.3)
-            coordinator_id = registry.normalize(coordinator_id) or coordinator_id
-            if holder is not None and coordinator_id != holder:
-                raise Refused("not_the_coordinator", f"{coordinator_id!r} is not the coordinator any more ({holder!r} took over); "
-                                                     "the person who switched can confirm a new takeover")
-        try:
-            contract = parse_contract(source)
-        except ContractError as exc:
-            raise Refused("invalid_contract", exc.problems) from None
-        project = self.projects.get(contract.project_id)
-        if project is None:
-            raise Refused("unknown_project", f"project {contract.project_id!r} is not registered (par project add ...)")
-        again = self._deduplicate(contract)
-        if again is not None:
-            return again
-
-        problems: "list[str]" = []
-        for dep in contract.dependencies:
-            row = self.store.get_task(dep)
-            if row is None:
-                problems.append(f"dependency {dep} does not exist")
-            elif row["project_id"] != contract.project_id:
-                problems.append(f"dependency {dep} belongs to another project")
-        context = self._context(project)
-        view = context.view()
-        manifest = context.manifest(view)
-        readiness = context.write_readiness(view)
-        problems += self._submission_problems(contract, project, view, manifest, readiness)
-        if problems:
-            raise Refused("not_allowed", problems)
-
-        base = self._base_record(manifest, contract.risk)
-        base["integration"] = INTEGRATION_MODE
-        if candidate is not None:
-            base.update(self.candidate_base_for(candidate, contract.project_id, contract.dependencies))
-            if sum((manifest.base.get("dirty") or {}).values()):
-                raise Refused("dirty_project", "the project has uncommitted changes; a candidate-bound task needs the clean state it was built on")
-            if manifest.base_git_commit != base["candidate_base"]:
-                raise Refused("stale_candidate", f"the project is at {manifest.base_git_commit}, but candidate {candidate} was built on "
-                                                 f"{base['candidate_base']}; create a new candidate from the current state")
-        snapshot = config_snapshot(self.config)
-        try:
-            with self.store.tx():
-                again = self._deduplicate(contract)
-                if again is not None:
-                    return again
-                task_id = self.store.next_task_id(contract.project_id)
-                self.store.insert_task(
-                    task_id=task_id, project_id=contract.project_id, idempotency_key=contract.idempotency_key,
-                    contract_sha256=contract.sha256, contract=contract.doc, title=contract.title, role=contract.role,
-                    requested_worker=contract.worker, risk_tier=contract.risk, submitted_by=submitted_by,
-                    ad_hoc=contract.ad_hoc, base=base, profile=snapshot)
-                self.store.add_event("TASK_SUBMITTED", task_id=task_id, reason=f"submitted by {submitted_by}",
-                                     data={"project": contract.project_id, "risk": contract.risk, "role": contract.role,
-                                           "worker": contract.worker, "contract_sha256": contract.sha256,
-                                           "base_commit": base["commit"], "ad_hoc": contract.ad_hoc,
-                                           "candidate": base.get("candidate"), "integration": base.get("integration"),
-                                           "config_digest": snapshot["digest"], "warnings": list(contract.warnings)})
-                self.store.set_status(task_id, T.READY, reason="the contract passed validation")
-                approvals: "list[int]" = []
-                if contract.writes:
-                    approvals.append(self.store.add_approval(task_id, "WRITE_PERMISSION", {
-                        "allowed_paths": list(contract.allowed_paths), "base_commit": base["commit"],
-                        "candidate": base.get("candidate"), "checks": [c["name"] for c in contract.checks]}))
-                if submitted_by == "coordinator" and contract.worker:
-                    approvals.append(self.store.add_approval(task_id, "WORKER_OVERRIDE", {"worker": contract.worker}))
-                if approvals:
-                    self.store.set_status(task_id, T.PERMISSION_WAIT, reason="waiting for your approval")
-                else:
-                    self.store.set_status(task_id, T.QUEUED, reason="ready to run")
-        except IdempotencyConflict:
-            raise Refused("idempotency_conflict", "this idempotency key is already used by a different contract") from None
-        return SubmitResult(task_id, T.PERMISSION_WAIT.value if approvals else T.QUEUED.value, True, False,
-                            contract.warnings, tuple(approvals))
-
-    def validate(self, source: "str | bytes | Mapping[str, Any]", *, submitted_by: str = "user",
-                 coordinator_id: "str | None" = None) -> ValidateResult:
-        """Everything `submit()` checks before it opens a ledger transaction - and nothing past
-        that: no task is created, no event or approval is recorded. Raises the same `Refused`
-        `submit()` would for the same contract. Deliberately does not check for a duplicate
-        (`_deduplicate` would write a `SUBMIT_DEDUPLICATED` event, which this must not do)."""
-        if submitted_by not in ("user", "coordinator"):
-            raise ValueError("submitted_by must be 'user' or 'coordinator'")
-        if submitted_by == "coordinator" and coordinator_id is not None:
-            holder = self.coordinator_lease()["coordinator"]
-            coordinator_id = registry.normalize(coordinator_id) or coordinator_id
-            if holder is not None and coordinator_id != holder:
-                raise Refused("not_the_coordinator", f"{coordinator_id!r} is not the coordinator any more ({holder!r} took over); "
-                                                     "the person who switched can confirm a new takeover")
-        try:
-            contract = parse_contract(source)
-        except ContractError as exc:
-            raise Refused("invalid_contract", exc.problems) from None
-        project = self.projects.get(contract.project_id)
-        if project is None:
-            raise Refused("unknown_project", f"project {contract.project_id!r} is not registered (par project add ...)")
-        problems: "list[str]" = []
-        for dep in contract.dependencies:
-            row = self.store.get_task(dep)
-            if row is None:
-                problems.append(f"dependency {dep} does not exist")
-            elif row["project_id"] != contract.project_id:
-                problems.append(f"dependency {dep} belongs to another project")
-        context = self._context(project)
-        view = context.view()
-        manifest = context.manifest(view)
-        readiness = context.write_readiness(view)
-        problems += self._submission_problems(contract, project, view, manifest, readiness)
-        if problems:
-            raise Refused("not_allowed", problems)
-        would: "list[str]" = []
-        if contract.writes:
-            would.append("WRITE_PERMISSION")
-        if submitted_by == "coordinator" and contract.worker:
-            would.append("WORKER_OVERRIDE")
-        return ValidateResult(contract.warnings, tuple(would))
-
-    def _deduplicate(self, contract: Contract) -> "SubmitResult | None":
-        existing = self.store.find_task(contract.project_id, contract.idempotency_key)
-        if existing is None:
-            return None
-        if existing["contract_sha256"] != contract.sha256:
-            raise Refused("idempotency_conflict",
-                          f"idempotency key {contract.idempotency_key!r} was already used for a different contract ({existing['task_id']})")
-        with self.store.tx():
-            self.store.add_event("SUBMIT_DEDUPLICATED", task_id=existing["task_id"],
-                                 reason="the same contract was submitted again; the original task is returned")
-        return SubmitResult(existing["task_id"], existing["status"], False, True, (),
-                            tuple(a["id"] for a in self._pending(existing["task_id"])))
-
-    @staticmethod
-    def _submission_problems(contract: Contract, project: ProjectEntry, view: Any, manifest: ContextManifest, readiness: Any) -> "list[str]":
-        problems: "list[str]" = []
-        if not view.exists:
-            return ["the project folder does not exist"]
-        if project.context_mode == "generic":
-            if not contract.ad_hoc:
-                problems.append("a generic project has no parent contract; set ad_hoc=true (the task's JSON contract is the execution contract)")
-        else:
-            state = view.contract_state
-            if contract.ad_hoc and contract.risk == "R2":
-                problems.append("an ad-hoc task (no parent contract) can only be R0 or R1 in a Harness project; code changes need a parent contract")
-            if contract.ad_hoc and state != "none":
-                problems.append("this project has an active contract: submit under it (ad_hoc is only for projects without one)")
-            elif not contract.ad_hoc and state == "none":
-                problems.append("the project has no active parent contract; set ad_hoc=true for a read-only diagnostic")
-            elif state == "multiple":
-                problems.append("the project has several active contracts; the Harness Core allows at most one")
-        if contract.risk in ("R1", "R2") and (manifest.base.get("vcs") != "git" or not manifest.base_git_commit):
-            problems.append("this task needs a git base commit to work from, and the project has none (R0 tasks do not)")
-        if contract.risk == "R2" and not readiness.allowed:
-            problems += [f"write blocked - {b.code}: {b.message}" for b in readiness.blockers]
-        return problems
-
-    # ------------------------------------------------------------------------------------------------------
-    # approvals
-    def _decide_target(self, task_id: str, approval_id: "int | None") -> "dict[str, Any]":
-        pending = self._pending(task_id)
-        if approval_id is None:
-            if len(pending) != 1:
-                raise NotAllowed("which_approval", [f"{task_id} has {len(pending)} pending approval(s); name one with --id"] +
-                                 [f"  #{a['id']} {a['kind']}" for a in pending])
-            return pending[0]
-        found = next((a for a in pending if a["id"] == approval_id), None)
-        if found is None:
-            raise NotAllowed("no_such_approval", f"{task_id} has no pending approval #{approval_id}")
-        return found
-
-    def approve(self, task_id: str, approval_id: "int | None" = None, *, by: str = "user", note: str = "") -> "dict[str, Any]":
-        task = self._require(task_id)
-        target = self._decide_target(task_id, approval_id)
-        kind = target["kind"]
-        if kind == "BASE_DRIFT" and (task["base"] or {}).get("candidate"):
-            raise Refused("candidate_base", "this task runs on an immutable candidate; re-create the candidate against the current project state instead")
-        columns: "dict[str, Any]" = {}
-        extra_events: "list[tuple[str, str, dict]]" = []
-        if kind == "BASE_DRIFT":
-            project = self.projects.get(task["project_id"])
-            if project is None:
-                raise Refused("unknown_project", f"project {task['project_id']!r} is no longer registered")
-            manifest = self._context(project).manifest()
-            base = self._base_record(manifest, task["risk_tier"])
-            columns["base_json"] = base
-            extra_events.append(("BASE_REFRESHED", "re-based on the current project state after approval", {"commit": base["commit"]}))
-        elif kind == "FALLBACK_SWITCH":
-            columns["pinned_worker"] = target["payload"]["to"]
-        with self.store.tx():
-            task = self._require(task_id)
-            if not any(a["id"] == target["id"] for a in self._pending(task_id)):
-                raise NotAllowed("already_decided", f"approval #{target['id']} was decided meanwhile")
-            self.store.decide_approval(target["id"], "APPROVED", by, note)
-            self.store.add_event("APPROVAL_DECIDED", task_id=task_id, reason=f"{kind} approved by {by}",
-                                 data={"approval_id": target["id"], "kind": kind, "decision": "APPROVED"})
-            if columns:
-                self.store.update_task(task_id, "TASK_UPDATED", reason=f"effect of the approved {kind}", columns=columns)
-            for etype, reason, data in extra_events:
-                self.store.add_event(etype, task_id=task_id, reason=reason, data=data)
-            remaining = self._pending(task_id)
-            status = T(self.store.get_task(task_id)["status"])
-            if not remaining and status in (T.PERMISSION_WAIT, T.RATE_LIMITED, T.QUOTA_EXHAUSTED, T.AUTH_REQUIRED,
-                                            T.BLOCKED_NO_WORKER, T.INTERRUPTED, T.FAILED):
-                if kind in ("FALLBACK_SWITCH", "PERMISSION_RETRY") or status == T.PERMISSION_WAIT:
-                    self.store.set_status(task_id, T.QUEUED, reason=f"{kind} approved: ready to run again")
-        return self.describe(task_id)
-
-    def reject(self, task_id: str, approval_id: "int | None" = None, *, by: str = "user", note: str = "") -> "dict[str, Any]":
-        task = self._require(task_id)
-        if task["status"] == T.REVIEW_REQUIRED.value and approval_id is None and not self._pending(task_id):
-            with self.store.tx():
-                self.store.add_event("RESULT_REJECTED", task_id=task_id, reason=f"result rejected by {by}",
-                                     data={"by": by, "attempt": task["attempt_count"], "note": note[:200]})
-                self.store.set_status(task_id, T.FAILED, reason=f"the result was rejected by {by}: {note[:200]}".strip(": "))
-            return self.describe(task_id)
-        target = self._decide_target(task_id, approval_id)
-        with self.store.tx():
-            if not any(a["id"] == target["id"] for a in self._pending(task_id)):
-                raise NotAllowed("already_decided", f"approval #{target['id']} was decided meanwhile")
-            self.store.decide_approval(target["id"], "REJECTED", by, note)
-            self.store.add_event("APPROVAL_DECIDED", task_id=task_id, reason=f"{target['kind']} rejected by {by}",
-                                 data={"approval_id": target["id"], "kind": target["kind"], "decision": "REJECTED"})
-            status = T(self.store.get_task(task_id)["status"])
-            if target["kind"] in CANCEL_ON_REJECT and status in CANCELLABLE_DIRECT:
-                self.store.set_status(task_id, T.CANCELED, reason=f"{target['kind']} was refused")
-            elif status == T.PERMISSION_WAIT and not self._pending(task_id):
-                self.store.set_status(task_id, T.PAUSED, reason=f"{target['kind']} was declined; resume or retry when ready")
-        return self.describe(task_id)
-
-    def _supersede_pending(self, task_id: str, kinds: "tuple[str, ...]", why: str) -> None:
-        for a in self._pending(task_id):
-            if a["kind"] in kinds:
-                self.store.decide_approval(a["id"], "REJECTED", "kernel", why)
-                self.store.add_event("APPROVAL_DECIDED", task_id=task_id, reason=f"{a['kind']} superseded: {why}",
-                                     data={"approval_id": a["id"], "kind": a["kind"], "decision": "REJECTED"})
 
     # ------------------------------------------------------------------------------------------------------
     # run
@@ -932,263 +672,3 @@ class Kernel(CandidateMixin, ManualHandoffMixin, TakeoverMixin):
             pending = self._pending(task_id)
             return bool(pending) and all(a["kind"] in SUPERSEDABLE for a in pending)
         return False
-
-    # ------------------------------------------------------------------------------------------------------
-    # review: accept / close
-    def accept_blockers(self, task_id: str, *, by: str = "user") -> "list[str]":
-        task = self._require(task_id)
-        contract = self._contract_of(task)
-        attempts = self.store.attempts(task_id)
-        approved = any(a["kind"] == "WRITE_PERMISSION" and a["status"] == "APPROVED" for a in self.store.approvals(task_id))
-        return R.acceptance_problems(status=task["status"], attempt=attempts[-1] if attempts else None,
-                                     contract_checks=contract.checks, needs_write_approval=contract.writes,
-                                     write_approved=approved, by=by)
-
-    def accept(self, task_id: str, *, by: str = "user", note: str = "") -> "dict[str, Any]":
-        problems = self.accept_blockers(task_id, by=by)
-        if problems:
-            raise Refused("cannot_accept", problems)
-        with self.store.tx():
-            task = self._require(task_id)
-            approval = self.store.add_approval(task_id, "ACCEPT_RESULT", {"attempt": task["attempt_count"]})
-            self.store.decide_approval(approval, "APPROVED", by, note)
-            self.store.set_status(task_id, T.ACCEPTED, expected_version=task["version"],
-                                  reason=f"the result of attempt {task['attempt_count']} was accepted by {by}")
-        return self.describe(task_id)
-
-    def close_task(self, task_id: str) -> "dict[str, Any]":
-        task = self._require(task_id)
-        if task["status"] != T.ACCEPTED.value:
-            raise NotAllowed("not_accepted", f"{task_id} is {task['status']}; only ACCEPTED tasks can be closed")
-        with self.store.tx():
-            self.store.set_status(task_id, T.CLOSED, expected_version=task["version"], reason="closed")
-        return self.describe(task_id)
-
-    # ------------------------------------------------------------------------------------------------------
-    # recovery
-    def recover(self, task_id: "str | None" = None, *, terminate: bool = False) -> "list[RecoveryAction]":
-        """Settle attempts whose Kernel is gone. Never starts a second writer; never kills what it cannot identify."""
-        actions: "list[RecoveryAction]" = []
-        for attempt in self.store.unfinished_attempts():
-            if task_id is not None and attempt["task_id"] != task_id:
-                continue
-            if attempt["kernel_id"] == self.kernel_id:
-                continue
-            age = (self.clock.now() - parse_iso(attempt["heartbeat_at"])).total_seconds()
-            if age < self.settings.stale_after:
-                if task_id is not None:
-                    actions.append(RecoveryAction(attempt["task_id"], attempt["n"], "skipped",
-                                                  f"its Kernel ({attempt['kernel_id']}) is alive (heartbeat {age:.0f}s ago)"))
-                continue
-            actions.append(self._recover_one(attempt, terminate))
-        return actions
-
-    def _recover_one(self, attempt: "dict[str, Any]", terminate: bool) -> RecoveryAction:
-        task_id, n = attempt["task_id"], attempt["n"]
-        pid, pgid = attempt["pid"], attempt["pgid"]
-        alive = pgid is not None and sp.group_alive(pgid)
-        leader_ok = bool(pid and attempt["proc_identity"] and sp.pid_alive(pid) and sp.process_identity(pid) == attempt["proc_identity"])
-        if alive:
-            if terminate and leader_ok:
-                if not sp.terminate_group(pgid, grace=self.settings.grace):
-                    return RecoveryAction(task_id, n, "alive", f"process group {pgid} did not stop")
-                alive = False
-            else:
-                with self.store.tx():
-                    task = self.store.get_task(task_id)
-                    if task and T(task["status"]) in ACTIVE:
-                        self.store.set_status(task_id, T.RECOVERY_REQUIRED, attempt_n=n,
-                                              reason="its Kernel is gone but the Worker process is still running; no second writer will start")
-                    self.store.add_event("RECOVERY_ALIVE", task_id=task_id, attempt_n=n, reason="orphaned process still alive",
-                                         data={"pid": pid, "pgid": pgid, "leader_verified": leader_ok})
-                how = (f"the leader is verified; run `par task recover {task_id} --terminate`" if leader_ok
-                       else f"the leader is gone and the rest cannot be verified: check `ps -g {pgid}`")
-                return RecoveryAction(task_id, n, "alive", f"process group {pgid} is still running; {how}")
-        task = self._require(task_id)
-        contract = self._contract_of(task)
-        project = self.projects.get(task["project_id"])
-        route = attempt["config"]["route"]
-        capture = None
-        if attempt["workspace_path"] and project is not None and Path(attempt["workspace_path"]).is_dir():
-            capture = self.runner.capture_orphan(task, attempt, contract, project)
-        outcome = self.runner.orphan_outcome(task, attempt, contract, route, capture,
-                                             "terminated by recovery" if terminate and pgid else "its Kernel disappeared")
-        private_dirs(self.runner.attempt_dir(task_id, n), self.data_dir)          # (a crash can come before the folder exists)
-        write_private(self.runner.attempt_dir(task_id, n) / "result.json", json.dumps(outcome.envelope, indent=2, sort_keys=True, ensure_ascii=False))
-        with self.store.tx():
-            fresh = self.store.get_attempt(task_id, n)
-            if fresh is None or fresh["state"] == "ENDED":
-                return RecoveryAction(task_id, n, "skipped", "it was settled by someone else meanwhile")
-            task = self._require(task_id)
-            self.store.end_attempt(task_id, n, end_kind="ORPHANED", failure_class=None, stage="recovery", result=outcome.envelope)
-            self.store.release_lock(task["project_id"], task_id)
-            self.store.add_event("ATTEMPT_ENDED", task_id=task_id, attempt_n=n, reason=outcome.reason,
-                                 data={"end_kind": "ORPHANED", "pid": pid, "pgid": pgid, "partial_work": bool(outcome.partial)})
-            status = T(task["status"])
-            if status == T.CANCEL_REQUESTED:
-                self.store.set_status(task_id, T.CANCELED, attempt_n=n, reason="canceled; the Worker's Kernel was already gone")
-            elif status in ACTIVE:
-                self.store.set_status(task_id, T.RECOVERY_REQUIRED, attempt_n=n,
-                                      reason="its Kernel disappeared mid-attempt; partial work (if any) was captured - review it, then retry or cancel")
-        self._drop_scratch(task_id, n)
-        return RecoveryAction(task_id, n, "terminated" if terminate and pgid else "orphaned", outcome.reason)
-
-    # ------------------------------------------------------------------------------------------------------
-    # reading
-    def next_actions(self, task: "dict[str, Any]") -> "list[str]":
-        status = T(task["status"])
-        actions = list(NEXT_ACTIONS[status])
-        pending = self._pending(task["task_id"])
-        if pending:
-            actions = [a for a in actions if a not in ("approve", "reject")] + ["approve", "reject"]
-        else:
-            actions = [a for a in actions if a != "approve"]
-            if status != T.REVIEW_REQUIRED:
-                actions = [a for a in actions if a != "reject"]
-        if status == T.REVIEW_REQUIRED and self.accept_blockers(task["task_id"]):
-            actions = [a for a in actions if a != "accept"]
-        if status == T.PERMISSION_WAIT and self._retryable(task["task_id"], status):
-            actions.insert(len(actions) - 1, "retry")                   # before "cancel"
-        return actions
-
-    def describe(self, task_id: str) -> "dict[str, Any]":
-        task = self._require(task_id)
-        attempts = []
-        for a in self.store.attempts(task_id):
-            attempts.append({k: a[k] for k in ("n", "worker_id", "provider_id", "model_requested", "state", "end_kind", "failure_class",
-                                               "stage", "started_at", "ended_at", "exit_code", "signal", "timeout_kind", "pid", "pgid",
-                                               "artifact_dir", "workspace_path")})
-        contract = task["contract"]
-        deps = [{"task_id": d, "status": (self.store.get_task(d) or {}).get("status", "missing")} for d in contract.get("dependencies", [])]
-        pending = self._pending(task_id)
-        return {
-            "task_id": task_id, "project_id": task["project_id"], "title": task["title"], "risk": task["risk_tier"],
-            "role": task["role"], "worker_requested": task["requested_worker"], "pinned_worker": task["pinned_worker"],
-            "status": task["status"], "version": task["version"], "created_at": task["created_at"], "updated_at": task["updated_at"],
-            "attempt_count": task["attempt_count"], "retry_budget": task["retry_budget"], "switch_budget": task["switch_budget"],
-            "not_before": task["not_before"], "last_failure": task["last_failure"], "cancel_requested": bool(task["cancel_requested"]),
-            "ad_hoc": bool(task["ad_hoc"]), "submitted_by": task["submitted_by"], "base": task["base"],
-            "attempts": attempts, "pending_approvals": [{"id": a["id"], "kind": a["kind"], "payload": a["payload"],
-                                                          "requested_at": a["requested_at"]} for a in pending],
-            "derived_state": derived_state(task["status"], tuple(a["kind"] for a in pending)),
-            "next_actions": self.next_actions(task), "dependencies": deps, "lock": self.store.get_lock(task["project_id"]),
-            "config_digest": task["profile"].get("digest"), "waiting_for": self._dependency_problem(task),
-        }
-
-    def list_tasks(self, status: "str | None" = None, project_id: "str | None" = None) -> "list[dict[str, Any]]":
-        return [{"task_id": t["task_id"], "project_id": t["project_id"], "title": t["title"], "risk": t["risk_tier"],
-                 "status": t["status"], "attempts": t["attempt_count"], "updated_at": t["updated_at"]}
-                for t in self.store.list_tasks(status, project_id)]
-
-    def events(self, task_id: "str | None" = None, after_id: int = 0, limit: "int | None" = None) -> "list[dict[str, Any]]":
-        if task_id is not None:
-            self._require(task_id)
-        return self.store.events(task_id, after_id, limit)
-
-    def result(self, task_id: str, attempt: "int | None" = None) -> "dict[str, Any] | None":
-        self._require(task_id)
-        attempts = self.store.attempts(task_id)
-        if attempt is not None:
-            attempts = [a for a in attempts if a["n"] == attempt]
-        return attempts[-1]["result"] if attempts else None
-
-    def evidence(self, task_id: str, attempt: "int | None" = None) -> "dict[str, Any]":
-        """The layered view of one result (Kernel measurements vs the Worker's claim vs review/integration).
-
-        Derived on read: no new column, no schema bump, and an old envelope without the newer sections comes back
-        as UNKNOWN/NOT_RUN rather than PASS."""
-        task = self._require(task_id)
-        contract = self._contract_of(task)
-        attempts = self.store.attempts(task_id)
-        chosen = attempt if attempt is not None else (attempts[-1]["n"] if attempts else None)
-        changed: "list[str] | None" = None
-        if chosen is not None:
-            try:
-                doc = json.loads((self.runner.attempt_dir(task_id, chosen) / "changes.json").read_text(encoding="utf-8"))
-                allowed = doc.get("allowed")
-                if isinstance(allowed, list):
-                    changed = [str(c["path"]) for c in allowed if isinstance(c, Mapping) and isinstance(c.get("path"), str)]
-            except (OSError, ValueError, TypeError):
-                changed = None
-        return R.evidence_summary(self.result(task_id, attempt), contract_checks=contract.checks, changed_paths=changed,
-                                  worker_can_edit_checks=contract.writes, review=self._review_state(task_id, chosen),
-                                  status=task["status"], integration=self._integration_state(task_id))
-
-    def _integration_state(self, task_id: str) -> str:
-        """How far this task's result has travelled: a verified candidate, only a failed one, or nowhere yet."""
-        project_id = self._require(task_id)["project_id"]
-        rows = [c for c in self.store.list_candidates(project_id) if task_id in c.get("requested", [])]
-        if any(c["status"] == "VERIFIED" for c in rows):
-            return "CANDIDATE_READY"
-        return "CANDIDATE_FAILED" if rows else "NOT_INTEGRATED"
-
-    def _review_state(self, task_id: str, attempt: "int | None") -> str:
-        """Who, if anyone, decided on this attempt's result: the accept decision or a result rejection, latest wins."""
-        decisions: "list[tuple[str, str]]" = []
-        for a in self.store.approvals(task_id):
-            payload = a.get("payload") if isinstance(a.get("payload"), Mapping) else {}
-            if (a.get("kind") == "ACCEPT_RESULT" and a.get("status") in ("APPROVED", "REJECTED")
-                    and payload.get("attempt") == attempt):
-                decisions.append((str(a.get("decided_at") or ""), str(a.get("decided_by") or "")))
-        for e in self.store.events(task_id):
-            if e["type"] == "RESULT_REJECTED" and (attempt is None or e.get("attempt") in (None, attempt)):
-                who = e.get("data", {}).get("by") if isinstance(e.get("data"), Mapping) else None
-                decisions.append((str(e.get("ts") or ""), str(who or "")))
-        if not decisions:
-            return "NOT_REVIEWED"
-        who = max(decisions)[1]
-        return "HUMAN_REVIEW" if who == "user" else "COORDINATOR_REVIEW" if who == "coordinator" else "UNKNOWN"
-
-    def diff(self, task_id: str, attempt: "int | None" = None) -> "bytes | None":
-        self._require(task_id)
-        attempts = self.store.attempts(task_id)
-        if attempt is not None:
-            attempts = [a for a in attempts if a["n"] == attempt]
-        if not attempts:
-            return None
-        patch = self.runner.attempt_dir(task_id, attempts[-1]["n"]) / "work.patch"
-        return patch.read_bytes() if patch.is_file() and not patch.is_symlink() else None
-
-    def attempt_prompt(self, task_id: str, attempt: "int | None" = None) -> "str | None":
-        self._require(task_id)
-        attempts = self.store.attempts(task_id)
-        if attempt is not None:
-            attempts = [a for a in attempts if a["n"] == attempt]
-        if not attempts:
-            return None
-        prompt = self.runner.attempt_dir(task_id, attempts[-1]["n"]) / "prompt.txt"
-        return prompt.read_text(encoding="utf-8") if prompt.is_file() and not prompt.is_symlink() else None
-
-    # ------------------------------------------------------------------------------------------------------
-    # health overview (why can't my tasks run?)
-    def health_report(self) -> "dict[str, Any]":
-        from par.core.router import evaluate
-        snapshot = config_snapshot(self.config)
-        workers = []
-        for wid in sorted(snapshot["workers"]):
-            w = snapshot["workers"][wid]
-            r1 = evaluate(snapshot, wid, risk="R1", adapters=self.adapters, health=self.health)
-            r2 = evaluate(snapshot, wid, risk="R2", adapters=self.adapters, health=self.health)
-            workers.append({"worker": wid, "provider": w["provider"], "model": w["model"], "capabilities": w["capabilities"],
-                            "usable_read_only": r1.usable, "usable_write": r2.usable,
-                            "reasons": sorted(set(r1.reasons) | set(r2.reasons))})
-        return {"profile": snapshot["profile"], "policy": snapshot["worker_failure_policy"], "config_digest": snapshot["digest"],
-                "roles": snapshot["roles"], "default_worker": snapshot["default_worker"], "workers": workers,
-                "records": self.store.health_rows(), "adapters": self.adapters.ids()}
-
-    def probe_providers(self) -> "list[dict[str, Any]]":
-        """Ask every registered adapter what it can see about itself. Adapters probe offline: no model is called, no quota is used."""
-        out: "list[dict[str, Any]]" = []
-        for pid in self.adapters.ids():
-            try:
-                res = self.adapters.create(pid).probe()
-                out.append({"provider": pid, "status": res.status.value, "detail": res.detail, "version": res.version,
-                            "executable": res.executable, "facts": dict(res.facts)})
-            except Exception as exc:                          # a broken adapter must not break the report
-                out.append({"provider": pid, "status": "UNHEALTHY", "detail": f"the probe itself failed ({type(exc).__name__})",
-                            "version": None, "executable": None, "facts": {}})
-        return out
-
-    def clear_health(self, provider_id: str, model: "str | None" = None) -> int:
-        with self.store.tx():
-            return self.health.clear(provider_id, model)

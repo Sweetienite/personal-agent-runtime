@@ -33,9 +33,11 @@ INTEGRATION_MODE = "candidate-v1"
 class CandidateMixin:
     """Methods of :class:`par.core.kernel.Kernel` (kept apart: the Kernel is long enough)."""
 
-    def candidate_create(self, task_ids: "Iterable[str]", *, note: str = "") -> "dict[str, Any]":
+    def candidate_create(self, task_ids: "Iterable[str]", *, note: str = "", actor: "str | None" = None) -> "dict[str, Any]":
         """Apply accepted tasks' own patches to one clean baseline, run their checks, and record the outcome."""
         from par.core.kernel import Refused
+        if actor is not None:
+            self._current_coordinator(actor, action="create a candidate")          # building a candidate runs repository checks
         ids = list(task_ids)
         if not ids or any(not isinstance(t, str) for t in ids):
             raise Refused("no_tasks", "name at least one accepted task to integrate (repeat --task)")
@@ -107,12 +109,12 @@ class CandidateMixin:
             commit_sha = self._candidate_head(repo)
             return self._record_candidate(candidate_id, project_id, base_commit, commit_sha, "FAILED", applied, checks,
                                           artifact_dir, [t["task_id"] for t in ordered],
-                                          reason or "the candidate could not be built")
+                                          reason or "the candidate could not be built", actor=actor)
         bad = [c for c in checks if c["status"] != "PASS"]
         status = "FAILED" if bad else "VERIFIED"
         reason = ("check(s) did not pass: " + ", ".join(sorted({c['name'] for c in bad}))[:300]) if bad else ""
         return self._record_candidate(candidate_id, project_id, base_commit, self._candidate_head(repo), status, applied,
-                                      checks, artifact_dir, [t["task_id"] for t in ordered], reason)
+                                      checks, artifact_dir, [t["task_id"] for t in ordered], reason, actor=actor)
 
     def candidate_show(self, candidate_id: str) -> "dict[str, Any]":
         from par.core.kernel import Refused
@@ -257,7 +259,7 @@ class CandidateMixin:
 
     def _record_candidate(self, candidate_id: str, project_id: str, base_commit: str, commit_sha: "Optional[str]",
                           status: str, tasks: "list[dict[str, Any]]", checks: "list[dict[str, Any]]",
-                          artifact_dir: Path, requested: "list[str]", reason: str) -> "dict[str, Any]":
+                          artifact_dir: Path, requested: "list[str]", reason: str, *, actor: "str | None" = None) -> "dict[str, Any]":
         with self.store.tx():
             self.store.insert_candidate(candidate_id=candidate_id, project_id=project_id, base_commit=base_commit,
                                         commit_sha=commit_sha, status=status, tasks=tasks, checks=checks,
@@ -265,7 +267,7 @@ class CandidateMixin:
             self.store.add_event("CANDIDATE_" + status, task_id=None, attempt_n=None,
                                  reason=reason or f"{len(tasks)} task(s) integrated on {base_commit[:12]}",
                                  data={"candidate_id": candidate_id, "project": project_id, "base_commit": base_commit,
-                                       "commit": commit_sha, "tasks": requested,
+                                       "commit": commit_sha, "tasks": requested, "actor": actor,
                                        "applied_to_real_project": False})
         return self.candidate_show(candidate_id)
 
@@ -299,9 +301,11 @@ class CandidateMixin:
             return f"this task is not based on candidate {candidate['candidate_id']}'s commit; rebase it"
         return None
 
-    def task_rebase(self, task_id: str, candidate_id: str, *, note: str = "") -> "dict[str, Any]":
+    def task_rebase(self, task_id: str, candidate_id: str, *, note: str = "", actor: "str | None" = None) -> "dict[str, Any]":
         """Point a queued task at a verified candidate before it has ever run. Never touches an attempt's evidence."""
         from par.core.kernel import NotAllowed, Refused
+        if actor is not None:
+            self._current_coordinator(actor, action="rebase a task")
         task = self._require(task_id)
         if T(task["status"]) not in (T.QUEUED, T.PAUSED):
             raise NotAllowed("not_rebasable", f"{task_id} is {task['status']}; only a queued or paused task can be rebased")

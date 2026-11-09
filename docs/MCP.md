@@ -1,6 +1,6 @@
 # MCP 桥（P5）：让任何支持 MCP 的主控（Claude、Codex……）把任务交给 Kernel
 
-本文说明 `par mcp serve` 是什么、它提供哪十七个工具、它永远不能做什么，以及你如何**手工**把它加入 Claude Desktop 并验证。规则来源是 [docs/KERNEL.md](KERNEL.md) 与 `docs/specs/MCP_BRIDGE_SPEC.md`。
+本文说明 `par mcp serve` 是什么、它提供哪二十一个工具、它永远不能做什么，以及你如何**手工**把它加入 Claude Desktop 并验证。规则来源是 [docs/KERNEL.md](KERNEL.md) 与 `docs/specs/MCP_BRIDGE_SPEC.md`。
 
 > **2026-10-20 变更**：`approve_task`、`reject_task`、`accept_task`、`close_task` 四个工具加入桥——批
 > 准/拒绝一项权限请求、验收/关闭一个结果，不再是只有你能做的事，协调者现在可以自己决定。每一次决定
@@ -11,7 +11,13 @@
 > **2026-11-03 新增**：`get_task_diff`——此前协调者审阅一个结果只能看到 `diff_stat`（文件数/行数）和检
 > 查结果，从没有工具能把 diff 的实际内容交给它；没配 `acceptance.checks` 的写任务因此被 Kernel 直接
 > 挡住了 `accept_task`（见下表），这个工具就是补上那个缺口——给协调者一份脱敏、限长的真实 diff，自己
-> 读完告诉你怎么样，但接受与否仍然只能是你本人在终端做的事。
+> 读完告诉你怎么样；是否接受仍走 Kernel 的验收闸门，并按 `approval_mode` 决定由谁按下（见下方 2026-11-09 说明）。
+>
+> **2026-11-09 审批模式**：四个决策工具仍在桥里，但 Kernel 会按 profile 的 `approval_mode` 决定是否接受：默认
+> `coordinator_autonomous`（主控可自行决定，台账记录主控 id、模式与 grant）；`coordinator_scoped` 需要人在 CLI 用
+> `par coordinator grant` 创建带项目/风险/审批类型/到期时间的 grant；`human_only` 一律拒绝。`get_task_status` 与
+> `review_task` 因此增加了 `decisions` 字段（当前模式与本主控可用的动作），`agent_next` 也只列出真正可用的决策工具。
+> 桥没有任何创建/撤销 grant 的工具：主控不能给自己授权。
 >
 > **2026-11 证据分层**：`get_task_result` 与 `review_task` 增加 `evidence_summary`——`level`（`MEASURED`/`MEASURED_WITH_EDITED_CHECKS`/`UNVERIFIED`/`FAILED`/`INCOMPLETE`/`UNKNOWN`）、`boundary.status`、`checks.status`（含 `inputs_edited` 与 `test_files_changed`）、`review`（谁验收/拒绝）、`integration`（默认 `NOT_INTEGRATED`）与 `applied_to_project`（恒 false）。Worker 自述仍只放在 `summary` 里，且 `summary_verified` 永远为 false；主控看到的是同一个短摘要，不重复大段原文。
 >
@@ -23,7 +29,7 @@
 - 它是一个薄层：校验参数，调用 Kernel，返回简短的结果。它不持有任何模型凭据，不复制对话历史，不修改任何配置文件。
 - 它与 `par task …` 命令共用同一个 Kernel、同一本台账、同一套审批规则，所以无论协调者还是你自己在终端里批准/验收，记的都是同一件事。
 
-## 十七个工具
+## 二十一个工具
 
 | 工具 | 作用 | 要点 |
 |---|---|---|
@@ -41,6 +47,9 @@
 | `retry_task`（2026-10-16 新增） | 停下的任务开一次新尝试 | 不带 `force`：遇到还生效的额度/登录/无 Worker 冷却，照样会被 Kernel 挡下或重新要求批准，不会绕过去；写文件的任务默认接着上次已验证的改动继续，`fresh=true` 才从基线重来；`worker` 可以指定换人；和 `run_task` 一样受「被替换的主控不能再启动新工作」这条限制 |
 | `pause_task` / `resume_task`（2026-10-16 新增） | 把一个还没开始跑的任务挪出/挪回排期 | 纯调度状态，不涉及任何权限；`resume_task` 如果这个任务其实还缺一项批准，会落回「等待批准」而不是直接排队 |
 | `recover_task`（2026-10-16 新增） | 结清一个 Kernel 已经消失的 attempt | 绝不会启动第二个写入者；`terminate=true` 时只停掉 Kernel 能用记录的 PID 和启动时间确认身份的那个进程，确认不了就不动；不给 `task_id` 就一次性处理所有孤儿 |
+| `create_candidate`（2026-11-09 新增） | 把已验收 R2 任务的补丁按依赖顺序打到一条干净基线并重跑检查 | 只接受 `ACCEPTED`/`CLOSED` 且带检查的 R2 任务；`VERIFIED` 才可被下游使用；候选仓库在 Kernel 自己的数据目录里，真实项目一个字节都不动；失败留 `FAILED` 记录 |
+| `show_candidate` / `list_candidates`（2026-11-09 新增） | 只读查看一个候选 / 按项目列出候选 | 返回状态、基线、任务、补丁哈希与检查结果；`list_candidates` 可过滤项目与 `limit`，旧的在前 |
+| `rebase_task`（2026-11-09 新增） | 把一个从未运行过的 `QUEUED`/`PAUSED` 任务指向已验证候选的基线 | 已有 attempt 或 hand-off 包的任务会被拒绝；候选必须 `VERIFIED`、同项目、且项目仍停在候选构建时的基线 |
 
 合同的完整字段说明与草案示例见 [COORDINATORS.md](COORDINATORS.md#合同速查主控按需阅读)。
 
@@ -53,7 +62,7 @@
 - 清除 Provider 健康记录、探测 Provider、切换 Profile 或 Provider；
 - 写入任何配置文件，读取任意路径的文件，执行任意命令。
 
-批准/验收（2026-10-20 起）、调度与恢复（重试、暂停、继续、结清孤儿 attempt）都不在这个名单里：Kernel 自己的闸门（该批的权限、能不能确认进程身份）不论是谁调用都一样生效，只是现在协调者自己就能把闸门打开。
+批准/验收（2026-10-20 起）、调度与恢复（重试、暂停、继续、结清孤儿 attempt）都不在这个名单里：Kernel 自己的闸门（该批的权限、能不能确认进程身份）不论是谁调用都一样生效。协调者能否把闸门打开由 `approval_mode` 决定：默认 `coordinator_autonomous` 允许，`coordinator_scoped` 要求人在 CLI 创建的限定 grant，`human_only` 拒绝（详见 [SECURITY.md](SECURITY.md)）。
 
 另外：
 
@@ -89,7 +98,7 @@
 
 ## 如何验证
 
-1. 重新打开 Claude Desktop 后，请协调者调用 `list_tasks`。它应当看到十七个 par 工具；返回值里有 `count` 与 `truncated`。
+1. 重新打开 Claude Desktop 后，请协调者调用 `list_tasks`。它应当看到二十一个 par 工具；返回值里有 `count` 与 `truncated`。
 2. 在终端运行 `.venv/bin/par task list`，应当看到同样的任务。
 3. 请协调者提交一个只读任务（R1）。它会依次调用 `submit_task`、`run_task`，然后用 `get_task_status` 查看进度。运行结束后：
    - `get_task_result` 显示结果，并标明 Worker 文字未经验证；
@@ -101,7 +110,9 @@
 
 ## 同一时刻只有一个主控（主控交接）
 
-桥替一个**有名字的主控**说话（`par mcp serve --coordinator claude_desktop`，默认就是它）。如果你之后用 `par takeover confirm … --as codex_manual_takeover` 把主控交给了别人，这个桥再 `submit_task` 或 `run_task` 会被拒绝（`not_the_coordinator`），避免两个主控同时向同一本台账调度；查看和取消不受限制（停下来永远是安全的）。新的主控用 `--coordinator codex_manual_takeover` 启动自己的桥。详见 [HANDOFF.md](HANDOFF.md) 的“主控交接”。
+桥替一个**有名字的主控**说话（`par mcp serve --coordinator claude_desktop`，默认就是它）。如果你之后用 `par coordinator use codex`（或 `par takeover confirm … --as codex_manual_takeover`）把主控交给了别人，这个桥再 `submit_task`、`run_task`、`retry_task`、`resume_task`、`recover_task(terminate=true)`、`create_candidate`、`rebase_task` 都会在 Kernel 里被拒绝（`not_the_coordinator`），四个决策工具（`approve_task`/`reject_task`/`accept_task`/`close_task`）也一样——`coordinator_autonomous` 不是绕过租约的开关。避免两个主控同时向同一本台账调度；查看、`pause_task` 和 `cancel_task` 不受限制（停下来永远是安全的）。新的主控用 `--coordinator codex` 启动自己的桥。详见 [HANDOFF.md](HANDOFF.md) 的“主控交接”。
+
+租约由 Kernel 判定，不是桥的 UI 限制：每次决策在同一个数据库事务内会再核对一次当前主控、`approval_mode` 与 grant，所以“先核验、再撤销/切换、再落盘”的时序不会留下成功记录。未知主控 id 一律拒绝。
 
 ## 运行时的几个事实
 
@@ -112,7 +123,7 @@
 
 ## 已知限制
 
-- 桥只在测试中用模拟的协调者验证了协议；尚未与真实的 Claude Desktop 联调。这一步需要你在本机按上面的步骤手工确认。
+- 2026-10-16 已在真实 Claude Desktop 与 Codex 中各调用过一次 `list_tasks`（只读，返回真实任务；见 [V1 验收附录](reports/V1_ACCEPTANCE_REPORT_20261016.md)）。**真实客户端里的提交/批准/验收路径仍未联调**，这些工具由脚本化 MCP 测试覆盖；厂商版本变化后需要重新确认。
 - `cancel_task` 对「处于 `RECOVERY_REQUIRED`」的任务，沿用 Kernel 的取消行为：若找到已失去主人的 Worker 进程组且能确认领头进程，会把它停止。这与 `par task cancel` 完全相同，但它是协调者可以触发的动作，请留意。
 - `recover_task` 的 `terminate=true` 同理：只停 Kernel 能确认身份的进程，这与 `par task recover --terminate` 完全相同，现在协调者也能直接触发。
 - Claude Desktop 启动服务器时不在任何特定目录：`par mcp config` 打印的片段里带着 `env.PYTHONPATH`（指向 `par` 所在目录），不要删掉它，除非你已经把 `par` 安装进那个 Python。

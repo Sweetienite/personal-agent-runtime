@@ -8,6 +8,7 @@ from par.core.router import AUTOMATIC_KINDS, config_snapshot, evaluate, route
 from par.core.store import Store
 from par.providers.base import Capabilities, ProviderAdapter, Tri
 from par.providers.fake import ScenarioSequence, ScriptedProvider, scenarios
+from par.providers.manifests import AUTOMATIC_KINDS as MANIFEST_KINDS, BUILTIN_MANIFESTS, manifest_for
 from par.providers.registry import AdapterRegistry, NoAdapter, default_registry
 from tests.world import sample_config
 
@@ -51,6 +52,29 @@ class Registry(unittest.TestCase):
         for bad in ("Codex", "", "a b", "1x", "../x"):
             with self.assertRaises(ValueError, msg=bad):
                 reg.register(bad, lambda: None)
+
+    def test_the_automatic_kinds_come_from_one_manifest_table(self):
+        self.assertEqual(AUTOMATIC_KINDS, MANIFEST_KINDS)
+        self.assertEqual(MANIFEST_KINDS, frozenset({"codex", "antigravity"}))
+        for kind, manifest in BUILTIN_MANIFESTS.items():
+            self.assertEqual(manifest.kind, kind)
+            self.assertTrue(manifest.automatic)
+            self.assertTrue(manifest.platforms and manifest.auth_mode and manifest.version_bound)
+            self.assertIsNotNone(manifest.capabilities)
+        for not_automatic in ("manual_handoff", "claude_host", "gemini_legacy", "no_such_kind"):
+            self.assertIsNone(manifest_for(not_automatic))
+
+    def test_a_registered_manifest_is_carried_with_the_provider(self):
+        reg = AdapterRegistry()
+        manifest = BUILTIN_MANIFESTS["codex"]
+        reg.register("codex", ScenarioSequence(scenarios.success()).factory("codex"),
+                     capabilities=manifest.capabilities, manifest=manifest)
+        self.assertIs(reg.manifest("codex"), manifest)
+        self.assertEqual(reg.capabilities("codex"), manifest.capabilities)
+        with self.assertRaises(NoAdapter):
+            reg.manifest("missing")
+        plain = registry("codex")
+        self.assertIsNone(plain.manifest("codex"))
 
     def test_scenario_sequence_hands_out_in_order_and_repeats_the_last(self):
         seq = ScenarioSequence(scenarios.rate_limited(), scenarios.success())

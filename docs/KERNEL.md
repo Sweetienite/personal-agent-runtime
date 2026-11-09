@@ -134,7 +134,7 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 - `pause`：只用于没在运行的任务；运行中的只能 `cancel`。
 - `retry`：永远是**新 attempt**。写文件的任务（R2）若上一次尝试以失败/中断/孤儿结束并留下了通过边界检查的补丁，新 attempt **接着它继续**（接力，plan 6.2；只带 Kernel 量到的事实，不带上一个 Worker 的话；见 [HANDOFF.md](HANDOFF.md)）；被你拒绝、取消或已完成的尝试不会被接力；`--fresh` 从基线重来。采用当前配置、重置预算；`--worker` 指定 Worker（你的显式选择）；`--force` 清除该 Provider 的健康记录；撤回过期的换 Worker 提议；如果任务需要的权限从未被批准（例如在等待批准时被取消），会**重新要求批准**，不会借 `retry` 绕过。
 - `approve`：有多项待批时必须用 `--id` 逐项指定，不存在「全部批准」。`reject`：写权限、Worker 指定、漂移、被拒后重试 → 取消任务；`REVIEW_REQUIRED` 时 `reject` 是拒绝结果（→ `FAILED`）。
-- 所有批准都走 Kernel 自己的闸门。MCP 桥自 2026-10-20 起也暴露 `approve_task` `reject_task` `accept_task` `close_task`，各自只调用 `Kernel.approve`/`reject`/`accept`/`close_task`，固定传 `by="coordinator"`，谁决定的永远可查；`clear_health`/`probe_providers`/配置写入依然完全不在桥里。提交者固定为 `coordinator`；一旦人确认了主控交接（`par takeover confirm`），被替换的主控再用桥提交任务或启动运行（含 `retry_task`）会被拒绝（`not_the_coordinator`）。
+- 所有批准都走 Kernel 自己的闸门。MCP 桥自 2026-10-20 起也暴露 `approve_task` `reject_task` `accept_task` `close_task`，各自只调用 `Kernel.approve`/`reject`/`accept`/`close_task`，固定传 `by="coordinator"` 并带上主控 id，谁决定的永远可查；能否决定由 profile 的 `approval_mode` 约束（默认 `coordinator_autonomous`，可设 `coordinator_scoped`/`human_only`），`coordinator_scoped` 还要求人在 CLI 创建的限定 grant。`clear_health`/`probe_providers`/配置写入依然完全不在桥里。提交者固定为 `coordinator`；一旦人确认了主控交接（`par takeover confirm`），被替换的主控再用桥提交任务或启动运行（含 `retry_task`）会被拒绝（`not_the_coordinator`）。
 
 ## 崩溃恢复
 

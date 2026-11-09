@@ -20,6 +20,9 @@ default_worker = "codex_light"
 max_parallel_workers = 1                         # 1 (default) or 2 attempts at once; the same project is never worked on twice at once
 worker_failure_policy = "ask"                    # ask | pause | safe_auto
 additional_paid_credits = false                  # V1 forbids anything else
+approval_mode = "coordinator_autonomous"         # coordinator_autonomous (default: the coordinator may decide, recorded) |
+                                                 # coordinator_scoped (a person-created grant with project/risk/kind/expiry) |
+                                                 # human_only (only a person decides)
 
 [profiles.claude_main.roles.code]
 primary = "codex_light"

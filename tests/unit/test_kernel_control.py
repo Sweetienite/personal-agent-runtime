@@ -60,19 +60,28 @@ class Cancelling(KernelWorld):
         self.run_task(tid)
         self.assertEqual(self.kernel.cancel(tid)["status"], "CANCELED")
 
+    def wait_for_worker_output(self, task_id, text, timeout=15):
+        log = self.attempt_dir(task_id) / "stdout.log"
+        self.assertTrue(self.wait_for(lambda: log.is_file() and text in log.read_text(errors="replace"), timeout),
+                        f"the scripted worker never printed {text!r}")
+
     def test_cancel_stops_a_running_worker_politely(self):
         using(self, codex=[scenarios.cancellable(60)])
         tid = self.queued(r1_contract())
         other = self.new_kernel()                                                          # "another terminal": a different Kernel
         t = self.in_thread(lambda: self.kernel.run(tid))
         self.assertTrue(self.wait_for(lambda: other.describe(tid)["status"] == "RUNNING"))
+        self.wait_for_worker_output(tid, "working")                                         # its SIGTERM handler is installed by now
         t0 = time.monotonic()
         self.assertEqual(other.cancel(tid, reason="stop")["status"], "CANCEL_REQUESTED")
         t.join(20)
         self.assertEqual(t.box["value"].status, "CANCELED")
         self.assertLess(time.monotonic() - t0, 15)                                          # it did not wait for the 60 s worker
         att = other.store.get_attempt(tid, 1)
-        self.assertEqual((att["end_kind"], att["exit_code"], att["state"]), ("CANCELED", 130, "ENDED"))
+        self.assertEqual((att["end_kind"], att["state"]), ("CANCELED", "ENDED"))
+        # The adapter asks Codex to cancel with SIGINT. A Python script that has not installed its handler yet dies
+        # by that signal instead of exiting 130; both are the same polite stop, and the Kernel invariant is CANCELED.
+        self.assertIn((att["exit_code"], att["signal"]), ((130, None), (None, signal.SIGINT)))
         self.assertEqual(self.statuses(tid)[-3:], ["RUNNING", "CANCEL_REQUESTED", "CANCELED"])
         self.assertEqual(other.store.locks(), [])
         self.assertEqual(self.result(tid)["outcome"], "canceled")
@@ -83,6 +92,7 @@ class Cancelling(KernelWorld):
         other = self.new_kernel()
         t = self.in_thread(lambda: self.kernel.run(tid))
         self.assertTrue(self.wait_for(lambda: other.describe(tid)["status"] == "RUNNING"))
+        self.wait_for_worker_output(tid, "working")                                         # it has executed ignore_sigterm
         pgid = other.store.get_attempt(tid, 1)["pgid"]
         other.cancel(tid)
         t.join(20)

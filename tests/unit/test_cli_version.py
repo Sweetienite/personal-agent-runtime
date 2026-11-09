@@ -34,6 +34,9 @@ class VersionTests(unittest.TestCase):
         self.assertEqual(data["name"], "par")
         self.assertEqual(data["version"], par.__version__)
         self.assertEqual(data["phase"], par.PHASE)
+        self.assertEqual(data["release_status"], par.RELEASE_STATUS)
+        self.assertIn("released 2026-11-09", data["release_status"])
+        self.assertIn("P3 gate partial", data["release_status"])
 
     def test_phase_matches_dev_number(self):
         # 1.0.0.devN <-> phase PN, so the two can never drift apart silently; the final release is "1.0.0" / "RELEASE", nothing else.

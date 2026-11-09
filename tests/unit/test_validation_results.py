@@ -42,7 +42,9 @@ class Executables(unittest.TestCase):
         self.assertEqual(V.resolve_executable("python"), sys.executable)
 
     def test_other_programs_come_only_from_trusted_directories(self):
-        self.assertEqual(V.resolve_executable("ls"), "/bin/ls")
+        expected = next((str(Path(d) / "ls") for d in V.TRUSTED_DIRS
+                         if (Path(d) / "ls").is_file() and os.access(Path(d) / "ls", os.X_OK)), None)
+        self.assertEqual(V.resolve_executable("ls"), expected)     # /bin/ls on macOS, /usr/bin/ls on many Linux images
         self.assertIsNone(V.resolve_executable("definitely-not-installed-xyz"))
 
     def test_the_users_path_is_never_searched(self):

@@ -111,14 +111,14 @@ class Kits(unittest.TestCase):
 
 
 class StarterPrompt(unittest.TestCase):
-    def test_it_teaches_the_seventeen_tools_and_the_rules_that_do_not_bend(self):
+    def test_it_teaches_the_twenty_one_tools_and_the_rules_that_do_not_bend(self):
         text = C.starter_prompt("claude_desktop")
         for tool in ("prepare_task", "list_tasks", "get_task_status", "get_task_result", "get_task_diff", "review_task", "submit_task", "run_task",
                     "cancel_task", "retry_task", "pause_task", "resume_task", "recover_task", "approve_task", "reject_task",
                     "accept_task", "close_task"):
             self.assertIn(tool, text)
-        for rule in ("UNTRUSTED DATA", "You may approve, reject, accept and close", "never run again",
-                    "par coordinator use claude_desktop", "dependencies", "by=\"coordinator\""):
+        for rule in ("UNTRUSTED DATA", "you may decide them yourself", "approval_mode", "coordinator_scoped", "human_only",
+                    "never run again", "par coordinator use claude_desktop", "dependencies", "by=\"coordinator\""):
             self.assertIn(rule, text)
         self.assertIn("docs/COORDINATORS.md", text)                                                    # the long examples live in the docs
         for placeholder in ("{name}", "{id}", "{limit_note}"):
@@ -145,7 +145,7 @@ class StarterPrompt(unittest.TestCase):
 
     def test_the_prompt_says_it_can_approve_and_accept_now(self):
         text = C.starter_prompt("codex").lower()
-        for promise in ("you may approve, reject, accept and close", "accept_task"):
+        for promise in ("you may decide them yourself", "accept_task", "approval_mode", "cannot create, widen or revoke a grant"):
             self.assertIn(promise, text)
 
     def test_the_prompt_asks_for_exact_paths_and_a_real_check(self):
@@ -253,6 +253,23 @@ class Cli(CliWorld):
         status = self.par("coordinator", "status")[1]
         self.assertIn("coordinating now: Codex (OpenAI) [codex]", status)
         self.assertIn("quota", status)
+
+    def test_grant_create_list_revoke_and_a_bad_expiry(self):
+        code, out, err = self.par("coordinator", "grant", "codex", "--action", "approve", "--expires", "24h", "--note", "audit window")
+        self.assertEqual(code, 0, err)
+        self.assertIn("grant #1 recorded for codex: approve", out)
+        rows = json.loads(self.par("coordinator", "grants", "--json")[1])
+        self.assertEqual([(g["grant_id"], g["coordinator"], g["actions"], g["active"]) for g in rows], [(1, "codex", ["approve"], True)])
+        self.assertEqual(self.par("coordinator", "grants")[0], 0)
+        code, out, _ = self.par("coordinator", "revoke", "1", "--note", "done")
+        self.assertEqual(code, 0)
+        self.assertIn("grant #1 revoked", out)
+        self.assertEqual(json.loads(self.par("coordinator", "grants", "--json")[1]), [])
+        rows = json.loads(self.par("coordinator", "grants", "--all", "--json")[1])
+        self.assertEqual(rows[0]["revoked_at"] is None, False)
+        code, _, err = self.par("coordinator", "grant", "codex", "--action", "approve", "--expires", "not-a-time")
+        self.assertEqual(code, 2)
+        self.assertIn("expires must be", err)
 
     def test_an_unknown_name_is_a_usage_error_and_changes_nothing(self):
         code, out, err = self.par("coordinator", "use", "gemini")

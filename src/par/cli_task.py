@@ -27,26 +27,25 @@ from par.core.redact import redact_obj, redact_text
 from par.core.states import NEEDS_YOU
 from par.core.store import LedgerError
 from par.paths import inspect_data_dir
-from par.providers.antigravity import AntigravityAdapter, login_plan, remove_keychain_link
-from par.providers.codex import CodexAdapter
+from par.providers.antigravity import login_plan, remove_keychain_link
+from par.providers.manifests import manifest_for
 from par.providers.registry import AdapterRegistry, default_registry
 
 OK_AFTER_RUN = frozenset({"REVIEW_REQUIRED", "QUEUED"})
 
 
 def build_adapters(config: "RuntimeConfig | None" = None) -> AdapterRegistry:
-    """The adapters this install can run: Codex (P3) and Antigravity (P4) for every enabled provider of that kind that names its
+    """The adapters this install can run: every enabled provider whose kind has an adapter manifest and that names its
     executable by absolute path. With no configuration there are none, so nothing external can ever be reached by default.
     The legacy Gemini CLI (`gemini_legacy`) never gets an adapter: it cannot be enabled and is never a fallback."""
     registry = default_registry()
-    factories = {"codex": CodexAdapter, "antigravity": AntigravityAdapter}
     for entry in (config.providers.values() if config is not None else ()):
-        adapter_cls = factories.get(entry.kind)
-        if adapter_cls is not None and entry.enabled and entry.executable:
+        manifest = manifest_for(entry.kind)
+        if manifest is not None and entry.enabled and entry.executable:
             models = tuple(w.model for w in config.workers.values() if w.provider == entry.id)
-            registry.register(entry.id, lambda entry=entry, models=models, adapter_cls=adapter_cls: adapter_cls.from_entry(
+            registry.register(entry.id, lambda entry=entry, models=models, manifest=manifest: manifest.adapter_cls.from_entry(
                 ProviderEntry(entry.id, entry.kind, entry.enabled, os.path.expanduser(entry.executable)), models=models),
-                capabilities=getattr(adapter_cls, "CAPABILITIES", None))
+                capabilities=manifest.capabilities, manifest=manifest)
     return registry
 
 
@@ -248,77 +247,6 @@ def cmd_submit(args):
 
 
 @handled
-def cmd_rebase(args):
-    with session(args) as kernel:
-        d = kernel.task_rebase(args.task, args.candidate, note=args.note or "")
-    if args.json:
-        print(_dump(d))
-    else:
-        base = d.get("base") or {}
-        print(f"{d['task_id']}  {d['status']}  base {str(base.get('commit'))[:12]}  (candidate {base.get('candidate')})")
-        print(f"  runs on the candidate's base; nothing was applied to the real project")
-    return 0
-
-
-@handled
-def cmd_candidate_create(args):
-    with session(args) as kernel:
-        d = kernel.candidate_create(args.task, note=args.note or "")
-    if args.json:
-        print(_dump(d))
-        return 0 if d["status"] == "VERIFIED" else 1
-    print(f"{d['candidate_id']}  {d['status']}  base {d['base_commit'][:12]}  commit {(d.get('commit_sha') or '-')[:12]}")
-    for t in d["tasks"]:
-        print(f"  {t['task_id']}#{t['attempt']}  patch {t['patch_sha256'][:12]}  commit {t['commit'][:12]}")
-    for c in d["checks"]:
-        print(f"  check {c['task_id']} {c['name']}: {c['status']}")
-    if d.get("reason"):
-        print(f"  reason: {clean(d['reason'])}")
-    print(f"  repo: {d['repo']}")
-    print("  nothing was applied to the real project")
-    if d["status"] == "VERIFIED":
-        print(f"  use it: par task submit --contract FILE --candidate {d['candidate_id']}")
-        print(f"          or: par task rebase TASK --candidate {d['candidate_id']}")
-    return 0 if d["status"] == "VERIFIED" else 1
-
-
-@handled
-def cmd_candidate_show(args):
-    with session(args) as kernel:
-        d = kernel.candidate_show(args.candidate)
-    if args.json:
-        print(_dump(d))
-        return 0
-    print(f"{d['candidate_id']}  {d['status']}  project {d['project_id']}")
-    print(f"  base   {d['base_commit']}")
-    print(f"  commit {d.get('commit_sha') or '-'}")
-    print(f"  asked  {', '.join(d.get('requested', [])) or '-'}")
-    for t in d["tasks"]:
-        print(f"  {t['task_id']}#{t['attempt']}  patch {t['patch_sha256'][:12]}  commit {t['commit'][:12]}")
-    for c in d["checks"]:
-        print(f"  check {c['task_id']} {c['name']}: {c['status']}")
-    if d.get("reason"):
-        print(f"  reason: {clean(d['reason'])}")
-    print(f"  repo   {d['repo']}  (never applied to the real project)")
-    return 0
-
-
-@handled
-def cmd_candidate_list(args):
-    with session(args) as kernel:
-        rows = kernel.candidate_list(args.project)
-    if args.json:
-        print(_dump(rows))
-        return 0
-    if not rows:
-        print("no candidates")
-        return 0
-    for d in rows:
-        print(f"{d['candidate_id']:<32} {d['status']:<9} {d['project_id']:<12} base {d['base_commit'][:12]}  {len(d['tasks'])} task(s)")
-    return 0
-
-
-@handled
 def cmd_draft(args):
     try:
         text = _read_contract(args.draft)
@@ -444,61 +372,6 @@ def cmd_run(args):
     return 0 if report.status in OK_AFTER_RUN else 1
 
 
-@handled
-def cmd_handoff(args):
-    with session(args) as kernel:
-        d = kernel.handoff_export(args.task, to=args.to, note=args.note or "")
-    if args.json:
-        print(_dump(d))
-        return 0
-    print(f"{d['task_id']}  hand-off prepared for {d['to']}  mode: {d['mode']}  (the task is now {d['status']})")
-    print(f"  packet folder : {d['folder']}")
-    print(f"  steps (read)  : {d['readme']}")
-    print(f"  prompt (paste): {d['prompt']}")
-    for n, action in enumerate(d["next_actions"], 1):
-        print(f"  {n}. {action}")
-    return 0
-
-
-@handled
-def cmd_import(args):
-    chosen = [x for x in (args.source, args.patch, args.text) if x]
-    if len(chosen) != 1:
-        _error("give exactly one of --from FOLDER, --patch FILE, --text FILE")
-        return 2
-    with session(args) as kernel:
-        report = kernel.handoff_import(args.task, source=Path(args.source).expanduser() if args.source else None,
-                                       patch=Path(args.patch).expanduser() if args.patch else None,
-                                       text=Path(args.text).expanduser() if args.text else None, worker=args.worker, note=args.note or "")
-    if args.json:
-        print(_dump(report.__dict__))
-    else:
-        print(f"{report.task_id}  {report.status}  {report.reason}")
-        if report.status == "REVIEW_REQUIRED":
-            print(f"  review: par task result {report.task_id}   par task diff {report.task_id}   then par task accept {report.task_id}")
-        else:
-            print(f"  see: par task status {report.task_id}")
-    return 0 if report.status in OK_AFTER_RUN else 1
-
-
-@handled
-def cmd_takeover(args):
-    with session(args) as kernel:
-        if args.takeover_command == "export":
-            d = kernel.takeover_export(project_id=args.project)
-            print(_dump(d) if args.json else
-                  f"takeover packet {d['takeover_id']}: {d['tasks']} task(s), {d['finished']} finished, {d['needs_a_decision']} waiting for a decision\n"
-                  f"  read : {d['markdown']}\n  json : {d['json']}\n"
-                  f"  when you have chosen the new coordinator: par takeover confirm {d['takeover_id']} --as codex_manual_takeover")
-        elif args.takeover_command == "confirm":
-            d = kernel.takeover_confirm(args.takeover_id, coordinator=args.coordinator, note=args.note or "")
-            print(_dump(d) if args.json else f"{d['coordinator']} coordinates from now on (was {d['previous']})")
-        else:
-            lease = kernel.coordinator_lease()
-            print(_dump(lease) if args.json else f"coordinator: {lease['coordinator']}" + (f"  (since {lease['since']}, takeover {lease['takeover_id']})" if lease["since"] else "  (as configured)"))
-    return 0
-
-
 def _simple(action: str, doing):
     @handled
     def command(args):
@@ -534,46 +407,6 @@ def cmd_recover(args):
     return 0
 
 
-@handled
-def cmd_health(args):
-    with session(args) as kernel:
-        if getattr(args, "health_command", None) == "clear":
-            n = kernel.clear_health(args.provider, args.model)
-            print(f"cleared {n} health record(s) for {args.provider}" + (f"/{args.model}" if args.model else ""))
-            return 0
-        rep = kernel.health_report()
-        probes = kernel.probe_providers() if getattr(args, "probe", False) else None
-    if probes is not None:
-        rep["probes"] = probes
-    if args.json:
-        print(_dump(rep))
-    else:
-        print(f"profile {rep['profile'] or '(none configured)'}   failure policy: {rep['policy']}   adapters registered: {', '.join(rep['adapters']) or 'none'}")
-        for role, r in rep["roles"].items():
-            print(f"  role {role}: {r['primary']}" + "".join(f" -> {f}" for f in r["fallback"]))
-        for w in rep["workers"]:
-            state = "ready" if w["usable_write"] else ("read-only ready" if w["usable_read_only"] else "NOT READY")
-            print(f"  worker {w['worker']:<14} {w['provider']}/{w['model']:<24} {state}" + (f"  ({'; '.join(w['reasons'])})" if w["reasons"] else ""))
-        for h in rep["records"]:
-            print(f"  health  {h['provider_id']}/{h['model'] or '*'}  {h['status']}  until {h['until'] or 'cleared by you or a success'}")
-        if not rep["workers"]:
-            print("  no workers configured: copy config/profiles.example.toml to <data dir>/config/profiles.toml")
-        for pr in rep.get("probes", []):
-            print(f"  probe   {pr['provider']}: {pr['status']}  {clean(pr['detail'])}" + (f"  (version {pr['version']})" if pr["version"] else ""))
-            iso = (pr["facts"] or {}).get("isolation")
-            if iso:
-                print(f"          extras switched off: {iso['features_disabled']} feature flag(s)"
-                      + (f", MCP server(s) {', '.join(iso['mcp_servers_switched_off'])}" if iso["mcp_servers_switched_off"] else "")
-                      + ("" if iso["verified"] else "  - NOT VERIFIED"))
-                if iso["features_dropped"]:
-                    print(f"          not passed (unknown to this version): {', '.join(iso['features_dropped'])}")
-                for problem in iso["problems"]:
-                    print(f"          problem: {clean(problem)}")
-        if rep.get("probes") == []:
-            print("  probe   no adapter is registered (enable a provider and name its executable in providers.toml)")
-    return 0
-
-
 # --- parser ---------------------------------------------------------------------------------------------------------
 def _common(c: argparse.ArgumentParser, *, json_flag: bool = True) -> None:
     c.add_argument("--data-dir", metavar="PATH", help="data directory (default: the standard one)")
@@ -581,62 +414,15 @@ def _common(c: argparse.ArgumentParser, *, json_flag: bool = True) -> None:
         c.add_argument("--json", action="store_true", help="machine-readable output")
 
 
-@handled
-def cmd_provider_login(args):
-    """Start the vendor CLI's own sign-in, once, in the Runtime's private HOME (see providers/antigravity.py::login_plan)."""
-    cli = _cli()
-    data = cli._data_dir(args)
-    status = inspect_data_dir(data)
-    if not status.usable:
-        why = "; ".join(status.problems) or "it does not exist"
-        raise PolicyViolation(f"the data directory {data} is not ready ({why}); run `par init` first")
-    profiles, providers = data / "config" / "profiles.toml", data / "config" / "providers.toml"
-    loaded = load_config(profiles if profiles.is_file() else None, providers if providers.is_file() else None)
-    if loaded.errors:
-        raise PolicyViolation("configuration: " + "; ".join(f"{i.where}: {i.message}" for i in loaded.errors))
-    entry = loaded.config.providers.get(args.provider)
-    if entry is None or entry.kind != "antigravity":
-        raise PolicyViolation(f"{args.provider!r} is not an antigravity provider in providers.toml (only the Antigravity CLI is signed in this way)")
-    if not entry.enabled or not entry.executable:
-        raise PolicyViolation("enable the provider and name the absolute path of the signed `agy` binary in providers.toml first")
-    adapter = AntigravityAdapter.from_entry(ProviderEntry(entry.id, entry.kind, entry.enabled, os.path.expanduser(entry.executable)))
-    problem = adapter.executable_problem() or adapter.signature_problem()
-    if problem:
-        raise PolicyViolation(problem)
-    plan = login_plan(adapter.executable, data, os.environ, create=not args.print_only)
-    print(f"Sign in to Antigravity (agy) once. It runs in the Runtime's own home, not in your ~/.gemini:\n  home  {plan['home']}\n  start {plan['cwd']}")
-    print("  - the CLI opens your browser: sign in with the Google account that holds your Antigravity plan\n"
-          "  - macOS may ask whether agy may use a keychain item: that is the CLI saving its sign-in\n"
-          "  - when the prompt appears you are signed in; type /exit to leave\n"
-          "  - the Runtime does not see, store or copy anything you type or approve")
-    for note in plan["notes"]:
-        print("  note: " + note)
-    if args.print_only:
-        print("(--print-only: nothing was created or started)")
-        return 0
-    sys.stdout.flush()
-    try:                                                              # a child, not an exec: the keychain link is removed when it has ended
-        try:
-            proc = subprocess.Popen(plan["argv"], env=plan["env"], cwd=plan["cwd"])
-        except OSError as exc:
-            raise PolicyViolation(f"could not start {plan['argv'][0]}: {exc.strerror or exc}") from None
-        while True:
-            try:
-                return int(proc.wait())
-            except KeyboardInterrupt:                                 # Ctrl-C reaches the CLI as well; it decides what to do with it
-                continue
-    finally:
-        remove_keychain_link(Path(plan["home"]))
-
-
 def register(sub) -> None:
+    from par import cli_candidate, cli_handoff, cli_health   # imported late: they import this module's helpers
     p = sub.add_parser("provider", help="one-time provider set-up (sign in)")
     actions = p.add_subparsers(dest="provider_command", required=True, metavar="ACTION")
     c = actions.add_parser("login", help="sign in to the Antigravity CLI once, in a Runtime-owned home (never touches ~/.gemini)")
     c.add_argument("provider", nargs="?", default="antigravity", help="provider id in providers.toml (default: antigravity)")
     c.add_argument("--print-only", action="store_true", help="show what would run; create nothing and start nothing")
     c.add_argument("--data-dir", metavar="PATH")
-    c.set_defaults(func=cmd_provider_login)
+    c.set_defaults(func=cli_health.cmd_provider_login)
 
     p = sub.add_parser("candidate", help="integrate accepted patches on one verified baseline (a preview; never applied to the project)")
     actions = p.add_subparsers(dest="candidate_command", required=True, metavar="ACTION")
@@ -644,15 +430,15 @@ def register(sub) -> None:
     c.add_argument("--task", action="append", required=True, metavar="TASK", help="an accepted R2 task (repeat for A, then B)")
     c.add_argument("--note", metavar="TEXT")
     _common(c)
-    c.set_defaults(func=cmd_candidate_create)
+    c.set_defaults(func=cli_candidate.cmd_candidate_create)
     c = actions.add_parser("show", help="one candidate: its base, commit, tasks, patches and checks")
     c.add_argument("candidate")
     _common(c)
-    c.set_defaults(func=cmd_candidate_show)
+    c.set_defaults(func=cli_candidate.cmd_candidate_show)
     c = actions.add_parser("list", help="candidates, oldest first")
     c.add_argument("--project")
     _common(c)
-    c.set_defaults(func=cmd_candidate_list)
+    c.set_defaults(func=cli_candidate.cmd_candidate_list)
 
     p = sub.add_parser("task", help="submit, run, review and control tasks (the Kernel's work queue)")
     actions = p.add_subparsers(dest="task_command", required=True, metavar="ACTION")
@@ -673,7 +459,7 @@ def register(sub) -> None:
     c.add_argument("--candidate", required=True, metavar="ID")
     c.add_argument("--note", metavar="TEXT")
     _common(c)
-    c.set_defaults(func=cmd_rebase)
+    c.set_defaults(func=cli_candidate.cmd_rebase)
 
     c = actions.add_parser("draft", help="compile a short draft into a strict contract (prints it; submits nothing)")
     c.add_argument("--draft", required=True, metavar="FILE", help="draft JSON file, or - for standard input")
@@ -724,7 +510,7 @@ def register(sub) -> None:
     c.add_argument("--to", default="manual", metavar="APP", help="the application's name, e.g. workbuddy or trae (default: manual)")
     c.add_argument("--note", metavar="TEXT", help="a note for the packet's README")
     _common(c)
-    c.set_defaults(func=cmd_handoff)
+    c.set_defaults(func=cli_handoff.cmd_handoff)
 
     c = actions.add_parser("import", help="take in the result a person brought back from a hand-off and verify it like any Worker's output")
     c.add_argument("task")
@@ -734,7 +520,7 @@ def register(sub) -> None:
     c.add_argument("--worker", metavar="APP", help="which application produced it (default: the one the hand-off named)")
     c.add_argument("--note", metavar="TEXT")
     _common(c)
-    c.set_defaults(func=cmd_import)
+    c.set_defaults(func=cli_handoff.cmd_import)
 
     for name, helptext, func in (("cancel", "cancel a task (stops a running Worker)", cmd_cancel),
                                  ("approve", "grant a pending permission or confirmation", cmd_approve),
@@ -771,25 +557,25 @@ def register(sub) -> None:
     c = tactions.add_parser("export", help="write a takeover packet: the task tree and facts, no conversation, no worker text")
     c.add_argument("--project", metavar="ID", help="only this project")
     _common(c)
-    c.set_defaults(func=cmd_takeover)
+    c.set_defaults(func=cli_handoff.cmd_takeover)
     c = tactions.add_parser("confirm", help="record who coordinates from now on (the newest packet only)")
     c.add_argument("takeover_id")
     c.add_argument("--as", dest="coordinator", required=True, metavar="NAME", help="claude_desktop or codex_manual_takeover")
     c.add_argument("--note", metavar="TEXT")
     _common(c)
-    c.set_defaults(func=cmd_takeover)
+    c.set_defaults(func=cli_handoff.cmd_takeover)
     c = tactions.add_parser("status", help="who coordinates now")
     _common(c)
-    c.set_defaults(func=cmd_takeover)
+    c.set_defaults(func=cli_handoff.cmd_takeover)
 
     p = sub.add_parser("health", help="which workers can run right now, and what the Kernel has seen go wrong")
     p.add_argument("--json", action="store_true")
     p.add_argument("--probe", action="store_true", help="also ask each registered adapter about itself (no model is called and no quota is spent)")
     p.add_argument("--data-dir", metavar="PATH")
-    p.set_defaults(func=cmd_health, health_command=None)
+    p.set_defaults(func=cli_health.cmd_health, health_command=None)
     hactions = p.add_subparsers(dest="health_command", metavar="ACTION")
     c = hactions.add_parser("clear", help="forget a health record (for example after you signed in again)")
     c.add_argument("provider")
     c.add_argument("--model")
     c.add_argument("--data-dir", metavar="PATH")
-    c.set_defaults(func=cmd_health)
+    c.set_defaults(func=cli_health.cmd_health)

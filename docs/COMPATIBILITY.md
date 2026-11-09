@@ -1,8 +1,22 @@
-# 兼容性证据矩阵（2026-11-06，2026-11-07 更新，P3/T13）
+# 兼容性证据矩阵（2026-11-06，2026-11-07 更新，2026-11-09 口径修订，P3/T13）
 
+> **2026-11-09：P3 Gate 正式修订。** 正式自动执行范围收口为 **Codex（`GREEN`，仅该版本/OS/账号组合）+ 人工交接**；
+> T14「新增一个正式自动 Provider」标记为 `CLOSED_BY_SCOPE_DECISION`，不再作为发行门槛，也不宣称多厂商自动执行。
+> 逐项 59 项证据见 [acceptance/P0-P3-results.md](../acceptance/P0-P3-results.md)。Antigravity 仍为实验性、默认禁用。
+>
 > **本文的基线是静态能力研究；2026-11-06 追加两次真实复核，2026-11-07 补完默认沙箱模式，现有 Codex 为 `GREEN`，仍无其它通用 `GREEN` 候选。** T13 那一轮只做了本机离线 `--version` / `--help` 与公开官方资料核对。之后用户授权解锁 T14，选定「用**官方允许的 ChatGPT 订阅 + `codex exec` 路径**做真实复核、**不新增自动 Provider**」。第一次尝试因宿主无法创建嵌套 macOS Seatbelt 沙箱而没有成功的真实 R2（[第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)）；同日用户追加授权后的第二次尝试，在「宿主已由外部 OS 沙箱化」这一 `codex exec --help` 明确写出的适用情形下（"Intended solely for running in environments that are externally sandboxed"）取得了**成功的真实 R1 与 R2**（`MEASURED · checks PASSED (1/1)`），§12 版本复核完成、`TESTED_VERSION` 更新为 `0.166.0-alpha.6`，详见 [第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md)。**2026-11-07 限定解除**：在 `sandbox_check = 0` 的普通终端上，产品代码的默认 `-s read-only|workspace-write` 模式成功跑完真实 R1/R2，详见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)；现有 Codex 因此从 `GREEN (scoped: externally sandboxed host)` 升为 **`GREEN`**。T14 仍收口为「不新增自动 Provider」，不创建空适配器。
 >
 > 「官方存在某个参数」不等于「PAR 在现有隔离与授权模式下能安全工作」。本文每一行都列出证据等级、版本、OS、账号类型、实测方法和**没有测的内容**。可复现的离线探测：`python -B tests/tools/provider_probe.py`（默认只做 `which()`）、`python -B tests/tools/sandbox_probe.py --json`（能否创建嵌套 OS 沙箱、以及继承沙箱的原始 `sandbox_check` 值），以及 `python -B tests/tools/codex_revalidate.py --check-only`（一键跑 §12 离线复核，零模型调用）。
+
+## 主控客户端（MCP，与自动 Worker 分开）
+
+| 客户端 | 角色 | 真实证据 | 日期 | 限制 |
+|---|---|---|---|---|
+| Claude Desktop | MCP 主控 | 工具发现 + 一次真实只读 `list_tasks`（返回真实任务） | 2026-10-16 | 真实客户端里的提交/批准/验收未联调；这些路径由脚本化 MCP 测试覆盖 |
+| Codex CLI | MCP 主控（同时可作 Worker） | `codex exec` 中一次真实只读 `list_tasks` | 2026-10-16 | 同上；Worker 证据另见下方 Codex 行 |
+| 其他 MCP 客户端 | 协议可接入 | 无 | — | 接口已实现，不代表任何品牌已验证 |
+
+MCP 是**主控接入协议**，不是自动 Worker 协议；一个客户端能调用 21 个工具，不代表它能被 PAR 自动派发代码任务。真实客户端证据见 [V1 验收附录](reports/V1_ACCEPTANCE_REPORT_20261016.md)。机器可读事实源为 [product-capabilities.json](product-capabilities.json)。
 
 ## 调查环境
 
@@ -167,7 +181,14 @@
 
 ## 与平台证据的关系
 
-本文的 `GREEN/YELLOW/RED` 描述的是**工具/协议与账号路径**，不是操作系统支持。同一候选在不同 OS 上的可执行风险、进程组/信号、文件权限与签名校验另见 [SECURITY.md 的平台验证分级](SECURITY.md)：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（CI 只实跑纯逻辑安全子集）、Windows `STATIC_GAP`。即使某天某个工具取得 `GREEN`，也只代表**当时记录的版本 + OS + 账号类型**下通过，不能跨版本或跨平台外推。
+本文的 `GREEN/YELLOW/RED` 描述的是**工具/协议与账号路径**，不是操作系统支持。同一候选在不同 OS 上的可执行风险、进程组/信号、文件权限与签名校验另见 [SECURITY.md 的平台验证分级](SECURITY.md)。即使某天某个工具取得 `GREEN`，也只代表**当时记录的版本 + OS + 账号类型**下通过，不能跨版本或跨平台外推。
+
+| 宿主 | 状态 | 证据 | 未验证 |
+|---|---|---|---|
+| macOS 15.6.1 arm64 | `VERIFIED` | 安装、doctor、fake R1/R2、真实 Codex R1/R2（2026-11-07）、取消/超时脚本回归 | 其它版本、真实 Windows/Linux |
+| Linux（`ubuntu-latest` CI） | `CORE_EXPERIMENTAL` | 2026-11-09 run 42591934521：`linux_security_core` 150 tests + 文档检查；`linux_process_control` 102 tests | 完整 fake CLI E2E、真实 Provider |
+| Windows WSL2 | `NOT_TESTED` | 无 | 安装、进程组、文件权限、完整流程 |
+| Windows 原生 | `NOT_SUPPORTED` | 静态缺口（进程组/信号、权限位、签名、路径语义） | 全部 |
 
 ## 对现有文档的影响
 
@@ -210,7 +231,7 @@ python -B tests/tools/codex_revalidate.py --check-only   # 一键跑 §12 离线
    **始终不创建新的正式自动适配器、不合并空实现、不把 YELLOW 写成「已支持」**。
 3. 第二次真实运行的 `-s danger-full-access` **只在一次性临时 worktree 副本**，主干适配器未改、
    未新增配置开关；没有把任何提权参数写进产品代码或默认配置。未使用个人 Google 账号；
-   未接受 Gemma 条款下载本地模型；未打 tag / 发 Release。
+   未接受 Gemma 条款下载本地模型；当时未打 tag / 发 Release（2026-11-09 已发布 `v1.0.0`）。
 4. `TESTED_VERSION` 更新为 `0.166.0-alpha.6`，`par health --probe` 不再提示 `untested version`。
    **2026-11-07 已在允许创建嵌套沙箱的普通终端补跑产品默认 `-s` 模式，取得成功的真实 R1/R2，
    等级从 `GREEN (scoped)` 升为 `GREEN`** → [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
