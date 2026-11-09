@@ -135,6 +135,19 @@ class FixedDecisions(unittest.TestCase):
         pr["profiles"]["main"]["worker_failure_policy"] = "yolo"
         self.assertIn("profiles.main.worker_failure_policy", wheres(build(pr), "error"))
 
+    def test_approval_mode_defaults_to_coordinator_autonomous_and_is_a_fixed_value(self):
+        pr = raw_profiles()
+        pr["profiles"]["main"].pop("approval_mode", None)
+        self.assertEqual(build(pr).config.profiles["main"].approval_mode, "coordinator_autonomous")
+        for ok in ("coordinator_autonomous", "coordinator_scoped", "human_only"):
+            pr = raw_profiles()
+            pr["profiles"]["main"]["approval_mode"] = ok
+            self.assertTrue(build(pr).ok, ok)
+        for bad in ("human-only", "autonomous", True, None):
+            pr = raw_profiles()
+            pr["profiles"]["main"]["approval_mode"] = bad
+            self.assertIn("profiles.main.approval_mode", wheres(build(pr), "error"), bad)
+
     def test_executable_must_be_absolute(self):
         p = raw_providers()
         p["providers"]["codex"]["executable"] = "codex"

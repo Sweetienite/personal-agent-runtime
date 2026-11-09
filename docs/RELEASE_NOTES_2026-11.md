@@ -2,17 +2,22 @@
 
 本文是**审查结论**，不是发行公告。实际打 tag / 创建 GitHub Release 需要用户单独批准（任务卡明确要求），本轮没有执行。
 
+> **2026-11-09 口径修订（审计整改）**：原 P3 Gate 的“新增一个正式自动 Provider”未达成，用户的明确决定是
+> **正式修订 Gate**：P3 的正式自动执行范围收口为 **Codex + 人工交接**，T14 标记为
+> `CLOSED_BY_SCOPE_DECISION`，不再以“新增 Provider”作为发行门槛，也不宣称多厂商自动执行。
+> 逐项 59 项证据见 [acceptance/P0-P3-results.md](../acceptance/P0-P3-results.md)。修订不改变“未打 tag / 未发版”的结论。
+
 ## 结论：**不建议现在打新 tag / 发新版**
 
 理由（按重要性）：
 
-1. **仍没有第二条通用 `GREEN` 的自动执行路径**。T14 原本是 `BLOCKED_BY_EVIDENCE`（Issue #16）：T13 是静态能力研究、无 GREEN。2026-11-06 用户授权解锁并选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」；同日第二次尝试在宿主已由外部 OS 沙箱化的限定条件下取得成功的真实 R1/R2。**2026-11-07 在普通终端补跑产品默认 `-s` 模式成功，现有 Codex 升为 `GREEN`**。T14 的「不新增自动 Provider」结论不变，P3 Gate 里「至少一条**新增**正式自动执行路径」**仍未达成**。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)、[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md) 与 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
+1. **仍只有一条正式自动执行路径**。T14 原本是 `BLOCKED_BY_EVIDENCE`（Issue #16）：T13 是静态能力研究、无 GREEN。2026-11-06 用户授权解锁并选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」；同日第二次尝试在宿主已由外部 OS 沙箱化的限定条件下取得成功的真实 R1/R2。**2026-11-07 在普通终端补跑产品默认 `-s` 模式成功，现有 Codex 升为 `GREEN`**。2026-11-09 用户正式修订 Gate：T14 收口为 `CLOSED_BY_SCOPE_DECISION`，产品口径固定为 **Codex 自动 + 人工交接**，不再宣称多厂商自动执行；原“新增 Provider”Gate 的未达成事实保留在验收账单。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)、[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md) 与 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
 2. **`codex-cli 0.166.0-alpha.6` 已完成 §12 版本复核**：离线 8/8 PASS、trust 3/3 PASS、`par health --probe` AVAILABLE、可控分类样本 153/153 PASS、真实 R1/R2 成功；`TESTED_VERSION` 已更新为该版本，`untested version` 提示消除。**默认 `-s read-only|workspace-write` 已于 2026-11-07 在普通终端复核成功**（见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)）。见 [CODEX.md](CODEX.md) §12 / §14 / §15。
 3. **Antigravity 条款风险**：官方 FAQ 明确禁止第三方封装；现有 `agy` 适配器只能作为实验性、默认禁用的历史实现保留。
-4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（仅 CI 纯逻辑安全子集）、Windows `STATIC_GAP`。
+4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（CI 增加 `linux_process_control` 后覆盖取消/超时/进程组，但仍不是完整 E2E）、Windows `STATIC_GAP`。
 5. **全量套件仍不是 CI 的覆盖范围**：2026-11-06 的受限沙箱里曾有 4 个进程终止类模块（7 个用例）
    因无法向子进程组投递信号而失败；**2026-11-07 在普通终端全量 1564 项通过（23 skipped）**。
-   CI 仍只跑三个明确命名的作业，不是全量 1564 项。
+   CI 仍只跑四个明确命名的作业（新增 `linux_process_control`），不是全量套件。
 
 因此本轮的成果是**文档与证据整理**，适合作为 `main` 上的持续交付；不适合对外宣布一个「P3 全部通过」的版本。
 `pyproject.toml` / `__version__` 保持 `1.0.0`，未改动版本号。

@@ -22,18 +22,20 @@ anchors and GitHub-relative links are not treated as file paths.
 ## Running the test suite
 
 ```bash
-python3 -B -m unittest discover -s tests -t .      # full suite, ~1564 tests
+python3 -B -m unittest discover -s tests -t .      # full suite, ~1584 tests
 python3 -B tests/tools/parallel_tests.py            # the same, parallelized, faster
 ```
 
-CI runs three explicitly named checks, none of which is the full suite.
+CI runs four explicitly named checks, none of which is the full suite.
 For a stranger-machine reproduction of the whole zero-account path, see [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 - `smoke_install` (macOS) — `pip install -e .`, `par doctor`, `par version`.
 - `core_unittests` (macOS) — the state, store, contract, approval, policy, hand-off and integration regressions:
 - `linux_security_core` (Ubuntu) — `pip install -e .`, `par doctor` (WARN for an untested platform, exit 0),
   `par version`, then the platform-independent security regressions in `docs/SECURITY.md`'s matrix
-  (states, contract, policy, redaction, paths, provider probe, `test_p3_security_audit`).
+  (states, contract, policy, redaction, paths, provider probe, `test_p3_security_audit`, `test_approval_grants`).
+- `linux_process_control` (Ubuntu) — the scripted cancellation/timeout/process-group regressions
+  (`test_kernel_control`, `test_validation_results`) on real Linux signal behaviour.
 
 ```bash
 python3 -B -m unittest tests.unit.test_states tests.unit.test_store tests.unit.test_contract \

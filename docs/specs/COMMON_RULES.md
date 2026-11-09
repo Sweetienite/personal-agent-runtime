@@ -17,7 +17,8 @@ These apply to every task in `docs/specs/`. They come from the user's standing d
 8. **Approvals go through the Kernel's own gate, not around it.** Nothing you write may fabricate an approval or an acceptance outside
    `Kernel.approve`/`reject`/`accept`/`close_task` (or the MCP bridge's `approve_task`/`reject_task`/`accept_task`/`close_task`, which
    call those same methods and nothing else) - every decision is recorded with who made it (`by`), and a Worker's own claims are never
-   a substitute for one.
+   a substitute for one. Who may decide is set by the profile's `approval_mode` (`coordinator_autonomous`, `coordinator_scoped` with a
+   person-created grant, or `human_only`); the Kernel enforces it, so the bridge can never widen its own authority.
 
 ## Code style
 

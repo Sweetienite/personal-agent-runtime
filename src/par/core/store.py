@@ -75,6 +75,34 @@ CREATE INDEX IF NOT EXISTS candidates_by_project ON candidates(project_id, creat
 """
 
 
+GRANT_DDL = """
+CREATE TABLE IF NOT EXISTS coordinator_grants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  coordinator TEXT NOT NULL,
+  actions_json TEXT NOT NULL,
+  approval_kinds_json TEXT NOT NULL DEFAULT '[]',
+  project_id TEXT,
+  risk_tiers_json TEXT NOT NULL DEFAULT '["R0","R1","R2"]',
+  expires_at TEXT,
+  revoked_at TEXT,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS grants_by_coordinator ON coordinator_grants(coordinator, id);
+CREATE TRIGGER IF NOT EXISTS grants_no_delete BEFORE DELETE ON coordinator_grants
+BEGIN SELECT RAISE(ABORT, 'coordinator grants are never deleted'); END;
+CREATE TRIGGER IF NOT EXISTS grants_identity_frozen BEFORE UPDATE ON coordinator_grants
+WHEN NEW.id <> OLD.id OR NEW.coordinator <> OLD.coordinator OR NEW.actions_json <> OLD.actions_json
+  OR NEW.approval_kinds_json <> OLD.approval_kinds_json OR NEW.project_id IS NOT OLD.project_id
+  OR NEW.risk_tiers_json <> OLD.risk_tiers_json OR NEW.expires_at IS NOT OLD.expires_at
+  OR NEW.created_at <> OLD.created_at
+BEGIN SELECT RAISE(ABORT, 'a grant scope is immutable; revoke it and create a new one'); END;
+CREATE TRIGGER IF NOT EXISTS grants_revoked_once BEFORE UPDATE ON coordinator_grants
+WHEN OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS NOT OLD.revoked_at
+BEGIN SELECT RAISE(ABORT, 'a grant is revoked once and never reopened'); END;
+"""
+
+
 DDL = f"""
 CREATE TABLE schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE transitions (
@@ -269,6 +297,8 @@ class Store:
                 conn.execute("INSERT INTO schema_meta(key, value) VALUES ('created_at', ?)", (self.clock.iso(),))
                 conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             for statement in _split_statements(CANDIDATE_DDL):       # additive: a v1 ledger gains the table, no version bump
+                conn.execute(statement)
+            for statement in _split_statements(GRANT_DDL):            # additive: older builds ignore the table
                 conn.execute(statement)
             candidate_columns = {r[1] for r in conn.execute("PRAGMA table_info(candidates)")}
             if "requested_json" not in candidate_columns:             # an intermediate build of this table had no requested set
@@ -569,6 +599,37 @@ class Store:
         self._need_tx()
         self.conn.execute("UPDATE approvals SET status = ?, decided_at = ?, decided_by = ?, note = ? WHERE id = ?",
                           (decision, self.clock.iso(), decided_by, str(redact_obj(note))[:500], approval_id))
+
+    def add_grant(self, coordinator: str, actions: "list[str]", *, approval_kinds: "list[str]",
+                  project_id: "str | None", risk_tiers: "list[str]", expires_at: "str | None", note: str = "") -> int:
+        self._need_tx()
+        cur = self.conn.execute(
+            "INSERT INTO coordinator_grants(coordinator, actions_json, approval_kinds_json, project_id, risk_tiers_json, "
+            "expires_at, note, created_at) VALUES (?,?,?,?,?,?,?,?)",
+            (coordinator, _dump(actions), _dump(approval_kinds), project_id, _dump(risk_tiers), expires_at,
+             str(redact_obj(note))[:500], self.clock.iso()))
+        return int(cur.lastrowid)
+
+    def grants(self, coordinator: "str | None" = None) -> "list[dict[str, Any]]":
+        sql, args = "SELECT * FROM coordinator_grants", []
+        if coordinator is not None:
+            sql += " WHERE coordinator = ?"
+            args.append(coordinator)
+        out = []
+        for r in self.conn.execute(sql + " ORDER BY id", args):
+            d = row_dict(r)
+            d["actions"] = json.loads(d.pop("actions_json"))
+            d["approval_kinds"] = json.loads(d.pop("approval_kinds_json"))
+            d["risk_tiers"] = json.loads(d.pop("risk_tiers_json"))
+            out.append(d)
+        return out
+
+    def revoke_grant(self, grant_id: int, when: str) -> None:
+        self._need_tx()
+        cur = self.conn.execute("UPDATE coordinator_grants SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
+                                (when, grant_id))
+        if cur.rowcount != 1:
+            raise NotFound(f"no active coordinator grant #{grant_id}")
 
     # --- provider health ----------------------------------------------------------------------------------
     def set_health(self, provider_id: str, model: str, status: str, *, until: "str | None", detail: str = "") -> None:

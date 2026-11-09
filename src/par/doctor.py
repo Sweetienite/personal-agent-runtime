@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from par import PHASE, __version__
+from par import PHASE, RELEASE_STATUS, __version__
 from par.config import LoadResult, load_config, load_projects_file
 from par.core.policy import PolicyViolation, WriteGuard, protected_roots
 from par.core.redact import redact_text
@@ -48,7 +48,7 @@ class Report:
 
     def to_dict(self) -> dict:
         return {
-            "name": "par", "version": __version__, "phase": PHASE, "summary": self.summary,
+            "name": "par", "version": __version__, "phase": PHASE, "release_status": RELEASE_STATUS, "summary": self.summary,
             "checks": [{"name": c.name, "status": c.status, "detail": c.detail} for c in self.checks],
         }
 
@@ -81,7 +81,7 @@ def run_doctor(data_dir: "str | os.PathLike[str]", home: "str | os.PathLike[str]
         add("platform", INFO, platform.platform())
     else:
         add("platform", WARN, f"{platform.platform()}: designed for macOS, paths and permissions are untested here")
-    add("package", INFO, f"par {__version__} (phase {PHASE}); doctor itself runs nothing external (the Codex adapter exists from P3, the Antigravity adapter from P4)")
+    add("package", INFO, f"par {__version__} (phase {PHASE}; {RELEASE_STATUS}); doctor itself runs nothing external (the Codex adapter exists from P3, the Antigravity adapter from P4)")
 
     # --- configuration (loaded first: it tells us where the Core lives) -----------------------
     cfg_dir = data_dir / "config"

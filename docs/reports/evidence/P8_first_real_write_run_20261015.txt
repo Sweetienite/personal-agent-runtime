@@ -1,0 +1,6 @@
+ARCHIVE NOTE (public repository)
+
+The original file P8_first_real_write_run_20261015.txt is not included in this public repository. It
+contains the author's local absolute paths and raw run output; size and SHA-256 are recorded in README.md
+next to this file. This placeholder only keeps the historical report's link resolvable. It is not
+evidence and is not a PASS claim.

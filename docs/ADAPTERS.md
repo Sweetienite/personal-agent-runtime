@@ -1,6 +1,8 @@
 # Provider 适配器
 
-协议在 P0 定义，P2 起由 Kernel 真正驱动它（`execution/subprocesses.py`、`core/attempt.py`）。**P3 接入了第一个真实适配器：Codex**（`providers/codex.py`，细节与证据见 [CODEX.md](CODEX.md)）；**P4 接入第二个：Antigravity**（`providers/antigravity.py`，见 [AGY.md](AGY.md)）。适配器通过 `providers/registry.py` 的注册表接入，**注册表默认为空**：只有配置里启用了 `codex` / `antigravity` 并写明绝对路径的可执行文件，`cli_task.build_adapters(config)` 才会注册它；旧的 `gemini_legacy` 永远没有适配器。
+协议在 P0 定义，P2 起由 Kernel 真正驱动它（`execution/subprocesses.py`、`core/attempt.py`）。**P3 接入了第一个真实适配器：Codex**（`providers/codex.py`，细节与证据见 [CODEX.md](CODEX.md)）；**P4 接入第二个：Antigravity**（`providers/antigravity.py`，见 [AGY.md](AGY.md)）。适配器通过 `providers/registry.py` 的注册表接入，**注册表默认为空**。
+
+每个自动适配器在 **`providers/manifests.py` 的 `AdapterManifest`** 里登记：`kind`、适配器类、静态能力、已验证的平台、登录方式、证据对应的版本、以及 `automatic`（能否不经人启动）。`cli_task.build_adapters(config)` 只从这张表取工厂，`core/router.py` 的 `AUTOMATIC_KINDS` 也由它派生——新增一个自动 Provider 只需增加一条 manifest 和适配器测试，不再需要同时改路由和 CLI 两处白名单。旧的 `gemini_legacy`、`claude_host`、`manual_handoff` 没有适配器 manifest，永远不会自动运行。清单里的平台（目前 `darwin`）是**已验证**范围，不是“能 import 就支持”。
 
 ## 协议（`providers/base.py`）
 

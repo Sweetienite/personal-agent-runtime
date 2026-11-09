@@ -37,8 +37,8 @@ def check(include_historical: bool = False) -> "list[tuple[str, str]]":
     missing = []
     for md in sorted(ROOT.rglob("*.md")):
         rel = md.relative_to(ROOT)
-        if ".git" in rel.parts:
-            continue
+        if ".git" in rel.parts or rel.parts[:1] == (".ai",):
+            continue                                # VCS internals and the private process ledger are not published docs
         if not include_historical and rel.parts[:2] == ("docs", "reports"):
             continue
         for target in _targets(md.read_text(encoding="utf-8", errors="replace")):

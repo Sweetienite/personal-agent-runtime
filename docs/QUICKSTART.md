@@ -119,11 +119,11 @@ generic 项目没有父合同，用 `ad_hoc = true`。两种模式的规则见 [
 ## 7. 测试与贡献
 
 ```bash
-python3 -B tests/tools/parallel_tests.py       # 全量，按模块并行（本次 70 模块 / 1564 项）
-python3 -B tests/tools/mutation_check.py M70   # 单个变异检查；全部约 341 条
+python3 -B tests/tools/parallel_tests.py       # 全量，按模块并行（本次 72 模块 / 1584 项）
+python3 -B tests/tools/mutation_check.py M70   # 单个变异检查；全部约 346 条
 ```
 
-CI 只跑三个明确命名的作业（`smoke_install`、`core_unittests` 在 macOS，`linux_security_core` 在 Ubuntu），
+CI 只跑四个明确命名的作业（`smoke_install`、`core_unittests` 在 macOS，`linux_security_core`、`linux_process_control` 在 Ubuntu），
 **不是全量套件**；见 [CONTRIBUTING.md](../CONTRIBUTING.md)。贡献前先读 [AGENTS.md](../AGENTS.md)。
 
 ## 本次演练的实际结果（可核对）

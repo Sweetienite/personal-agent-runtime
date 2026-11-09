@@ -1,5 +1,9 @@
-# 兼容性证据矩阵（2026-11-06，2026-11-07 更新，P3/T13）
+# 兼容性证据矩阵（2026-11-06，2026-11-07 更新，2026-11-09 口径修订，P3/T13）
 
+> **2026-11-09：P3 Gate 正式修订。** 正式自动执行范围收口为 **Codex（`GREEN`，仅该版本/OS/账号组合）+ 人工交接**；
+> T14「新增一个正式自动 Provider」标记为 `CLOSED_BY_SCOPE_DECISION`，不再作为发行门槛，也不宣称多厂商自动执行。
+> 逐项 59 项证据见 [acceptance/P0-P3-results.md](../acceptance/P0-P3-results.md)。Antigravity 仍为实验性、默认禁用。
+>
 > **本文的基线是静态能力研究；2026-11-06 追加两次真实复核，2026-11-07 补完默认沙箱模式，现有 Codex 为 `GREEN`，仍无其它通用 `GREEN` 候选。** T13 那一轮只做了本机离线 `--version` / `--help` 与公开官方资料核对。之后用户授权解锁 T14，选定「用**官方允许的 ChatGPT 订阅 + `codex exec` 路径**做真实复核、**不新增自动 Provider**」。第一次尝试因宿主无法创建嵌套 macOS Seatbelt 沙箱而没有成功的真实 R2（[第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)）；同日用户追加授权后的第二次尝试，在「宿主已由外部 OS 沙箱化」这一 `codex exec --help` 明确写出的适用情形下（"Intended solely for running in environments that are externally sandboxed"）取得了**成功的真实 R1 与 R2**（`MEASURED · checks PASSED (1/1)`），§12 版本复核完成、`TESTED_VERSION` 更新为 `0.166.0-alpha.6`，详见 [第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md)。**2026-11-07 限定解除**：在 `sandbox_check = 0` 的普通终端上，产品代码的默认 `-s read-only|workspace-write` 模式成功跑完真实 R1/R2，详见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)；现有 Codex 因此从 `GREEN (scoped: externally sandboxed host)` 升为 **`GREEN`**。T14 仍收口为「不新增自动 Provider」，不创建空适配器。
 >
 > 「官方存在某个参数」不等于「PAR 在现有隔离与授权模式下能安全工作」。本文每一行都列出证据等级、版本、OS、账号类型、实测方法和**没有测的内容**。可复现的离线探测：`python -B tests/tools/provider_probe.py`（默认只做 `which()`）、`python -B tests/tools/sandbox_probe.py --json`（能否创建嵌套 OS 沙箱、以及继承沙箱的原始 `sandbox_check` 值），以及 `python -B tests/tools/codex_revalidate.py --check-only`（一键跑 §12 离线复核，零模型调用）。

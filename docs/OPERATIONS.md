@@ -30,7 +30,8 @@ uv venv --python 3.12 .venv && uv pip install -e .      # 没有 uv：python3.12
 | `par task submit --contract FILE\|-` `[--by user\|coordinator]` `[--check]` `[--candidate ID]` | 校验合同并入队；相同幂等键+相同合同返回原任务。`--check`：只做校验，**不入队**——不写任务、不写事件、不记批准，只报告合同是否通过以及会问你批准哪些事项（`WRITE_PERMISSION`/`WORKER_OVERRIDE`），拒绝时和不加 `--check` 报的原因完全一样 |
 | `par task list [--waiting]` `status T` `events T` `result T` `diff T` | 只读查看：状态与你下一步能做什么、事件日志、结果信封、补丁（不应用到任何地方）；`--waiting`（2026-11-03 新增）只列出需要你决定才能往下走的任务（待批准、待验收、待恢复、卡在额度/登录/限速/没有可用 Worker 上） |
 | `par task run T` / `par task run --next` | 前台跑**一次** attempt；Ctrl-C 或 SIGTERM 会停掉 Worker 并留下干净记录 |
-| `par task approve T [--id N]` `reject T [--id N]` | 逐项批准 / 拒绝待决事项；有多项时必须指定 `--id` |
+| `par task approve T [--id N]` `reject T [--id N]` | 逐项批准 / 拒绝待决事项；有多项时必须指定 `--id`；默认由你决定，`approval_mode` 为 `coordinator_scoped` 时主控需要一条活跃 grant |
+| `par coordinator grant NAME --action ... --expires ...` / `grants` / `revoke N` | 给人以外的协调者创建/查看/撤销限定 grant（动作、审批类型、项目、风险、到期）；只能由人在 CLI 执行，台账只增不改 |
 | `par task accept T` `close T` | 接受 `REVIEW_REQUIRED` 的结果 / 归档。接受**不会**把补丁应用到项目 |
 | `par task cancel T` `pause T` `resume T` | 取消（会停掉运行中的 Worker）、暂停、恢复 |
 | `par task retry T [--worker ID] [--force] [--fresh]` | 新 attempt，采用当前配置；写文件的任务**默认接着上一次已验证的改动继续**（接力，见 [HANDOFF.md](HANDOFF.md)），`--fresh` 从基线重来；`--force` 清除健康记录 |
@@ -88,6 +89,7 @@ chmod 600 "$D"/*.toml
 - **适配器只在两个条件同时满足时才存在**：Provider 写成 `enabled = true` **并且**给了绝对路径的 `executable`（现在有 `codex`（P3）与 `antigravity`（P4））。其余（`claude_host`、`manual_handoff`、`gemini_legacy`）即使启用，`par health` 也显示 `no adapter is registered`，任务停在 `BLOCKED_NO_WORKER`；`gemini_legacy` 永远不能启用。
 - 模型 slug 保持 `<RUN-TIME-VERIFIED-SLUG>` 占位符时该 Worker 不会被使用，必须等适配器探测出真实可用的名字。
 - `worker_failure_policy`：`ask`（默认）、`pause`、`safe_auto`（只对 R0/R1 自动重试暂时性错误一次、自动换 Worker 一次；R2 永不自动）。
+- `approval_mode`：`coordinator_autonomous`（默认，主控可自行批准/验收，台账记录范围）、`coordinator_scoped`（需要人在 CLI 用 `par coordinator grant` 创建限定 grant）、`human_only`（只有人能决定）。
 - **角色不绑定厂商**：`[profiles.<名字>.roles.<角色>]` 里的角色名（如 `code`）只是 primary/fallback 的名字，不要求某个厂商做主控或 Worker。同一个工具可以同时是 `coordinator` 和某个 worker 的 provider；两者的会话、私有 HOME 与审计仍然隔离，`coordinator` 可以是 `claude_desktop` / `codex` / 旧别名 `codex_manual_takeover`。配置 schema 没有变，旧 `profiles.toml` 原样可用；`surface` 由 provider `kind` 派生，只出现在配置快照里。
 - **能力闸门**：自动运行要求适配器声明 `headless = yes`，R2 写任务还要求 `write = yes`。声明是注册时的静态事实（`build_adapters`），Kernel 在运行前用本次实例再复核；`unknown` 不会当成 `yes`，失败发生在任何子进程的模型调用之前。`par task status T` 会写明原因。
 

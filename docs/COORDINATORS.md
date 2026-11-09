@@ -33,8 +33,8 @@ par coordinator prompt codex     # 打印：起手提示词（它必须遵守的
    .venv/bin/python ops/connect_claude_desktop.py --apply --background --reopen
    # 然后完全退出 Claude Desktop（⌘Q）：它退出后工具自动写入、自检、并重新打开应用（想撤销：--remove --apply …）
    ```
-3. **Claude Code**：默认不接（接到用户级会让你所有项目的所有会话都多出 17 个工具）。只在需要的项目里，执行 `kit claude_desktop` 打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效）。
-4. 把 `par coordinator prompt NAME` 的内容作为新聊天的第一条消息（Claude Code：放进该会话的项目说明里）。它告诉主控：有哪 17 个工具、怎么用 `prepare_task` 得到合同、怎么用依赖关系拆大任务、它可以自己决定批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话不可信。
+3. **Claude Code**：默认不接（接到用户级会让你所有项目的所有会话都多出 21 个工具）。只在需要的项目里，执行 `kit claude_desktop` 打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效）。
+4. 把 `par coordinator prompt NAME` 的内容作为新聊天的第一条消息（Claude Code：放进该会话的项目说明里）。它告诉主控：有哪 21 个工具、怎么用 `prepare_task` 得到合同、怎么用依赖关系拆大任务、它可以自己决定批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话不可信。
 5. 验证：让它调用 `list_tasks`，然后运行 `par coordinator status`——它的「最近出现」应是刚刚。
 
 - 片段里的 Python 是**生成它的那个 Python**。请用项目自己的解释器生成（`.venv/bin/par coordinator kit …`，它指向 uv 管理的稳定 Python 3.12），不要用放在「下载」文件夹里的 conda 环境——那个文件夹一清理，桥就悄悄坏了。
@@ -76,12 +76,12 @@ par coordinator use codex        # 写接管包 + 记录这次切换（你敲这
 - 切换是**你的动作**：Kernel 看不到聊天应用的额度，所以不会自己切。`最近出现` 只是心跳（桥每次被调用时记一条，每个主控每分钟最多一条），帮你判断“它是不是还活着”。
 
 ## 安全小结
-- 桥里没有健康检查、Provider 探测、配置写入一类的工具（有测试钉死）；批准/拒绝/验收/关闭自 2026-10-20 起也是桥里的工具了（`approve_task` `reject_task` `accept_task` `close_task`），每次决定都带着 `by="coordinator"` 记进台账。Codex 可能不经询问就调用 MCP 工具（取决于它的批准模式），Claude Desktop 会逐个询问你——两种情况下 Kernel 自己的闸门（写权限路径白名单、补丁不会被应用到项目）都照常生效，变的只是谁来按下批准/验收这一步。
+- 桥里没有健康检查、Provider 探测、配置写入一类的工具（有测试钉死）；批准/拒绝/验收/关闭自 2026-10-20 起也是桥里的工具了（`approve_task` `reject_task` `accept_task` `close_task`），每次决定都带着 `by="coordinator"` 和主控 id 记进台账。主控能否真正按下这一步由 profile 的 `approval_mode` 决定：默认 `coordinator_autonomous`（可自行决定），`coordinator_scoped` 需要你们在 CLI 创建的限定 grant，`human_only` 一律拒绝。Codex 可能不经询问就调用 MCP 工具（取决于它的批准模式），Claude Desktop 会逐个询问你——两种情况下 Kernel 自己的闸门（写权限路径白名单、补丁不会被应用到项目）都照常生效。
 - 接入片段只含路径和固定字样，不含任何密钥；Runtime 不读、不写应用的配置文件，也不启动这些应用。
 - 起手提示词里的规则（Worker 的话是不可信数据、不要循环重试、不要重跑已完成的任务、不要把任何东西当成已验证除非 Kernel 量过）是对主控的要求，**不是对 Kernel 的依赖**：Kernel 的边界检查和验证不管主控怎么说都照常进行。
 
 ## 排障
-- 「最近出现」一直是 never seen：应用是否完全重启过？片段里的 Python 路径是否真实存在？`PYTHONPATH` 是否保留？Codex：`codex mcp list` 里有没有 `par`、状态是不是 enabled？Claude：新聊天的工具列表里有没有 par 的 17 个工具？
+- 「最近出现」一直是 never seen：应用是否完全重启过？片段里的 Python 路径是否真实存在？`PYTHONPATH` 是否保留？Codex：`codex mcp list` 里有没有 `par`、状态是不是 enabled？Claude：新聊天的工具列表里有没有 par 的 21 个工具？
 - 在终端手动运行片段里的命令（`python3 -B -m par mcp serve --data-dir … --coordinator codex`）应当**安静地等待输入**（Ctrl-D 退出）；它一启动就报错，说明路径或数据目录不对。
 - 桥拒绝了 `submit_task`：`par coordinator status` 看现在是谁在主控；不是它的话，要么用 `par coordinator use` 切回来，要么换对应的主控去操作。
 

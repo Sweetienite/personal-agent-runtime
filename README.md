@@ -6,8 +6,8 @@
 
 本地多模型调度系统：按**你**配置的主模型、Worker 和备用链调度 Codex 与 Antigravity（`agy`），任务可暂停、可恢复，全程可审计。它既支持普通 Git 仓库（默认的 generic 模式，不需要 `AGENTS.md` / `.ai/STATE.md`），也能复用已有的 AI Harness（可选的进阶模式：Core 加各项目的 `AGENTS.md` 与 `.ai/STATE.md`，用 `--context-mode harness`），不新建第二份项目记忆。
 
-> **版本 `1.0.0`**：真实的写入、批准、验收全流程都已跑通并通过人工验收；Codex 与 Claude Desktop 两种主控都已接入并验证过连通。下面链接的是 **2026-10-16 当时的历史验收快照**，记录的是那个版本与环境的结果，不是当前版本对所有 Provider / 平台的支持保证；当前范围以 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) 与 [docs/SECURITY.md](docs/SECURITY.md) 为准：[docs/reports/V1_ACCEPTANCE_REPORT_20261016.md](docs/reports/V1_ACCEPTANCE_REPORT_20261016.md)。
-> 目前有两个真实适配器：Codex（ChatGPT 订阅登录）与 Antigravity（Google 登录，经系统钥匙串）。**默认没有任何适配器**：只有配置里显式启用了 `codex` / `antigravity` 并写明可执行文件的绝对路径才会注册。测试套件全程使用假的 codex / agy 程序，**真实模型调用只在你逐项批准后才会发生**。
+> **版本 `1.0.0`（兼容包版本，尚未打 tag）**：真实的写入、批准、验收全流程都已跑通并通过人工验收；Codex 与 Claude Desktop 两种主控都已接入并验证过连通。**P3 Gate 仍为部分通过**：正式自动路径只有 Codex，Antigravity 为实验性默认禁用，T14「新增一个正式自动 Provider」按 2026-11-07 的收口决定标为 `CLOSED_BY_SCOPE_DECISION`；没有 tag / GitHub Release。下面链接的是 **2026-10-16 当时的历史验收快照**，记录的是那个版本与环境的结果，不是当前版本对所有 Provider / 平台的支持保证；当前范围以 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) 与 [docs/SECURITY.md](docs/SECURITY.md) 为准，逐项证据见 [acceptance/P0-P3-results.md](acceptance/P0-P3-results.md)：[docs/reports/V1_ACCEPTANCE_REPORT_20261016.md](docs/reports/V1_ACCEPTANCE_REPORT_20261016.md)。
+> 目前有两个真实适配器：Codex（ChatGPT 订阅登录）与 Antigravity（Google 登录，经系统钥匙串）。**默认没有任何适配器**：只有配置里显式启用了 `codex` / `antigravity` 并写明可执行文件的绝对路径才会注册。测试套件全程使用假的 codex / agy 程序。**每个写权限与验收仍逐项经过 Kernel 的审批闸门**；谁能批准由 profile 的 `approval_mode` 决定：默认 `coordinator_autonomous`（主控可自行决定，台账记录决定者与范围），也可设为 `coordinator_scoped`（必须有人创建的限定 grant）或 `human_only`（只有你能决定），见 [docs/SECURITY.md](docs/SECURITY.md) 的「审批模式」一节。
 
 ## 现在能做什么
 
@@ -31,11 +31,12 @@
 | `par candidate create --task A [--task B …]` / `show ID` / `list` | **候选整合**：把已验收的 R2 补丁按依赖顺序打到一条干净基线上，在 Kernel 自己的仓库里重跑各任务的检查；`VERIFIED` 才可被下游任务使用。真实项目一个字节都不动；冲突/检查失败留 `FAILED` 记录（见 [docs/KERNEL.md](docs/KERNEL.md)） | 数据目录 `candidates/` 与台账（只读记录） |
 | `par task rebase T --candidate ID` | 让一个已排队、从未运行的任务改用候选基线（`base.commit` 变成候选提交） | 台账 |
 | `par coordinator status / use NAME / kit NAME / prompt NAME` | **可选主控（路线 A）**：谁在主控、谁最近出现、一条命令切换（写接管包 + 记录）、打印接入片段与起手提示词；候选：Claude、Codex（见 [docs/COORDINATORS.md](docs/COORDINATORS.md)） | 台账与 `takeover/`（`kit`/`prompt`/`status` 只读） |
+| `par coordinator grant NAME --action ... --expires ...` / `grants` / `revoke N` | **审批授权**：给人以外的协调者创建限定 grant（动作、审批类型、项目、风险级别、到期时间），随时列出与撤销；只允许人在 CLI 执行（见 `approval_mode`） | 台账（只增记录） |
 | `par takeover export / confirm ID --as NAME / status` | 主控交接：只读接管包（任务树与事实，不含对话和 Worker 的话）+ 显式确认；同一时刻只有一个主控 | 台账与 `takeover/` |
-| `par mcp serve` / `par mcp config` | Claude Desktop 的 MCP 桥（只暴露 17 个受限工具——含调度/恢复/审批/验收/查看 diff，从不暴露配置/健康相关操作；见 [docs/MCP.md](docs/MCP.md)）；`config` 只打印要粘贴的配置，不写任何文件 | 否 |
+| `par mcp serve` / `par mcp config` | Claude Desktop 的 MCP 桥（只暴露 21 个受限工具——含调度/恢复/审批/验收/查看 diff，从不暴露配置/健康相关操作；见 [docs/MCP.md](docs/MCP.md)）；`config` 只打印要粘贴的配置，不写任何文件 | 否 |
 | `par fixture create [ID]` | 造一个一次性的夹具项目（git 仓库、一个故意的 bug、无个人数据）并登记为可写（一次性的演练项目） | 仅数据目录里的 `fixtures/` 与 `projects.toml` |
 
-真实项目的写入由你亲自打开（`par project enable-write ID`，先体检、再敲一遍项目 id 确认）。真实项目默认不能被提交写任务；只有你打开了写入的项目可以，而且**每个写任务**仍要你逐项批准；没有任何代码会把补丁应用到项目（要你自己 `git apply`）。MCP 桥已接进 Codex；接入 Claude Desktop 见 `ops/connect_claude_desktop.py`（详见 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)）。备份、恢复与演练见 [docs/ROLLBACK.md](docs/ROLLBACK.md)。Worker 能读到你磁盘上的任何可读文件（Codex 沙箱不限制读），所以先在没有敏感文件的小项目上试运行；对你其他重要项目，必须先收紧读范围，见 [docs/CODEX.md](docs/CODEX.md)。
+真实项目的写入由你亲自打开（`par project enable-write ID`，先体检、再敲一遍项目 id 确认）。真实项目默认不能被提交写任务；只有你打开了写入的项目可以，而且**每个写任务**仍要经过 Kernel 的逐项审批——默认 profile 允许主控自己批准（台账记录 `by="coordinator"`、决定者、模式与 grant），把 profile 设为 `coordinator_scoped` 或 `human_only` 就能把决定权收回；没有任何代码会把补丁应用到项目（要你自己 `git apply`）。MCP 桥已接进 Codex；接入 Claude Desktop 见 `ops/connect_claude_desktop.py`（详见 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)）。备份、恢复与演练见 [docs/ROLLBACK.md](docs/ROLLBACK.md)。Worker 能读到你磁盘上的任何可读文件（Codex 沙箱不限制读），所以先在没有敏感文件的小项目上试运行；对你其他重要项目，必须先收紧读范围，见 [docs/CODEX.md](docs/CODEX.md)。
 
 ## 快速开始
 
@@ -55,14 +56,14 @@ python -B tests/tools/smoke_agy.py --self-test          # 同上，Antigravity �
 ```bash
 .venv/bin/par init                                      # 建 ~/Library/Application Support/PersonalAgentRuntime（0700）
 .venv/bin/par doctor                                    # 全部 PASS，Provider 全部 disabled
-python -B -m unittest discover -s tests -t .            # 约 1564 项测试（单进程，约 6–9 分钟），无需安装、无需网络、不调用模型
+python -B -m unittest discover -s tests -t .            # 约 1584 项测试（单进程，约 6–9 分钟），无需安装、无需网络、不调用模型
 python -B tests/tools/parallel_tests.py                 # 同一套测试，按模块并行跑（约 1 分钟）；日常用这个
 .venv/bin/par health --probe                            # 配置并启用 codex / antigravity 之后：签名、登录、模型目录、额度（见 docs/OPERATIONS.md）
 ```
 
 详细用法、退出码与排障见 [docs/OPERATIONS.md](docs/OPERATIONS.md)。
 
-> **CI 覆盖范围**：GitHub Actions 只有三个明确命名的作业——`smoke_install`（macOS 安装 + doctor + version）、`core_unittests`（macOS 上的状态/合同/审批/交接/候选整合等核心回归）、`linux_security_core`（Ubuntu 上平台无关的纯逻辑安全回归）。**徽章不代表全量 1564 项在 CI 通过**；其余模块只在开发机跑（部分测试假设单用户 macOS 机器、macOS 专属 doctor 检查或更大的 ARG_MAX）。普通终端上全量 1564 项已通过；在某些受限沙箱里，4 个进程终止类模块可能因无法向子进程组投递信号而失败（这些模块本身不因平台差异被跳过）。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+> **CI 覆盖范围**：GitHub Actions 只有四个明确命名的作业——`smoke_install`（macOS 安装 + doctor + version）、`core_unittests`（macOS 上的状态/合同/审批/交接/候选整合等核心回归）、`linux_security_core`（Ubuntu 上平台无关的纯逻辑安全回归）、`linux_process_control`（Ubuntu 上的取消/超时/进程组回归）。**徽章不代表全量 1584 项在 CI 通过**；其余模块只在开发机跑（部分测试假设单用户 macOS 机器、macOS 专属 doctor 检查或更大的 ARG_MAX）。普通终端上全量 1584 项已通过；在某些受限沙箱里，4 个进程终止类模块可能因无法向子进程组投递信号而失败（这些模块本身不因平台差异被跳过）。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 > **支持范围（2026-11-07 核对）**：正式自动执行路径只有已在配置中启用并写明绝对路径的 Codex；它的默认沙箱模式已于 2026-11-07 用真实 R1/R2 复核，等级为 `GREEN`（仅该版本/OS/账号组合）。Antigravity 适配器是**实验性、默认禁用**，其官方条款明确禁止第三方封装；Gemini CLI / Claude Code CLI / ACP / OpenCode 尚未在 PAR 的隔离与授权模式下做过真实验证。人工交接（`par task handoff`）适用于 GUI-only 工具。证据等级与未测项见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)，本轮没有新增正式自动 Provider。
 
@@ -74,7 +75,7 @@ python -B tests/tools/parallel_tests.py                 # 同一套测试，按�
 - 并发默认 1；Profile 里的 `max_parallel_workers` 可设为 2（不同项目的任务同时跑；同一个项目一次只做一件事；T17/T18 已测试）。
 - 状态转换只走显式的表，同一张表由数据库触发器强制；事件只增不改；Worker 自述的「测试通过」永远不被采信，验收只认 Kernel 自己跑出的检查。
 - Worker 只在 attempt 内的私有克隆里工作；Kernel 从不在 Worker 的 `.git` 里运行 git；越界（路径白名单外、受保护路径、符号链接）一律让 attempt 失败。
-- R2 永不自动重试或换 Worker；R3 一律拒绝；权限被拒绝不会换更高权限重试；所有批准都是逐项的人的动作。
+- R2 永不自动重试或换 Worker；R3 一律拒绝；权限被拒绝不会换更高权限重试。批准逐项进行，决定者由 `approval_mode` 约束：`coordinator_autonomous` 允许主控（默认且记录在案）、`coordinator_scoped` 要求限定 grant、`human_only` 只允许人。
 - 任何写入都要经过路径策略：不写 Harness Core、不写各工具的全局配置、不写 shell 配置、敏感路径一律拒绝。
 - Runtime 的数据目录只放配置与执行台账，**不是项目记忆**。项目事实只在各项目的 `.ai/STATE.md` 与项目文件里。
 
@@ -83,15 +84,17 @@ python -B tests/tools/parallel_tests.py                 # 同一套测试，按�
 ```text
 src/par/
   cli.py  doctor.py  paths.py  config.py
-  cli_task.py  `par task …` 与 `par health`    cli_mcp.py  `par mcp …`    cli_coordinator.py  `par coordinator …`    coordinators.py  主控注册表（接入片段、起手提示词）
-  mcp/         protocol.py（逐行 JSON-RPC）  tools.py（17 个受限工具）  server.py（循环）
+  cli_task.py  `par task …`    cli_candidate.py  `par candidate …`    cli_handoff.py  交接/接管
+  cli_health.py  `par health` 与 Provider 登录    cli_mcp.py  `par mcp …`    cli_coordinator.py  `par coordinator …`    coordinators.py  主控注册表
+  mcp/         protocol.py（逐行 JSON-RPC）  tools.py（21 个受限工具）  catalog.py（工具表/参数校验）  output.py（脱敏/限长）  server.py（循环）
   core/        policy.py  redact.py  states.py（状态机）  store.py（SQLite 台账）  contract.py  router.py  health.py
-               kernel.py（提交、审批、结算、恢复）  attempt.py（一次 attempt）  prompt.py  settings.py  clock.py
+               kernel.py（运行与结算）  submission.py（提交）  approvals.py（审批与 grant）  review.py（验收/关闭）
+               recovery.py（崩溃恢复）  reading.py（只读视图/健康）  attempt.py  prompt.py  settings.py  clock.py
                relay.py（接力）  manual.py（人工交接）  takeover.py（主控交接）
   execution/   gitops.py  workspace.py（文件级比较）  subprocesses.py（进程组、超时）  validation.py  results.py
   schemas/     task / result / event 的 JSON Schema（schema.py 是不依赖第三方的校验器）
-  providers/   base.py（协议）  registry.py（适配器注册表，默认为空）  codex.py（Codex 适配器）  antigravity.py（Antigravity 适配器）
-               fake.py + fake_cli.py（脚本化测试替身）
+  providers/   base.py（协议）  manifests.py（自动适配器清单：平台/登录/版本/能力）  registry.py（适配器注册表，默认为空）
+               codex.py（Codex 适配器）  antigravity.py（Antigravity 适配器）  fake.py + fake_cli.py（脚本化测试替身）
   harness/     check.py（Harness 体检）
   context/     harness.py（HarnessContextAdapter：项目视图、Context Manifest、写入就绪）
   registry.py  项目登记    fixtures.py  夹具项目
@@ -100,8 +103,9 @@ ops/           协调者/人工用的小工具：land_task.py（落地已验收�
                cleanup_tasks.py（清理已关闭任务占用）、reliability_report.py（从台账算可靠性数据）、
                contract_skeleton.json（契约模板）、connect_claude_desktop.py（接入 Claude Desktop）；
                定期巡检的 launchd 模板与包装脚本（可选，由你自己安装）——见 docs/OPERATIONS.md
-tests/         unit/（约 1564 项）  integration/（默认跳过：只读真实 Harness；离线核对真实 Codex / agy）  tools/（mutation_check.py 约 341 条变异、parallel_tests.py 并行跑全量测试、provider_probe.py 离线兼容探测、smoke_codex.py、smoke_agy.py）
+tests/         unit/（约 1584 项）  integration/（默认跳过：只读真实 Harness；离线核对真实 Codex / agy）  tools/（mutation_check.py 约 346 条变异、parallel_tests.py 并行跑全量测试、provider_probe.py 离线兼容探测、smoke_codex.py、smoke_agy.py）
                fake_codex.py + fake_codex_exe.py（假 codex 程序）  codex_samples.py（合成的事件流）  fake_agy.py + fake_agy_exe.py（假 agy 程序）  agy_samples.py
+acceptance/    P0-P3-results.md（59 项验收账单，含 NOT_RUN/BLOCKED）
 docs/          SECURITY  OPERATIONS  ROLLBACK  ADAPTERS  CONTEXT  KERNEL  CHANGELOG  reports/
 ```
 
@@ -116,7 +120,7 @@ docs/          SECURITY  OPERATIONS  ROLLBACK  ADAPTERS  CONTEXT  KERNEL  CHANGE
 | [docs/MODES.md](docs/MODES.md) | 主控/Worker/接口三种角色、CLI 自动 / 协议自动（未实现）/ 手工接力、状态词汇对照 |
 | [docs/ROLLBACK.md](docs/ROLLBACK.md) | 历史版本（P0–P8）与本轮 P0–P3 改造的非破坏性回滚 |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | 接力、人工交接（WorkBuddy / TRAE）、主控交接 |
-| [docs/MCP.md](docs/MCP.md) | MCP 桥（任何支持 MCP 的主控都能用）：17 个工具、永远不能做什么、怎么接入 |
+| [docs/MCP.md](docs/MCP.md) | MCP 桥（任何支持 MCP 的主控都能用）：21 个工具、永远不能做什么、怎么接入 |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | **使用指南**：怎么接通 Claude / Codex、每天怎么用、额度用完怎么办、人工交接、出问题怎么办 |
 | [docs/COORDINATORS.md](docs/COORDINATORS.md) | 可选主控：Claude / Codex 的接入、一条命令切换、额度用完时怎么办 |
 | [docs/CODEX.md](docs/CODEX.md) | Codex 适配器：版本兼容记录、命令行逐项依据、隔离配方、沙箱实测、失败分类、升级复核清单 |

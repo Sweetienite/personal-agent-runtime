@@ -181,7 +181,7 @@ def sample_result(**over):
 
 
 def sample_config(*, policy="ask", codex=True, agy=True, flash_caps=("read", "edit"), code_model="m-code", parallel=1,
-                  coordinator="claude_desktop"):
+                  coordinator="claude_desktop", approval_mode="coordinator_autonomous"):
     """A validated RuntimeConfig: role 'code' = w_code (codex) then w_flash (antigravity); role 'draft' = w_flash."""
     from par.config import build_config
     profiles = {
@@ -192,7 +192,7 @@ def sample_config(*, policy="ask", codex=True, agy=True, flash_caps=("read", "ed
         },
         "profiles": {"default": {
             "coordinator": coordinator, "default_worker": "w_code", "max_parallel_workers": parallel,
-            "worker_failure_policy": policy, "additional_paid_credits": False,
+            "worker_failure_policy": policy, "additional_paid_credits": False, "approval_mode": approval_mode,
             "roles": {"code": {"primary": "w_code", "fallback": ["w_flash"]}, "draft": {"primary": "w_flash", "fallback": []}},
         }},
     }

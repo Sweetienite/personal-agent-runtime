@@ -4,9 +4,9 @@
 
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-A local task runtime that lets **you** (or a coordinator LLM acting on your behalf) dispatch coding work to CLI coding agents — currently [Codex CLI](https://github.com/openai/codex) and Google's Antigravity (`agy`) — through an explicit Kernel: every attempt runs in a private clone, every result is re-measured by the Kernel itself (never taken on the agent's word), every write needs your approval, and every decision is written to an append-only ledger. Python 3.11+, **zero third-party dependencies**.
+A local task runtime that lets **you** (or a coordinator LLM acting on your behalf) dispatch coding work to CLI coding agents — currently [Codex CLI](https://github.com/openai/codex) and Google's Antigravity (`agy`) — through an explicit Kernel: every attempt runs in a private clone, every result is re-measured by the Kernel itself (never taken on the agent's word), every write goes through the Kernel's per-item approval gate, and every decision is written to an append-only ledger. Who may decide is set by the profile's `approval_mode`: `coordinator_autonomous` (default; the coordinator may decide and the ledger records who and under which scope), `coordinator_scoped` (a person-created grant with project/risk/kind/expiry limits), or `human_only`. Python 3.11+, **zero third-party dependencies**.
 
-> Status: `1.0.0` (its author's own full build plan, P0 through P8, is done), actively used by its author on real (if modest) projects. Not yet battle-tested at scale — see [Honesty about where this stands](#honesty-about-where-this-stands) below.
+> Status: `1.0.0` is the compatibility package version; **it is untagged, and the P0-P3 plan's P3 gate is partial** (the only formal automatic path is Codex; T14's "one new automatic provider" is `CLOSED_BY_SCOPE_DECISION`; see [acceptance/P0-P3-results.md](acceptance/P0-P3-results.md)). It is actively used by its author on real (if modest) projects, not yet battle-tested at scale — see [Honesty about where this stands](#honesty-about-this-stands) below.
 
 ## The one sentence that matters
 
@@ -17,7 +17,7 @@ A local task runtime that lets **you** (or a coordinator LLM acting on your beha
 By late 2026 a small cluster of "orchestrate CLI coding agents" tools had appeared — `codex-orch`, `cc-orchestrator`, `codeswarm`, `orc`, `agent-orchestra`, and a few others, alongside more established multi-agent frameworks like AutoGen/AG2 and CrewAI. We looked at the public descriptions of several of these before writing this file. None of this is a knock on them — most are young, and several explicitly target a different problem (fan-out across many agents/machines, not safety under a single human's review). PAR's specific angles, each backed by a real mechanism in this repo, not just a design doc:
 
 - **Re-verification, not trust.** `acceptance.checks` are commands the *Kernel itself* runs in a scratch clone after the Worker is done — not a claim the Worker makes. A write task with no checks configured is a known, explicit edge case: the Kernel refuses to let an *automated* coordinator accept it blind, precisely because there is nothing of its own to measure. A human can still review the diff directly and accept it from the terminal. We found no comparable tool in our survey that enforces this at the orchestration-kernel level rather than leaving it as written guidance.
-- **Mutation-tested safety lines.** `tests/tools/mutation_check.py` deliberately breaks ~341 individual safety-relevant lines (permission checks, path policy, redaction, what a tool is allowed to do) one at a time and asserts a specific test catches each one. This is a different, stronger bar than "we have unit tests."
+- **Mutation-tested safety lines.** `tests/tools/mutation_check.py` deliberately breaks ~346 individual safety-relevant lines (permission checks, path policy, redaction, what a tool is allowed to do) one at a time and asserts a specific test catches each one. This is a different, stronger bar than "we have unit tests."
 - **A real audit trail with reasons, not just timestamps.** Every approve/reject/accept decision — whether made by you at the terminal or by a coordinator LLM through the MCP bridge — is written to an append-only ledger with a mandatory, non-blank explanation of *why*, not just *that* it happened.
 - **A generalized manual hand-off path**, not just automated adapters. `par task handoff TASK --to APP` accepts any GUI-only desktop tool by name (WorkBuddy and TRAE are documented with real field notes from actual use; Cursor, Windsurf, Cline and Aider are wired in but not yet exercised for real). The export names its `mode` (`workspace` for a file-changing task, `text` for a written answer), every absolute path, the base commit, the allowed paths and a copyable `next_actions` list; the import checks the marker against the ledger, the task's base and the packet the Runtime wrote - a stale export, a copy of the folder or a forged marker is refused by name. Results then go through the same verification pipeline as an automated Worker — no shortcut, no unverified trust extended just because a human was in the loop.
 - **Candidate integration without touching the project.** `par candidate create --task A` applies accepted R2 patches in dependency order to one clean baseline, re-runs their checks there and records the base, commit and per-patch hashes; a dependent task can then be submitted with `--candidate` (or rebased onto it) so it actually sees A's code. Accepted, candidate-integrated and applied stay three separate states, and the Runtime never writes your repository.
@@ -71,13 +71,13 @@ cd personal-agent-runtime
 uv venv --python 3.12 .venv && uv pip install -e .     # or: python3.12 -m venv .venv && .venv/bin/pip install -e .
 .venv/bin/par init                                      # creates its own data directory (mode 0700)
 .venv/bin/par doctor                                    # should be all PASS, providers disabled until you configure one
-python3 -B -m unittest discover -s tests -t .           # ~1564 tests, single process, ~6-9 min, no network, no model calls
+python3 -B -m unittest discover -s tests -t .           # ~1584 tests, single process, ~6-9 min, no network, no model calls
 python3 -B tests/tools/parallel_tests.py                # the same tests, parallelized across modules, ~1 min
 ```
 
 If writing the full contract JSON is the friction, `par task draft --draft FILE` compiles a short draft (project, goal, risk, paths, checks) into the same strict contract: role, ad-hoc and the idempotency key are derived deterministically, a missing path or check becomes a question (exit 2) instead of a guess, and it only prints - it never submits and never adds a command from repository files.
 
-From here: configure a provider (`config/providers.example.toml`), register a project with `par project add ID PATH` (an ordinary Git repository needs no `AGENTS.md` or `.ai/STATE.md` — that is the default generic mode; `--context-mode harness` is the optional advanced mode that keeps the parent-contract rules, and `--scaffold-harness` writes minimal starters only when you ask for them, never overwriting anything that exists), and `par project enable-write ID` when you're ready to let it touch real files. Every write still waits for your explicit per-task approval. Full detail (exit codes, troubleshooting, baseline workflow) is in `docs/OPERATIONS.md`.
+From here: configure a provider (`config/providers.example.toml`), register a project with `par project add ID PATH` (an ordinary Git repository needs no `AGENTS.md` or `.ai/STATE.md` — that is the default generic mode; `--context-mode harness` is the optional advanced mode that keeps the parent-contract rules, and `--scaffold-harness` writes minimal starters only when you ask for them, never overwriting anything that exists), and `par project enable-write ID` when you're ready to let it touch real files. Every write still goes through the Kernel's per-task approval; whether the coordinator may decide it depends on `approval_mode` (`coordinator_autonomous` by default, `coordinator_scoped` or `human_only` to keep or require the decision yourself). Full detail (exit codes, troubleshooting, baseline workflow) is in `docs/OPERATIONS.md`.
 
 ## Design boundaries (enforced in code, not just documented)
 
@@ -106,9 +106,9 @@ Tagging needs a separate approval, and was explicitly deferred.
 
 Three named jobs: `smoke_install` (macOS install + doctor + version), `core_unittests`
 (macOS core state/contract/approval/hand-off/integration regressions) and `linux_security_core`
-(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1564-test
+(Ubuntu platform-independent security regressions). **The badge does not mean the full ~1584-test
 suite passes in CI**; the remaining modules run only on a developer's Mac. On a normal terminal the
-full 1564-test suite passes; in some restricted sandboxes four process-termination modules can fail
+full 1584-test suite passes; in some restricted sandboxes four process-termination modules can fail
 because they cannot signal a child process group (those tests are not skipped for platform reasons).
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/SECURITY.md](docs/SECURITY.md).
 `docs/reports/` are historical snapshots of the version that was tested then, not current support claims.
@@ -121,7 +121,7 @@ This file and this project's commit messages are English. The deep reference doc
 
 - Used daily by one person, on their own projects, with a single-digit-task sample size tracked honestly in `ops/reliability_report.py`'s output — not "battle-tested at scale."
 - Two automated Worker adapters exist and are real (Codex CLI, Google Antigravity); other "market-standard" tools are wired in only as a manual hand-off path, explicitly labeled as not-yet-exercised where that's true (see `docs/HANDOFF.md`). Antigravity runs through Google's official `agy` CLI in its headless mode: that mode can change between vendor releases, and the account/terms risk is the user's. It ships disabled and is not the default automated path.
-- No GUI. The MCP bridge (17 tools, including `prepare_task`, see `docs/MCP.md`) and the CLI are the entire surface — a deliberate choice after an earlier local web console was removed (see [CHANGELOG.md](CHANGELOG.md)), not an oversight.
+- No GUI. The MCP bridge (21 tools, including `prepare_task` and the candidate workflow, see `docs/MCP.md`) and the CLI are the entire surface — a deliberate choice after an earlier local web console was removed (see [CHANGELOG.md](CHANGELOG.md)), not an oversight.
 
 ## License
 

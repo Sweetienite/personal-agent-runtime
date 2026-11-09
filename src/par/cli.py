@@ -8,7 +8,7 @@ import platform
 import sys
 from pathlib import Path
 
-from par import PHASE, __version__
+from par import PHASE, RELEASE_STATUS, __version__
 from par.config import PROJECT_CONTEXT_MODES, PROJECT_VCS, HarnessSettings, load_harness_settings
 from par.context.harness import ContextManifest, ProjectView, WriteReadiness
 from par.context.resolver import default_context
@@ -39,6 +39,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
         "name": "par",
         "version": __version__,
         "phase": PHASE,
+        "release_status": RELEASE_STATUS,
         "python": platform.python_version(),
         "platform": platform.platform(),
     }
@@ -46,6 +47,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
         print(json.dumps(info, ensure_ascii=False))
     else:
         print(f"par {info['version']} (phase {info['phase']})")
+        print(f"release status: {info['release_status']}")
         print(f"python {info['python']} on {info['platform']}")
     return 0
 

@@ -50,10 +50,10 @@ Runtime 只写自己的数据目录；对**真实项目**默认只读：只有�
 | 平台 | 证据等级 | 已验证 | 已知缺口 |
 |---|---|---|---|
 | **macOS 15.6.1 / arm64** | `E2E`（本机 + CI） | 安装、`par doctor/version`、CI 核心子集（17 个模块）、fake CLI 全链路、通用 Git 项目、人工交接包、候选整合、证据分层；真实 Codex 的 R1/R2 与默认沙箱已于 2026-11-07 复核（[CODEX.md](CODEX.md) §15），历史 `agy` 烟测见 [AGY.md](AGY.md) | 内置 codex 二进制当前是 `0.166.0-alpha.6`（alpha）；升级后仍需按版本复核清单重跑。WorkBuddy 手工流程已于 2026-11-07 用 5.9.3 重跑通过（R2 交接、Kernel `unit` PASS）。CI 里 4 个进程终止类模块在本沙箱失败（无法向子进程组投递信号），失败集合与未修改基线完全一致 |
-| **Linux (ubuntu-latest, GitHub Actions)** | `CORE_EXPERIMENTAL`（**CI 实跑纯逻辑核心**） | 新增 `linux_security_core` 作业：`pip install -e .`、`par doctor`（对未测平台明确报 WARN 但退出 0）、`par version`，以及 126 项平台无关回归（状态机、合同、路径策略、脱敏、数据目录、离线 probe、22 项 T15 安全审计） | 真实适配器（`codesign` 签名校验、Seatbelt/bwrap 沙箱、钥匙串链接）是 macOS 实现，**不能据此宣布 Linux 支持真实 Provider**；进程/信号相关模块仍只在 macOS 跑。`TRUSTED_DIRS` 含 `/opt/homebrew/bin`，Linux 上需重核可执行文件解析。CI 日志以具体 run 为准 |
+| **Linux (ubuntu-latest, GitHub Actions)** | `CORE_EXPERIMENTAL`（**CI 实跑纯逻辑核心 + 进程控制**） | `linux_security_core`：`pip install -e .`、`par doctor`（对未测平台明确报 WARN 但退出 0）、`par version`，以及 126 项平台无关回归；`linux_process_control`：取消/超时/进程组的脚本化回归（2026-11-09 新增） | 真实适配器（`codesign` 签名校验、Seatbelt/bwrap 沙箱、钥匙串链接）是 macOS 实现，**不能据此宣布 Linux 支持真实 Provider**；Linux 的取消/超时行为仍需真实 CI 结果确认。`TRUSTED_DIRS` 含 `/opt/homebrew/bin`，Linux 上需重核可执行文件解析。CI 日志以具体 run 为准 |
 | **Windows** | `STATIC_GAP`（仅静态缺口） | 2026-11 已加固：Windows 盘符 / UNC / 反斜杠形式的敏感路径不再漏判（PR #17） | 进程组与信号（`os.setsid`、SIGKILL）、文件权限位（0600/0700）、`codesign` 签名、`realpath` 与大小写/Unicode 规范化、盘符/UNC 在项目路径中的语义、`protected_roots` 的 `Library/…` 布局、`git` 行为、检查可执行文件白名单，全部**未验证**。不宣布 Windows 支持，也不为「全平台」放宽安全行为 |
 
-CI 有三个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含审批/状态机/交接/候选整合等）、`linux_security_core`（Linux，纯逻辑安全子集）。关键安全行为（路径策略、合同白名单、脱敏、敏感名、未知事件）**没有**因为平台差异被 `skip`，且在 Linux 上重复实跑一遍；宿主 macOS 特定假设写在适配器与 `paths.py` 里，作为上面的已知缺口列出。要把 Linux 升到 `CORE_EXPERIMENTAL` 之上，仍需要在 Linux 上真实跑一次 fake CLI 全链路与真实 Provider 的隔离/权限样本。
+CI 有四个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含审批/状态机/交接/候选整合等）、`linux_security_core`（Linux，纯逻辑安全子集）、`linux_process_control`（Linux，取消/超时/进程组）。关键安全行为（路径策略、合同白名单、脱敏、敏感名、未知事件）**没有**因为平台差异被 `skip`，且在 Linux 上重复实跑一遍；宿主 macOS 特定假设写在适配器与 `paths.py` 里，作为上面的已知缺口列出。要把 Linux 升到 `CORE_EXPERIMENTAL` 之上，仍需要在 Linux 上真实跑一次 fake CLI 全链路与真实 Provider 的隔离/权限样本。
 
 ## 它能写什么、不能写什么
 
@@ -138,7 +138,7 @@ CI 有三个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含
 
 ## P5–P6 新增的面（MCP 桥、接力与交接）
 
-- **MCP 桥（`par mcp serve`）**：17 个工具——读写任务的 7 个（`submit_task` `get_task_status` `get_task_result` `cancel_task` `review_task` `run_task` `list_tasks`），2026-11 补上的 `prepare_task`（草案→严格合同，只读、不提交），2026-10-16 补上的调度/恢复 4 个（`retry_task` `pause_task` `resume_task` `recover_task`），2026-10-20 补上的决策 4 个（`approve_task` `reject_task` `accept_task` `close_task`），加 2026-11-03 补上的 `get_task_diff`（脱敏、限长的 diff 内容；此前协调者只看得到 `diff_stat`，没配检查的写任务因此被 Kernel 挡在 `accept_task` 之外，这个工具只是让协调者能读到内容再转述给人，验收本身仍然只有人能做）——名单有测试钉死；源码里扫描不到的只剩 `clear_health` `probe_providers`（健康/配置相关，仍然只有人能做，桥完全不碰）。决策 4 个工具各自只调用 `Kernel.approve`/`reject`/`accept`/`close_task` 这同一套 CLI 已经在用的方法，固定传 `by="coordinator"`——谁决定的，台账里永远查得到，不会因为不再需要人批准就变得不可审计。`retry_task` 不带 `force` 参数，遇到还生效的额度/登录/无 Worker 冷却照样被挡下，不会替你绕过去；`recover_task` 的 `terminate` 只停 Kernel 能用记录的 PID 和启动时间确认身份的进程。提交者固定为 `coordinator`，并带着桥所代表的主控名字，主控被替换后桥不能再提交或启动。参数在碰 Kernel 之前逐项校验（类型、长度、控制字符、嵌套深度、未知参数一律拒绝）；请求行最长 256 KB、不接受批量、不接受重复键；返回的一切先经脱敏、去控制字符、截断（每个答案 ≤ 6000 字符），Worker 的话永远带着 `untrusted_worker_text: true` 与 `summary_verified: false`。`run_task` 只在 `QUEUED` 且没有待批准项时，用干净环境在**脱离会话的子进程**里启动 `par task run`，不等待。桥不持有任何模型凭据，不写任何文件，`par mcp config` 只打印要粘贴的配置。
+- **MCP 桥（`par mcp serve`）**：21 个工具——读写任务的 7 个（`submit_task` `get_task_status` `get_task_result` `cancel_task` `review_task` `run_task` `list_tasks`），2026-11 补上的 `prepare_task`（草案→严格合同，只读、不提交），2026-10-16 补上的调度/恢复 4 个（`retry_task` `pause_task` `resume_task` `recover_task`），2026-10-20 补上的决策 4 个（`approve_task` `reject_task` `accept_task` `close_task`），2026-11-03 补上的 `get_task_diff`（脱敏、限长的 diff 内容），以及 2026-11-09 补上的候选工作流 4 个（`create_candidate` `show_candidate` `list_candidates` `rebase_task`，全部走同一套 Kernel 候选闸门，真实项目不被改动）——名单有测试钉死；源码里扫描不到的只剩 `clear_health` `probe_providers`（健康/配置相关，仍然只有人能做，桥完全不碰）。决策 4 个工具各自只调用 `Kernel.approve`/`reject`/`accept`/`close_task` 这同一套 CLI 已经在用的方法，固定传 `by="coordinator"`——谁决定的，台账里永远查得到，不会因为不再需要人批准就变得不可审计。`retry_task` 不带 `force` 参数，遇到还生效的额度/登录/无 Worker 冷却照样被挡下，不会替你绕过去；`recover_task` 的 `terminate` 只停 Kernel 能用记录的 PID 和启动时间确认身份的进程。提交者固定为 `coordinator`，并带着桥所代表的主控名字，主控被替换后桥不能再提交或启动。参数在碰 Kernel 之前逐项校验（类型、长度、控制字符、嵌套深度、未知参数一律拒绝）；请求行最长 256 KB、不接受批量、不接受重复键；返回的一切先经脱敏、去控制字符、截断（每个答案 ≤ 6000 字符），Worker 的话永远带着 `untrusted_worker_text: true` 与 `summary_verified: false`。`run_task` 只在 `QUEUED` 且没有待批准项时，用干净环境在**脱离会话的子进程**里启动 `par task run`，不等待。桥不持有任何模型凭据，不写任何文件，`par mcp config` 只打印要粘贴的配置。
 - **接力与人工交接**：被带走的补丁只能是 Kernel 自己切出并交叉核对过的 `work.patch`，且每个路径都要符合合同的 `allowed_paths`；应用时先 `--check` 再应用，并禁止 git 向外找仓库。人工交接的导入把文件夹/补丁/文字全部当作**不可信输出**：先做私有快照（不跟随链接，拒绝特殊文件、疑似敏感文件、超过 1 GiB），再按普通 Worker 的流程做文件比对、边界和检查；应用自己生成的设置目录（`.trae/` `.workbuddy/` …）里**新增**的文件按噪声忽略，已跟踪文件被改照常判越界。Runtime 从不启动这些应用，也不读它们的凭据。数据去向（应用会把打开的文件发给它的云端模型）写在每个交接包的 README 里，由你决定。
 - **可选主控（路线 A）**：接入片段与起手提示词只是**打印出来的文字**（只含路径与固定字样，有测试保证不含疑似密钥），Runtime 不读、不写、不启动任何主控应用或它的配置；切换是你的动作（`par coordinator use`），写接管包并记一条事件，之后被替换的主控经桥提交或启动会被拒绝，查看与取消不拦；桥的“最近出现”只是限速心跳事件（每主控每分钟至多一条，不属于任何任务）。
 - **主控交接**：接管包只含 Kernel 量到的事实（任务树、状态、检查结果、待决批准、Harness 文件的路径与哈希），没有对话、没有 Worker 的话；只有最新的包能被确认；确认记一条事件。
@@ -151,10 +151,24 @@ CI 有三个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含
 - **边界判定**：只有 `allowed_paths` 内的新增/修改/删除可以进入补丁。以下一律是越界并让 attempt 失败：`.git`（含嵌套仓库）、`.ai/`、任何位置的 `AGENTS.md` `CLAUDE.md`、敏感路径、符号链接与特殊文件、超大文件、含控制字符的文件名、只读任务的任何改动。`__pycache__`、`.DS_Store` 与被项目 `.gitignore` 忽略的新文件只计数不算错（受保护路径除外）。
 - **环境**：Worker 与检查都从干净环境启动——不继承你 shell 里的任何变量（含 API key），HOME 指向 attempt 内的私有目录。
 - **机密**：合同里出现疑似凭据整份拒绝且不入账；事件、原因、日志、结果、终端输出都先脱敏；Worker 的原话进入结果前脱敏并截断到 1200 字，显示给终端前转义控制字符（防转义序列劫持终端）。
-- **批准走 Kernel 自己的闸门，不会被绕过**：写权限、协调者指定 Worker、漂移确认、换 Worker、被拒权限后重试都进入 `PERMISSION_WAIT` 逐项等待批准；`run` 开始前会再核对一遍，取消后再重试不能绕过。`par task approve/accept/reject/close` 原本是人用的命令；2026-10-20 起 MCP 桥也暴露了对应的四个工具（`approve_task` `reject_task` `accept_task` `close_task`），固定传 `by="coordinator"`——决定权放开了，但走的仍是同一套闸门、同一本台账，决定者始终可查。
+- **批准走 Kernel 自己的闸门，不会被绕过**：写权限、协调者指定 Worker、漂移确认、换 Worker、被拒权限后重试都进入 `PERMISSION_WAIT` 逐项等待批准；`run` 开始前会再核对一遍，取消后再重试不能绕过。`par task approve/accept/reject/close` 原本是人用的命令；2026-10-20 起 MCP 桥也暴露了对应的四个工具（`approve_task` `reject_task` `accept_task` `close_task`），固定传 `by="coordinator"` 并带上桥所代表的主控 id——决定权放开了，但走的仍是同一套闸门、同一本台账，决定者与范围始终可查。谁能决定由下面的 `approval_mode` 与 grant 约束。
 - **接受不是应用**：`ACCEPTED` 只是记录你接受了结果；补丁保存在 `work.patch`，P2 没有任何代码把它应用到项目。
 - **台账**：`0600`；数据库触发器保证事件只增、已结束的 attempt 不可变、状态只沿转换表走、版本逐次加一。只存任务事实，不存项目知识；有测试检查数据目录里除 Worker 副本外没有任何对他人可读的文件。
 - **进程安全**：不会终止 Kernel 无法确认身份的进程；恢复时只在领头进程的起始时间与记录一致时才停止进程组；取消只对 Kernel 自己启动的进程组生效，不会碰 Claude Desktop、Codex 或 Antigravity 的 GUI。
+
+## 审批模式与主控授权（2026-11-09 审计整改）
+
+`approval_mode` 写在 `profiles.toml` 的 profile 里，默认 `coordinator_autonomous`：
+
+| 模式 | 主控能否批准/验收/关闭 | 适用场景 |
+|---|---|---|
+| `coordinator_autonomous`（默认） | 能；每次决定在台账里记录 `decision_mode`、主控 id、审批类型与项目/风险，原因仍必填 | 保留 2026-10-20 的主控短路径；你信任当前主控、希望减少机械操作 |
+| `coordinator_scoped` | 只有人能创建、限定范围的 grant 覆盖时才允许；没有活跃 grant 一律拒绝（`no_grant`） | 希望主控在明确项目/风险/类型/期限内工作，到期或撤销即失效 |
+| `human_only` | 不能；桥的四个决策工具会被 Kernel 以 `approval_mode` 拒绝 | 高风险项目、审计期或迁移期，所有决定回到终端 |
+
+Grant 是台账里的只增记录，只能由人在 CLI 创建和撤销：`par coordinator grant NAME --action approve|reject|accept|close --expires 24h [--project ID] [--risk R0 ...] [--approval-kind WRITE_PERMISSION ...]`；`par coordinator grants` 列出活跃项，`par coordinator revoke N` 立即撤销。Grant 的作用域（主控、动作、审批类型、项目、风险、到期）不可修改；改了就是一条新 grant；撤销后不能重新打开。**MCP 桥没有任何创建/撤销 grant 的工具，主控不能给自己授权。**
+
+这不是操作系统沙箱：`approval_mode` 约束的是「谁可以向 Kernel 发出决定」，不能限制主控会话本身做什么；Worker/检查命令仍以你的用户身份运行（见「已知限制」）。
 
 ## 脱敏
 
@@ -168,12 +182,25 @@ CI 有三个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含
 
 所有外部 Provider 默认 disabled，适配器注册表默认为空。P3/P4 起只有一种情况会注册适配器：配置里启用了 `codex` 或 `antigravity` **并且**写明了绝对路径的可执行文件（`gemini_legacy` 永远不会，有测试连「绕过校验手工构造的配置」也覆盖）；其余 Provider 即使写成 `enabled = true` 也只会停在 `BLOCKED_NO_WORKER`。测试替身 `ScriptedProvider` 不能通过配置文件注册，生产 Profile 不可能把任务路由给它。有测试检查：源码不导入任何网络库、整条任务流在拦截了 `socket` 的情况下照常完成、只有预期的几个模块会启动进程、测试套件从不运行真实的 Codex 或 `agy`（只有显式设置 `PAR_REAL_CODEX=1` / `PAR_REAL_AGY=1` 的离线探测，和需要批准才会运行的 `tests/tools/smoke_codex.py`、`smoke_agy.py`）。
 
+## 检查命令的威胁模型（2026-11-09 审计补充）
+
+**运行一个仓库的检查命令，就是在本机以你的用户身份运行该仓库的代码。** `acceptance.checks` 是合同作者
+（你或主控）选定的 argv；Kernel 把它们在一次性验证副本里、以干净环境和独立进程组执行，但**没有操作系统沙箱**。
+私有副本只限制「Worker 能改哪个目录里的文件」，不限制检查进程读取你磁盘上的其他文件、访问网络或启动子进程。
+因此：
+
+- 只把你自己审查过、来源可信的 argv 写进 `acceptance.checks`；不要从 README / issue / Worker 输出里自动采纳命令。
+- 对不熟悉的仓库，先在没有敏感文件、没有凭据的隔离目录里试跑；需要更强隔离时，在容器/虚拟机里运行整个 PAR。
+- 不要用检查命令执行发布、部署、安装依赖或需要网络的步骤；这些不属于验收检查。
+- `par task diff` 与 Kernel 的边界检查能证明补丁改了哪些路径，**不能证明检查代码本身无害**。
+- 这是当前设计的已知边界，不是已确认的权限绕过漏洞；OS 级沙箱/容器 runner 仍是未来工作，默认不声称具备。
+
 ## 已知限制（诚实声明）
 
 - 路径策略约束的是 **Runtime 自己的写入**。它不是操作系统沙箱，不能限制第三方 CLI 以同一用户身份做什么。Codex 的写入隔离来自它自己的沙箱（已离线实测：只能写工作副本、不能联网），但**读取不受限**（见上）；Antigravity 的隔离由「私有 HOME + Runtime 写的权限预设 + Kernel 的文件比对」组成，**模型运行时的真实表现要等获批的真实烟测才能声明**（见上一节与 AGY.md §12）。在读取范围收紧并经真实调用验证之前，不对真实项目开放写入。
 - 脱敏是尽力而为的纵深防御，不保证识别所有形态的机密。首要原则仍然是不去读机密。
 - P2 的写入只发生在数据目录内，路径各段都由 Kernel 自己生成（任务号、attempt 序号），用 `O_NOFOLLOW` 打开并保持 0600/0700；Worker 起的文件名只在做过包含检查之后才会被写入验证副本。这取代了 P0 时「引入多文件写入时再收紧」的待办。
-- **检查会运行补丁里的代码**（测试的本质），P2 没有操作系统级沙箱：只靠一次性副本、无机密的干净环境、固定的可执行文件与参数规则、独立进程组与超时。因为真实项目不可能被提交写任务（可写的只有夹具项目），目前风险限于夹具；进入 P8 之前必须评估加固（如 `sandbox-exec`）。
+- **检查会运行补丁里的代码**（测试的本质），P2 没有操作系统级沙箱：只靠一次性副本、无机密的干净环境、固定的可执行文件与参数规则、独立进程组与超时。真实项目只有在 `enable-write` 打开且逐项批准后才可能走到这一步；即便如此，检查仍以宿主身份运行，进入不可信仓库前必须按上一节的威胁模型评估加固（如 `sandbox-exec`）。
 - Worker 若自行 `setsid` 脱离进程组，Kernel 无法追踪也不会去杀它（读管道的线程不会因此卡死）。
 - 恢复判断依赖心跳与时钟；机器睡眠恰好跨过阈值可能让另一个 Kernel 把活着的 attempt 误标为 `RECOVERY_REQUIRED`（不会丢数据，也不会启动第二个写入者）。
 - `par harness check` 的 git 事实依赖 `git` 可执行文件；找不到时相关字段缺失而不是报错。

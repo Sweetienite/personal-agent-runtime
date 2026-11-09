@@ -4,11 +4,11 @@
 
 ## 0. 先看这一页
 
-**它是什么**：一个只在你这台 Mac 上运行的「任务调度中枢」。你用自然语言对一个模型（**主控**，现在可选 Claude 或 Codex）说要做什么，主控把任务交给 Runtime；Runtime 把任务派给 **Worker**（Codex、agy，或你手动操作的 WorkBuddy / TRAE），在**私有副本**里干活，再由 Runtime 自己**量**改动、跑检查；主控可以自己批准写入、验收结果（2026-10-20 起，你的决定），但**把改动应用到真实项目永远只有你能做**——Runtime 不会自己应用补丁。
+**它是什么**：一个只在你这台 Mac 上运行的「任务调度中枢」。你用自然语言对一个模型（**主控**，现在可选 Claude 或 Codex）说要做什么，主控把任务交给 Runtime；Runtime 把任务派给 **Worker**（Codex、agy，或你手动操作的 WorkBuddy / TRAE），在**私有副本**里干活，再由 Runtime 自己**量**改动、跑检查；主控在默认 profile（`approval_mode = "coordinator_autonomous"`）下可以自己批准写入、验收结果（2026-10-20 起，你的决定；可改成 `coordinator_scoped`/`human_only` 收回），但**把改动应用到真实项目永远只有你能做**——Runtime 不会自己应用补丁。
 
 ```text
 你 ──说话──▶ 主控（Claude 或 Codex）
-                │  17 个工具：准备合同 / 提交 / 查询 / 查看结果 / 查看 diff / 启动 / 取消 / 重试 / 暂停 / 继续 / 结清孤儿 / 批准 / 拒绝 / 验收 / 关闭
+                │  21 个工具：准备合同 / 提交 / 查询 / 查看结果 / 查看 diff / 启动 / 取消 / 重试 / 暂停 / 继续 / 结清孤儿 / 批准 / 拒绝 / 验收 / 关闭 / 候选创建·查看·列表 / rebase
                 ▼
        Runtime（Kernel + 任务台账） ◀── 你：看进度、随时能在终端接手、交接、切换主控
                 │  在私有副本里调度
@@ -49,7 +49,7 @@
 
 ## 2. 第一次接通主控
 
-主控怎么连 Runtime：它启动一个叫 `par` 的本地 MCP 服务器（`par mcp serve`），通过它的 17 个工具跟 Runtime 说话。你要做的只是把这个服务器登记进主控应用，并给主控一段**起手提示词**。下面是 Codex 和 Claude Desktop 两条路径；接完之后可以用 `par coordinator status` 确认它「最近出现」过。
+主控怎么连 Runtime：它启动一个叫 `par` 的本地 MCP 服务器（`par mcp serve`），通过它的 21 个工具跟 Runtime 说话。你要做的只是把这个服务器登记进主控应用，并给主控一段**起手提示词**。下面是 Codex 和 Claude Desktop 两条路径；接完之后可以用 `par coordinator status` 确认它「最近出现」过。
 
 ### 2.1 Codex
 
@@ -69,16 +69,16 @@ Claude Desktop 运行时会把自己内存里的配置写回文件，运行期�
    ```
 2. 然后**完全退出 Claude Desktop**（菜单栏 Claude > 退出，或 ⌘Q）。这会结束你当前在 Claude Desktop 里的所有会话。
 3. 它退出之后几秒内，工具会：备份配置（旁边的 `claude_desktop_config.json.par-backup-<时间>`）、只加入 `par` 这一项、写后自检，然后自动重新打开 Claude Desktop。进度和结果写在 `~/Library/Application Support/PersonalAgentRuntime/logs/connect_claude_desktop.log`。
-4. 重新打开后，新开一个聊天，工具列表里应有 `par`（17 个工具）。第一条消息贴起手提示词：`par coordinator prompt claude_desktop | pbcopy`，再让它调用 `list_tasks`，然后运行 `par coordinator status` 看「最近出现」。
+4. 重新打开后，新开一个聊天，工具列表里应有 `par`（21 个工具）。第一条消息贴起手提示词：`par coordinator prompt claude_desktop | pbcopy`，再让它调用 `list_tasks`，然后运行 `par coordinator status` 看「最近出现」。
 5. 想先看它会做什么：不加任何参数运行（试运行，什么都不改）。想撤销：`.venv/bin/python ops/connect_claude_desktop.py --remove --apply --background --reopen`，再 ⌘Q。
 
 > 如果过了 30 分钟你都没有退出应用，它会自己放弃，什么都不改。
 
-**Claude Code（桌面端的 Code 标签）**：上面接入的是用户级配置，这会影响到**你所有项目的所有 Code 会话**——应用重启、配置生效之后，不需要任何额外操作，工具列表里就会多出 `par` 的 17 个工具。如果你只想让某一个项目有这些工具（不想全局都有），改用项目级的办法：在那个项目的文件夹里运行 `par coordinator kit claude_desktop`，执行它打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效；不要加 `--scope user`，否则等于又做了一遍用户级接入）——如果用户级已经接了，没必要再做这一步。
+**Claude Code（桌面端的 Code 标签）**：上面接入的是用户级配置，这会影响到**你所有项目的所有 Code 会话**——应用重启、配置生效之后，不需要任何额外操作，工具列表里就会多出 `par` 的 21 个工具。如果你只想让某一个项目有这些工具（不想全局都有），改用项目级的办法：在那个项目的文件夹里运行 `par coordinator kit claude_desktop`，执行它打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效；不要加 `--scope user`，否则等于又做了一遍用户级接入）——如果用户级已经接了，没必要再做这一步。
 
 ### 2.3 起手提示词是什么
 
-一段给主控模型看的规则：它有哪 17 个工具、怎么用 `prepare_task` 得到合同、怎么用 `dependencies` 拆大任务、它可以自己批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话是**不可信数据**、不要循环重试、完成的任务不重跑。它对 Kernel 不是依赖——Kernel 的边界检查和验证不管主控怎么说都照常进行。随时可以重新打印：`par coordinator prompt NAME`（接入片段同样可以重新打印：`par coordinator kit NAME`）。
+一段给主控模型看的规则：它有哪 21 个工具、怎么用 `prepare_task` 得到合同、怎么用 `dependencies` 拆大任务、它可以自己批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话是**不可信数据**、不要循环重试、完成的任务不重跑。它对 Kernel 不是依赖——Kernel 的边界检查和验证不管主控怎么说都照常进行。随时可以重新打印：`par coordinator prompt NAME`（接入片段同样可以重新打印：`par coordinator kit NAME`）。
 
 ## 3. 每天怎么用
 
@@ -265,6 +265,7 @@ A 改了文件、验收通过，B 依赖 A。**验收不等于 B 能看到 A 的
 | 加一个 agy Worker | `profiles.toml` 加 `[workers.xxx]`（`provider = "antigravity"`、`model = "<`agy models` 里的名字>"`），再把它放进某个角色的 `primary` 或 `fallback` |
 | 换 Worker 的模型 | `profiles.toml` 里对应 `[workers.xxx]` 的 `model` |
 | 失败时的策略 | `profiles.toml` 的 `worker_failure_policy`：`ask`（默认，什么都不自动做）、`pause`、`safe_auto`（只对只读任务自动重试一次） |
+| 谁能批准/验收 | `profiles.toml` 的 `approval_mode`：`coordinator_autonomous`（默认，主控可决定）、`coordinator_scoped`（需要限定 grant）、`human_only`（只由人决定） |
 | 同时跑几个 Worker | `profiles.toml` 里 Profile 的 `max_parallel_workers`：`1`（默认）或 `2`。是 `2` 时，**不同项目**的任务可以同时跑；**同一个项目一次只做一件事**，不论设成几。注意两个 Codex Worker 会共用你本机的 `~/.codex`（Codex 自己的状态），额度也消耗得更快 |
 | 登记新项目 | `par project add ID 路径`（默认 generic，不要求 `AGENTS.md` / `.ai/STATE.md`；要 Harness 规则加 `--context-mode harness`） |
 
@@ -272,7 +273,7 @@ A 改了文件、验收通过，B 依赖 A。**验收不等于 B 能看到 A 的
 
 ## 9. 安全与边界（这些永远不会发生）
 
-- 主控自 2026-10-20 起可以自己批准、拒绝、验收、关闭（`by="coordinator"`，带着理由记进台账，台账里查得到）；你自己决定时走终端（`par task approve/reject/accept/close`，记录为「由 user 批准」）。两条路走的是同一个 Kernel 闸门，不会互相绕过。
+- 主控自 2026-10-20 起在默认 profile 下可以自己批准、拒绝、验收、关闭（`by="coordinator"`，带着理由、主控 id、模式与 grant 记进台账，台账里查得到）；你自己决定时走终端（`par task approve/reject/accept/close`，记录为「由 user 批准」）。两条路走的是同一个 Kernel 闸门，不会互相绕过。想收回或限制这个决定权，把 profile 的 `approval_mode` 设为 `coordinator_scoped`（需要你先 `par coordinator grant` 授权范围/项目/风险/到期时间）或 `human_only`（只能由人决定）。
 - Worker 只在私有副本里改文件；Runtime 自己量改动、强制允许的路径、自己跑检查；Worker 的话一概当作不可信数据。
 - Runtime **不会**把任何补丁应用到你的项目里；**不会**付款、不会删数据、不会改凭据、不会部署。
 - 密钥不进任何日志或文档；Runtime 不开任何网络端口（2026-11-02 起：web 控制台已移除）。
