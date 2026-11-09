@@ -6,6 +6,13 @@ Status vocabulary: `PASS`, `FAIL`, `NOT_RUN`, `BLOCKED`. A configuration existin
 HEAD at the start of this ledger: `6ef1bab` plus the uncommitted productization/docs commit that
 will follow. The final SHA is recorded here after the commit.
 
+CI run for PR #28: `1cedd1c`, GitHub Actions run
+[42588469528](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528) —
+all four jobs PASS: `smoke_install` 14 s (install + `par doctor` + `par version`),
+`linux_security_core` 10 s with **150 tests OK** plus `0 broken relative link or anchor(s)` and
+`docs_contract: OK`, `linux_process_control` 33 s with **89 tests OK**, `core_unittests` 2 m 50 s
+with **384 tests OK**.
+
 ## Gate A — security and integrity
 
 | ID | Case | Status | Evidence |
@@ -17,7 +24,7 @@ will follow. The final SHA is recorded here after the commit.
 | SEC-05 | R2 not write-enabled, outside paths, protected paths, symlink/absolute escape, dirty repo | PASS | `test_policy.py`, `test_workspace.py`, `test_kernel_policy.py`, `test_p3_security_audit.py` |
 | SEC-06 | Worker claims tests pass, but Kernel check fails/does not exist | PASS | `test_evidence_summary.py`, `test_kernel_run.py`, `test_validation_results.py` |
 | SEC-07 | Candidate patch tampered or missing provenance | PASS | `test_candidate_integration.py` (hash mismatch, missing provenance), `M915` |
-| SEC-08 | Cancel/timeout/recovery process groups | PASS on macOS; `NOT_RUN` on Ubuntu | local `test_kernel_control`, `test_validation_results`, `test_subprocesses`, `test_kernel_recovery` → 142 tests OK; GitHub `linux_process_control` pending |
+| SEC-08 | Cancel/timeout/recovery process groups | PASS on macOS and Ubuntu | local `test_kernel_control`, `test_validation_results`, `test_subprocesses`, `test_kernel_recovery` → 142 tests OK; GitHub `linux_process_control` PASS ([job](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528/job/129063923128)) |
 | SEC-09 | MCP can trigger candidate/check code | PASS (scoped, documented) | `candidate_create` requires current lease, records `actor`, warning in tool description and `docs/SECURITY.md` action matrix; tests in `test_authorization_lease.py` |
 | SEC-10 | `human_only` wording vs host shell | PASS | `docs/SECURITY.md` §审批模式 and `docs/en/SECURITY.md` §5 explicitly deny OS-level identity |
 | SEC-11 | Provider account/permission/quota failure | PASS | Adapter tests, `test_adapters`, `par health`; no auto credit purchase or privilege escalation |
@@ -27,7 +34,7 @@ will follow. The final SHA is recorded here after the commit.
 
 | ID | Journey | Status | Evidence |
 |---|---|---|---|
-| UAT-00 | Fresh clone + wheel install; doctor/version; providers disabled | PASS (wheel); clean clone pending final commit | `/tmp/par_wheel_venv` from `/tmp/par_dist/*.whl`: `par version` 1.0.0, `doctor` 5 PASS, providers disabled |
+| UAT-00 | Fresh clone + wheel install; doctor/version; providers disabled | PASS | fresh clone of `1cedd1c` in `/tmp/par_final_clone`: `uv pip install -e .`, `par init`, `doctor` 5 PASS, fake smoke exit 0; wheel `personal_agent_runtime-1.0.0-py3-none-any.whl` installed in `/tmp/par_wheel_final`, `par version --json` correct |
 | UAT-01 | No account, isolated data dir, fake R1/R2 smoke | PASS | `smoke_codex.py --self-test` exit 0 (manual path also verified); full output in final run log |
 | UAT-02 | Ordinary Git project with no AGENTS/STATE | PASS (registration/readiness), R2 real run NOT_RUN | `par project add myrepo` generic, writes blocked; real R2 documented from 2026-11-07 evidence, not re-run |
 | UAT-03 | Draft → contract → R2 → diff/review/accept | PASS | `UAT_LOG.md` UAT-A (manual hand-off; full lifecycle) |
@@ -38,7 +45,7 @@ will follow. The final SHA is recorded here after the commit.
 | UAT-08 | Same tool as coordinator and worker, one subscription | PASS (design + docs); real session NOT_RUN | `docs/en/INTEGRATIONS.md` §2, `test_role_provider_caps.py` |
 | UAT-09 | Switch coordinator; new reads packet; old cannot decide | PASS | `test_authorization_lease.py`, `test_takeover.py` |
 | UAT-10 | English/Chinese independent README demo | PASS (manual checklist); independent reader not available | Language switch, 5-question checklist below |
-| UAT-11 | Linux install/fake/process control | NOT_RUN | Pending GitHub Actions |
+| UAT-11 | Linux install/fake/process control | PASS (CI install + security + process control); full fake E2E NOT_RUN | `linux_security_core` and `linux_process_control` PASS ([run](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528)); no full Linux fake CLI end-to-end |
 | UAT-12 | Windows native / WSL2 | NOT_RUN / NOT_SUPPORTED | Matrix is honest; not a claimed feature |
 
 ## Gate C — docs and developer experience
@@ -62,11 +69,11 @@ will follow. The final SHA is recorded here after the commit.
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| REL-01 | The PR's CI actually runs | NOT_RUN | Branch not pushed yet |
-| REL-02 | Full suite in a controlled environment | PASS locally; CI scope documented | Final run recorded below |
-| REL-03 | Mutation tests | PASS locally on new entries; full run pending | M921–M926 → 6/6 detected, 0 problems; full 346+ pending |
-| REL-04 | macOS + Linux matrix | macOS PASS; Linux NOT_RUN | Local macOS; GitHub Linux pending |
-| REL-05 | wheel + sdist clean install | PASS | `/tmp/par_dist` built; wheel installed in a fresh `uv` venv; `par version`/`doctor` OK |
+| REL-01 | The PR's CI actually runs | PASS | PR #28, run [42588469528](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528), all four jobs PASS at `1cedd1c` |
+| REL-02 | Full suite in a controlled environment | PASS locally; CI scope documented | **1596 tests OK, 23 skipped, 493 s** (macOS 15.6.1 arm64, Python 3.12.12, `1cedd1c` + docs-only edits); CI runs the named subsets, not the full suite |
+| REL-03 | Mutation tests | PASS locally on new entries; full run below | M921–M926 → 6/6 detected, 0 problems; full run recorded below |
+| REL-04 | macOS + Linux matrix | PASS for the claimed levels | Local macOS; Linux `linux_security_core` + `linux_process_control` PASS; no Linux real-provider claim |
+| REL-05 | wheel + sdist clean install | PASS | `/tmp/par_dist_final` built from the clean clone; wheel installed in a fresh venv; `par version`/`doctor` OK; sdist contains docs (49 entries) |
 | REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.0.0`, untagged partial; CHANGELOG and release notes use the same wording |
 | REL-07 | Open-source governance | PASS | LICENSE, SECURITY, CONTRIBUTING, SUPPORT, CODE_OF_CONDUCT, issue/PR templates |
 | REL-08 | Clean restore/uninstall | PASS (documented + fixture check) | `GETTING_STARTED.md` §6; fixture `git status` empty after accept |

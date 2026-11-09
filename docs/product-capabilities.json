@@ -245,14 +245,14 @@
       "id": "linux",
       "name": "Linux (ubuntu-latest, GitHub Actions)",
       "status": "CORE_EXPERIMENTAL",
-      "install": "CI smoke_install is macOS-only; Linux CI installs with pip install -e .",
-      "cli_core": "PASS in linux_security_core (awaiting the 2026-11-09 run record)",
+      "install": "pip install -e . in linux_security_core (smoke_install itself is macOS)",
+      "cli_core": "PASS: linux_security_core, 150 tests (run 42588469528)",
       "fake_smoke": "NOT_RUN",
       "real_provider": "NOT_SUPPORTED (adapters are macOS-specific)",
-      "cancel_timeout": "CI linux_process_control (awaiting the 2026-11-09 run record)",
+      "cancel_timeout": "PASS: linux_process_control, 89 tests (run 42588469528)",
       "sandbox": "No OS sandbox",
       "last_verified": "2026-11-09",
-      "evidence_url": ".github/workflows/tests.yml"
+      "evidence_url": "finalization/RELEASE_READINESS.md"
     },
     {
       "id": "windows_wsl2",

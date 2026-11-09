@@ -150,11 +150,9 @@ phone/web assistant participates only through the human hand-off.
 an automatic code worker unless PAR has a native adapter for it. ACP is `RESEARCH_ONLY`; no ACP
 implementation exists in this build.
 
-To inspect the exact tool list and schemas:
-
-```bash
-par coordinator kit claude_desktop --json
-```
+To inspect the exact tool list and schemas, start `par mcp serve` and send `tools/list`, or read
+[docs/MCP.md](../MCP.md). `par coordinator kit NAME --json` prints the connection snippet and the
+starter prompt; it does not dump schemas.
 
 ## 9. Failure paths common to every route
 

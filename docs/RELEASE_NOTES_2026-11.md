@@ -15,20 +15,18 @@
 > WSL2、真实 Claude/Codex 决策流、真实取消/额度事故仍未验证；最终状态以
 > [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md) 为准。
 
-## 结论：**不建议现在打新 tag / 发新版**
+## 结论：准备范围明确的发布候选；打 tag 仍需 Maintainer 单独批准
 
-理由（按重要性）：
+本轮产品化冲刺后，可以对外准备一个**范围明确、证据可复核**的发布候选；这不等于宣布「所有平台/Provider 正式支持」。理由（按重要性）：
 
-1. **仍只有一条正式自动执行路径**。T14 原本是 `BLOCKED_BY_EVIDENCE`（Issue #16）：T13 是静态能力研究、无 GREEN。2026-11-06 用户授权解锁并选定「用官方允许的 ChatGPT 订阅路径做真实复核、**不新增自动 Provider**」；同日第二次尝试在宿主已由外部 OS 沙箱化的限定条件下取得成功的真实 R1/R2。**2026-11-07 在普通终端补跑产品默认 `-s` 模式成功，现有 Codex 升为 `GREEN`**。2026-11-09 用户正式修订 Gate：T14 收口为 `CLOSED_BY_SCOPE_DECISION`，产品口径固定为 **Codex 自动 + 人工交接**，不再宣称多厂商自动执行；原“新增 Provider”Gate 的未达成事实保留在验收账单。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)、[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md) 与 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
+1. **正式自动执行路径仍只有 Codex**。T14 已由用户收口为 `CLOSED_BY_SCOPE_DECISION`，产品口径固定为 **Codex 自动 + 人工交接**，不再宣称多厂商自动执行。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)、[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md) 与 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
 2. **`codex-cli 0.166.0-alpha.6` 已完成 §12 版本复核**：离线 8/8 PASS、trust 3/3 PASS、`par health --probe` AVAILABLE、可控分类样本 153/153 PASS、真实 R1/R2 成功；`TESTED_VERSION` 已更新为该版本，`untested version` 提示消除。**默认 `-s read-only|workspace-write` 已于 2026-11-07 在普通终端复核成功**（见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)）。见 [CODEX.md](CODEX.md) §12 / §14 / §15。
 3. **Antigravity 条款风险**：官方 FAQ 明确禁止第三方封装；现有 `agy` 适配器只能作为实验性、默认禁用的历史实现保留。
-4. **平台证据不齐**：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（CI 增加 `linux_process_control` 后覆盖取消/超时/进程组，但仍不是完整 E2E）、Windows `STATIC_GAP`。
-5. **全量套件仍不是 CI 的覆盖范围**：2026-11-06 的受限沙箱里曾有 4 个进程终止类模块（7 个用例）
-   因无法向子进程组投递信号而失败；**2026-11-07 在普通终端全量 1564 项通过（23 skipped）**。
-   CI 仍只跑四个明确命名的作业（新增 `linux_process_control`），不是全量套件。
+4. **平台证据分级如实**：macOS `VERIFIED`、Linux `CORE_EXPERIMENTAL`（2026-11-09 CI 实跑核心安全 150 项与进程控制 89 项，但不是完整 E2E 或真实 Provider）、Windows 原生 `NOT_SUPPORTED`、WSL2 `NOT_TESTED`。
+5. **CI 不是全量套件**：2026-11-09 本地全量 1596 项通过（23 skipped，493 s）；CI 只跑四个明确命名的作业。全量结果与 Actions URL 记录在 [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md)。
 
-因此本轮的成果是**文档与证据整理**，适合作为 `main` 上的持续交付；不适合对外宣布一个「P3 全部通过」的版本。
-`pyproject.toml` / `__version__` 保持 `1.0.0`，未改动版本号。
+因此本轮的成果是**可复核的发布候选**；合并、版本号、tag、GitHub Release 与 PyPI 仍由 Maintainer 单独决定。
+`pyproject.toml` / `__version__` 保持 `1.0.0`，本轮未改版本号、未打 tag。
 
 ## 已完成的 P0–P3（可核对）
 

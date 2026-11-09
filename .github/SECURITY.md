@@ -4,7 +4,7 @@ This is a solo-maintained personal project (pre-1.0 maturity in practice, even t
 
 ## Reporting a vulnerability
 
-Please use [GitHub Security Advisories](../../security/advisories/new) for this repository ("Report a vulnerability") rather than a public issue, so there's time to fix it before details are public. If you'd rather not use GitHub for this, email `haitao3011@foxmail.com` with "PAR security" in the subject.
+Please use [GitHub Security Advisories](../../security/advisories/new) for this repository ("Report a vulnerability") rather than a public issue, so there's time to fix it before details are public. The advisory thread is the private reporting channel; do not include credentials, personal paths or third-party project data in the report.
 
 ## What's in scope
 

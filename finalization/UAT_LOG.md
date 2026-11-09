@@ -38,12 +38,23 @@ The following are covered by automated tests rather than by hand:
 - worker claim does not become a verified status: `test_evidence_summary.py`,
   `test_kernel_run.py`.
 
-## UAT-C: not run
+## UAT-C: fresh clone and package (2026-11-09)
 
-- A fresh clone + wheel installation (F09/F10 packaging step): recorded in
-  `RELEASE_READINESS.md` after it runs.
-- Linux install/fake run/process control on a real GitHub runner: `NOT_RUN` until the Actions job
-  finishes.
+| Step | Command | Result |
+|---|---|---|
+| clean clone | `git clone <local checkout> /tmp/par_final_clone` at `1cedd1c` | clean checkout |
+| install | `uv venv --python 3.12 .venv && uv pip install -e .` | installed `personal-agent-runtime==1.0.0` |
+| doctor | `PAR_DATA_DIR=/tmp/par_final_data .venv/bin/par doctor` | `PASS 5 \| WARN 0 \| FAIL 0`, providers disabled |
+| smoke | `.venv/bin/python -B tests/tools/smoke_codex.py --self-test` | exit 0, fake R1/R2, no model, no network |
+| docs | `link_check.py`; `docs_contract.py` | 0 broken; OK |
+| build | `python3 -m build --no-isolation --outdir /tmp/par_dist_final` | wheel + sdist |
+| wheel install | fresh `uv` venv + wheel | `par version --json` → 1.0.0; `doctor` 5 PASS |
+| sdist | `tar -tzf` | includes docs (49 entries), examples, tests; no private data |
+
+## UAT-D: not run or not claimed
+
+- Linux install/fake run/process control on a real GitHub runner: install + security + process
+  control PASS (run 42588469528); a full Linux fake CLI end-to-end is **not run**.
 - Windows native and WSL2: `NOT_TESTED`; not claimed.
 - Real Codex R1/R2: not re-run in this round; the dated 2026-11-07 evidence is referenced, not
   re-labelled as new.

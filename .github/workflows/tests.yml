@@ -77,6 +77,8 @@ jobs:
           python -B -m unittest
           tests.unit.test_kernel_control
           tests.unit.test_validation_results
+          tests.unit.test_subprocesses
+          tests.unit.test_kernel_recovery
 
   core_unittests:
     runs-on: macos-latest

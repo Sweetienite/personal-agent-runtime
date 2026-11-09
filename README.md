@@ -67,7 +67,12 @@ The smoke script runs the real adapter code against a **fake `codex`** and a thr
 
 Set `PAR_DATA_DIR` before the first command whenever you want an isolated run. `par doctor` otherwise reads your real data directory. To clean up: `rm -rf "$PAR_DATA_DIR"` and delete the checkout.
 
-## Your first safe task
+## Your first safe task (after a worker is configured)
+
+This section assumes an active profile with a worker. For a zero-account `manual_handoff` profile
+and the export → human edit → import path, follow
+[GETTING_STARTED §4](docs/en/GETTING_STARTED.md#4-a-complete-manual-hand-off-with-no-account) and
+use `par task handoff` instead of `par task run`; no provider or subscription is needed there.
 
 Use a small, disposable Git repository (or `par fixture create`), not a sensitive project:
 
@@ -89,8 +94,9 @@ cat > draft.json <<'JSON'
   }
 }
 JSON
-.venv/bin/par task draft --draft draft.json   # prints the strict contract; submits nothing
-.venv/bin/par task submit --contract task.json  # save the printed contract here first
+.venv/bin/par task draft --draft draft.json > draft.out
+tail -1 draft.out > task.json                 # the compiler prints notes, then the contract as the last line
+.venv/bin/par task submit --contract task.json
 ```
 
 A write task stops at `PERMISSION_WAIT`. Approve the pending item, run one attempt, then read the result and diff:
@@ -122,6 +128,10 @@ Full walkthrough, including a plain Git repository and a manual hand-off: [docs/
 The default profile's `approval_mode` is `coordinator_autonomous`: a coordinator may decide inside the current lease. Set it to `coordinator_scoped` or `human_only` to keep or bound that authority. `par init` prints this at first use.
 
 ## Compatibility and limitations
+
+Broad interoperability comes from native, protocol and human-mediated workflows, with
+integration-specific automation and verification levels — not from claiming that every tool or OS is
+supported.
 
 **AI tools (separate from the host OS).**
 

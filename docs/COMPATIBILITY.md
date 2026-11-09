@@ -181,7 +181,14 @@ MCP 是**主控接入协议**，不是自动 Worker 协议；一个客户端能�
 
 ## 与平台证据的关系
 
-本文的 `GREEN/YELLOW/RED` 描述的是**工具/协议与账号路径**，不是操作系统支持。同一候选在不同 OS 上的可执行风险、进程组/信号、文件权限与签名校验另见 [SECURITY.md 的平台验证分级](SECURITY.md)：macOS `E2E`、Linux `CORE_EXPERIMENTAL`（CI 只实跑纯逻辑安全子集）、Windows `STATIC_GAP`。即使某天某个工具取得 `GREEN`，也只代表**当时记录的版本 + OS + 账号类型**下通过，不能跨版本或跨平台外推。
+本文的 `GREEN/YELLOW/RED` 描述的是**工具/协议与账号路径**，不是操作系统支持。同一候选在不同 OS 上的可执行风险、进程组/信号、文件权限与签名校验另见 [SECURITY.md 的平台验证分级](SECURITY.md)。即使某天某个工具取得 `GREEN`，也只代表**当时记录的版本 + OS + 账号类型**下通过，不能跨版本或跨平台外推。
+
+| 宿主 | 状态 | 证据 | 未验证 |
+|---|---|---|---|
+| macOS 15.6.1 arm64 | `VERIFIED` | 安装、doctor、fake R1/R2、真实 Codex R1/R2（2026-11-07）、取消/超时脚本回归 | 其它版本、真实 Windows/Linux |
+| Linux（`ubuntu-latest` CI） | `CORE_EXPERIMENTAL` | 2026-11-09 run 42588469528：`linux_security_core` 150 tests + 文档检查；`linux_process_control` 89 tests | 完整 fake CLI E2E、真实 Provider |
+| Windows WSL2 | `NOT_TESTED` | 无 | 安装、进程组、文件权限、完整流程 |
+| Windows 原生 | `NOT_SUPPORTED` | 静态缺口（进程组/信号、权限位、签名、路径语义） | 全部 |
 
 ## 对现有文档的影响
 

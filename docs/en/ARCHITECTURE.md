@@ -128,3 +128,19 @@ provider and the host.
 - `par candidate create` rebuilds a clean baseline from recorded patches and re-runs checks there.
 - Reliability statistics come from the ledger (`ops/reliability_report.py`), not from hand-edited
   numbers in documentation.
+
+## 8. Process control and exit codes
+
+- Each attempt and each check runs in its own process group/session. On cancel or timeout the Kernel
+  sends SIGTERM to the group, waits for a grace period, then SIGKILLs the group it started. It never
+  signals a PID it cannot match to the recorded start time.
+- A worker that calls `setsid` leaves the group; the Kernel cannot track or kill it. This is a
+  documented gap, not a silent success.
+- Cancel moves `CANCEL_REQUESTED → CANCELED`; a successful attempt moves
+  `RUNNING → VERIFYING → REVIEW_REQUIRED`; an orphaned attempt becomes `RECOVERY_REQUIRED` until
+  `par task recover` settles it.
+- CLI exit codes: `0` success, `1` a refused/unsafe/unmet state (including a failed attempt), `2`
+  usage, missing file or invalid configuration. A task run that ends `FAILED` is still a valid run;
+  read `par task result` for the Kernel's classification.
+- On hosts where the Kernel cannot signal a child process group, the process-control tests fail
+  rather than skip; the macOS and GitHub Ubuntu runs are recorded in the release readiness ledger.

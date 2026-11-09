@@ -67,7 +67,9 @@ export PAR_DATA_DIR="$(mktemp -d)"          # 让演示远离任何已有 PAR �
 
 第一次命令前设置 `PAR_DATA_DIR` 就能隔离运行；不设置时 `par doctor` 会读取你真实的数据目录。清理：`rm -rf "$PAR_DATA_DIR"`，再删除 checkout。
 
-## 第一个安全任务
+## 第一个安全任务（配置好 Worker 之后）
+
+这一节假设已有可用的 profile 与 worker。想完全零账号走 `manual_handoff` 的「导出 → 人工作业 → 导入」路径，请按 [docs/QUICKSTART.md §3](docs/QUICKSTART.md#3-零账号的完整人工交接不需要-provider) 操作，并用 `par task handoff` 代替 `par task run`。
 
 用一个小型、可丢弃的 Git 仓库（或 `par fixture create`），不要用含敏感文件的项目：
 
@@ -89,8 +91,9 @@ cat > draft.json <<'JSON'
   }
 }
 JSON
-.venv/bin/par task draft --draft draft.json   # 只打印严格合同，不提交
-.venv/bin/par task submit --contract task.json  # 先把打印内容保存成 task.json
+.venv/bin/par task draft --draft draft.json > draft.out
+tail -1 draft.out > task.json                 # 编译器先打印提示，最后一行是合同
+.venv/bin/par task submit --contract task.json
 ```
 
 写任务会停在 `PERMISSION_WAIT`。批准待决项、运行一次、查看结果与补丁：
@@ -122,6 +125,8 @@ Kernel 在私有副本里运行任务的 `acceptance.checks`。检查通过后 `
 默认 profile 的 `approval_mode` 是 `coordinator_autonomous`：主控可以在当前租约内决定。改为 `coordinator_scoped` 或 `human_only` 可以收回或限定这项权力。`par init` 会在首次使用时打印这条提示。
 
 ## 兼容性与限制
+
+广泛的互操作性来自原生、协议与人工三条工作流，并配有按接入方式区分的自动化与验证等级——而不是来自「所有工具/所有 OS 都已支持」的宣称。
 
 **AI 工具（与宿主 OS 分开）。**
 

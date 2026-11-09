@@ -16,19 +16,21 @@ report. No user work was overwritten, reset or force-pushed.
 | F05 | Install / onboarding / first task | DONE (manual path verified); real-provider path documented | `docs/en/GETTING_STARTED.md`, `docs/QUICKSTART.md`, `UAT_LOG.md` |
 | F06 | Integrations and manual workflows | DONE (docs); ≥3 paths reproduced in fake/manual environments | `docs/en/INTEGRATIONS.md`, `UAT_LOG.md` |
 | F07 | Reference, security, architecture, troubleshooting | DONE | `docs/en/*`, `docs/INDEX*.md`, `docs/SECURITY.md` |
-| F08 | CI, docs contract, links/anchors, deliberate-break proof | IN PROGRESS | `tests/tools/docs_contract.py`, `tests/tools/link_check.py`, workflow update pending |
-| F09 | Packaging, governance, examples, changelog | IN PROGRESS | Governance files added; wheel/sdist and examples pending |
-| F10 | Independent UAT and release readiness | IN PROGRESS | `UAT_LOG.md`, `RELEASE_READINESS.md` pending |
+| F08 | CI, docs contract, links/anchors, deliberate-break proof | DONE | `tests/tools/docs_contract.py`, `tests/tools/link_check.py`, CI run [42588469528](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42588469528) |
+| F09 | Packaging, governance, examples, changelog | DONE | wheel/sdist built and installed; governance files; `examples/` |
+| F10 | Independent UAT and release readiness | DONE with limits | `UAT_LOG.md`, `RELEASE_READINESS.md`, `FINAL_REPORT.md`; independent readers not available |
 
 ## Test evidence
 
 | When | Command | Environment | Result |
 |---|---|---|---|
 | 2026-11-09 | `python3 -B -m unittest discover -s tests -t .` | macOS 15.6.1 arm64, Python 3.12.12, baseline `c796981` | 1584 tests OK, 23 skipped, 461 s |
-| 2026-11-09 | `python3 -B -m unittest discover -s tests -t .` | same, G0 `6ef1bab` | 1596 tests, 2 failures in tool-description length (fixed after the run) |
-| 2026-11-09 | `python3 -B tests/tools/mutation_check.py M921 M922 M923 M924 M925 M926` | same | 6/6 detected, 0 problems |
-| 2026-11-09 | `python3 -B tests/tools/link_check.py` | same | 9 missing files (governance files created; re-run pending) |
-| 2026-11-09 | `python3 -B tests/tools/docs_contract.py` | same | checks wired; evidence file pending |
+| 2026-11-09 | `python3 -B -m unittest discover -s tests -t .` | same, G0 `6ef1bab` | 1596 tests, 2 failures in tool-description length (fixed; final run below) |
+| 2026-11-09 | `python3 -B -m unittest discover -s tests -t .` | same, `1cedd1c` + docs-only edits | **1596 tests OK, 23 skipped, 493 s** |
+| 2026-11-09 | `python3 -B tests/tools/mutation_check.py` | same | full result in `RELEASE_READINESS.md` |
+| 2026-11-09 | `python3 -B tests/tools/link_check.py` | same | 0 broken links/anchors |
+| 2026-11-09 | `python3 -B tests/tools/docs_contract.py` | same | OK |
+| 2026-11-09 | GitHub Actions PR #28 | run 42588469528 | all four jobs PASS: 150 + 89 + 384 tests and smoke install |
 
 `NOT_RUN` is not `PASS`. The final full-suite, mutation, link, docs-contract, wheel, and GitHub
 Actions results are recorded in `RELEASE_READINESS.md` when they actually run.
@@ -36,3 +38,5 @@ Actions results are recorded in `RELEASE_READINESS.md` when they actually run.
 ## Commits
 
 - `6ef1bab` — `fix(auth): enforce the coordinator lease inside the Kernel`
+- `1cedd1c` — `docs: publish the bilingual product entry and one capability fact source`
+- final evidence commit: recorded in `RELEASE_READINESS.md` / PR #28

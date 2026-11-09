@@ -24,6 +24,9 @@ If `python3 -m venv` fails with `externally-managed-environment` and your Python
 create the environment with `uv venv --python 3.12 .venv && uv pip install -e .` instead. Do not
 install into the system Python.
 
+`pip install -e .` may fetch the setuptools build backend once. After installation, the demo, the
+smoke scripts and `par doctor` make no network request and call no model.
+
 Keep every command below inside this checkout; use the virtual environment's interpreter
 (`.venv/bin/python`) so you are not testing a different installation.
 
@@ -214,6 +217,18 @@ Removing the checkout and the data directory removes PAR's records; your reposit
 | `CANDIDATE VERIFIED` | Accepted patches were re-applied and re-checked on one clean baseline; still not applied |
 | `CLOSED` | The accepted task is finished |
 | `FAILED` | A check failed, a boundary was violated, or the result was rejected; evidence is kept |
+
+## 8. Upgrading and old Harness projects
+
+- Existing `projects.toml` entries **without** a `context_mode` keep the old Harness behaviour; a
+  generic registration writes `context_mode = "generic"`. `par doctor`, `par project list` and
+  `par project show` only report the mode; they never rewrite an old entry.
+- There is no destructive database migration. New ledger tables and columns are additive; an older
+  build can still open the file. Back up `$PAR_DATA_DIR` before upgrading anyway.
+- A Harness project still needs `AGENTS.md`, `.ai/STATE.md` and exactly one active contract. An
+  ordinary Git project does not; `--context-mode harness` is the opt-in advanced mode.
+- To roll back a configuration or an installed version, follow
+  [docs/ROLLBACK.md](../ROLLBACK.md). It never deletes the ledger or rewrites project files.
 
 Next: [USER_GUIDE.md](USER_GUIDE.md) for the daily flow, or [INTEGRATIONS.md](INTEGRATIONS.md) for
 MCP coordinators and GUI tools.
