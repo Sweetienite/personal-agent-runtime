@@ -1,7 +1,8 @@
 # Final report — 2026-11-09 productization round
 
-Status: **release candidate prepared; release still blocked on the Maintainer's explicit decision.**
-No tag, GitHub Release or PyPI upload was created.
+Status: **released as `1.0.0` (`v1.0.0`) on 2026-11-09** under the Maintainer's explicit
+authorization: PR #28 merged, tag and GitHub Release created. PyPI upload is `BLOCKED` on missing
+credentials and was not fabricated as a success.
 
 ## 1. What was delivered
 
@@ -52,12 +53,14 @@ No tag, GitHub Release or PyPI upload was created.
 - **Real WorkBuddy GUI in this round**: not run; the 2026-11-07 sample is referenced.
 - **Independent stranger readers**: not available. One maintainer blind pass was performed; independent review is still pending, and is not fabricated.
 - **Real cancellation/timeout/quota incidents**: not forced; controllable samples cover the paths.
-- **PR #28** is open and unmerged. **Maintainer approval for merge/tag/Release/PyPI is required.**
+- **PyPI**: `BLOCKED` — no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN`, no `twine`. The wheel/sdist
+  are built and verified locally; the upload needs the Maintainer's credentials.
+- **Authorization**: merge, tag, GitHub Release and the PyPI attempt were explicitly authorized by
+  the Maintainer on 2026-11-09; no unapproved release action was taken.
 
 ## 5. Release recommendation
 
-**Conditional GO for a scoped, honest open-source release after the Maintainer's review**, with these
-non-negotiable claims:
+**Released as a scoped, honest `1.0.0`**, with these non-negotiable claims:
 
 - Codex is the only formal automatic worker, tied to `codex-cli 0.166.0-alpha.6`, macOS, ChatGPT
   login, 2026-11-07.
@@ -66,17 +69,18 @@ non-negotiable claims:
 - macOS is verified; Linux is core-experimental; Windows is not supported.
 - `human_only` is not OS-level identity; no automatic repository apply exists.
 
-**NO-GO for any wording that claims all platforms/tools are supported, or any tag/Release/PyPI
+**NO-GO for any wording that claims all platforms/tools are supported, or any future tag/Release
 action without the Maintainer's explicit approval.**
 
-## 6. Final manual steps for the Maintainer
+## 6. Release execution record
 
-1. Review PR #28, especially `6ef1bab` (authorization) and `docs/product-capabilities.json`.
-2. Decide whether the release scope above is the public scope. If yes, merge PR #28 to `main`.
-3. Re-run release CI on the merged `main`; rebuild the wheel/sdist from that commit.
-4. Decide the version number and tag/Release/PyPI actions explicitly. This round did none.
-5. If a new tag is created, update `docs/product-capabilities.json` `release_status`, `README`
-   status lines, `CHANGELOG.md` and `docs/RELEASE_NOTES_2026-11.md` together, then re-run
-   `docs_contract.py`.
-6. Record any independent reader feedback in `finalization/UAT_LOG.md`; do not upgrade
+1. PR #28 reviewed and merged to `main` on 2026-11-09 under the Maintainer's explicit authorization.
+2. Release metadata was aligned before the merge: `RELEASE_STATUS`, `product-capabilities.json`,
+   both READMEs, compatibility page, getting-started, quickstart, CHANGELOG, release notes and this
+   ledger all say `released 2026-11-09; P3 gate partial`.
+3. `docs_contract.py` was re-run after the metadata change.
+4. Tag `v1.0.0` and the GitHub Release were created from the merged `main`.
+5. PyPI upload was attempted only as far as the environment allowed: no credentials and no `twine`
+   are present, so it is recorded as `BLOCKED`, not PASS.
+6. Any further independent-reader feedback belongs in `finalization/UAT_LOG.md`; do not upgrade
    `VERIFIED_*` labels without a dated run.

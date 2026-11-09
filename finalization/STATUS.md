@@ -3,6 +3,10 @@
 Branch: `release/final-productization`, based on `fix/p0-p3-audit-20261109` @ `c796981`
 (which is one commit on top of `public-origin/main` @ `bc9cb0c`).
 
+Release: PR #28 merged to `main`, tag `v1.0.0` and GitHub Release created on 2026-11-09 under the
+Maintainer's explicit authorization. PyPI is `BLOCKED` on missing credentials; see
+`RELEASE_READINESS.md` REL-10.
+
 Working tree baseline for this task: clean except untracked `.ai/`, this package, and the audit
 report. No user work was overwritten, reset or force-pushed.
 

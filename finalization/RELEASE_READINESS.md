@@ -4,7 +4,7 @@ Status vocabulary: `PASS`, `FAIL`, `NOT_RUN`, `BLOCKED`. A configuration existin
 `NOT_RUN` is not `PASS`. This file is updated only from actual commands and run records.
 
 HEAD at the start of this ledger: `6ef1bab` plus the uncommitted productization/docs commit that
-will follow. The final SHA is recorded here after the commit.
+will follow. The release commit and merged `main` SHA are recorded in the final run records below.
 
 CI runs for PR #28:
 - code/workflow commit `e473739`: run
@@ -78,11 +78,11 @@ CI runs for PR #28:
 | REL-03 | Mutation tests | PASS | full run: **352/352 mutations detected, problems: 0**; M921–M926 and M227/M620 verified KILLED |
 | REL-04 | macOS + Linux matrix | PASS for the claimed levels | Local macOS; Linux `linux_security_core` + `linux_process_control` PASS; no Linux real-provider claim |
 | REL-05 | wheel + sdist clean install | PASS | `/tmp/par_dist_final` built from the clean clone; wheel installed in a fresh venv; `par version`/`doctor` OK; sdist contains docs (49 entries) |
-| REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.0.0`, untagged partial; CHANGELOG and release notes use the same wording |
+| REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.0.0`, `released 2026-11-09; P3 gate partial`; CHANGELOG heading, README status lines, compatibility page and release notes use the same wording |
 | REL-07 | Open-source governance | PASS | LICENSE, SECURITY, CONTRIBUTING, SUPPORT, CODE_OF_CONDUCT, issue/PR templates |
 | REL-08 | Clean restore/uninstall | PASS (documented + fixture check) | `GETTING_STARTED.md` §6; fixture `git status` empty after accept |
 | REL-09 | Rollback | PASS (existing procedure) | `docs/ROLLBACK.md`; no destructive migration |
-| REL-10 | Maintainer release decision | BLOCKED | Requires explicit approval; no tag/Release/PyPI was created |
+| REL-10 | Maintainer release decision | PASS for tag/Release; PyPI BLOCKED by missing credentials | Maintainer authorized merge/tag/Release/PyPI on 2026-11-09. `v1.0.0` tag and GitHub Release created. PyPI upload could not run: no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN` credentials, no `twine` binary. Recorded as BLOCKED, not PASS. |
 
 ## Five-question readability check
 

@@ -5,7 +5,7 @@
   "tagline": "A local, verifiable execution and coordination layer for AI coding agents.",
   "version": "1.0.0",
   "phase": "RELEASE",
-  "release_status": "untagged; P3 gate partial (Codex automatic + manual hand-off)",
+  "release_status": "released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)",
   "license": "MIT",
   "repository": "https://github.com/Sweetienite/personal-agent-runtime",
   "runtime": {

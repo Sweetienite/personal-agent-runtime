@@ -11,7 +11,7 @@ English | [简体中文](README.zh-CN.md)
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **Status: `1.0.0`, untagged release candidate.** Codex is the only formal automatic worker (one version/OS/account combination, see the matrix). MCP connects a *coordinator*, not a generic worker. Manual hand-off is a first-class path. macOS is the verified host; Linux is core-experimental; Windows native is not supported. There is no tag or GitHub Release yet.
+> **Status: `1.0.0`, released 2026-11-09 ([tag `v1.0.0`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.0.0)).** Codex is the only formal automatic worker (one version/OS/account combination, see the matrix). MCP connects a *coordinator*, not a generic worker. Manual hand-off is a first-class path. macOS is the verified host; Linux is core-experimental; Windows native is not supported.
 
 ## Why PAR?
 

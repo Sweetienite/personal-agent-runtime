@@ -11,7 +11,7 @@ PAR 把任务状态、权限与证据放在任何聊天之外，让可兼容的 
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **状态：`1.0.0`，尚未打 tag 的发布候选。** 正式自动执行路径只有 Codex（限定版本/OS/账号组合，见矩阵）；MCP 连接的是**主控**，不是通用自动 Worker；人工交接是一等路径。macOS 是已验证宿主；Linux 为核心实验级；Windows 原生不支持。当前没有 tag 或 GitHub Release。
+> **状态：`1.0.0`，2026-11-09 已发布（[tag `v1.0.0`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.0.0)）。** 正式自动执行路径只有 Codex（限定版本/OS/账号组合，见矩阵）；MCP 连接的是**主控**，不是通用自动 Worker；人工交接是一等路径。macOS 是已验证宿主；Linux 为核心实验级；Windows 原生不支持。
 
 ## 为什么需要 PAR
 

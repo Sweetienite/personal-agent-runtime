@@ -164,7 +164,7 @@ CI 只跑四个明确命名的作业（`smoke_install`、`core_unittests` 在 ma
 
 ## 历史记录（2026-11-06，未改写）
 
-2026-11-06 的首次陌生人演练使用 Python 3.13、HEAD `fe3270d`、数据目录 `/tmp/par_fresh_data`，结果包括：`par doctor` 5 PASS、`smoke_codex.py --self-test` 通过、普通 Git 仓库登记成功、夹具任务 `ad_hoc=true` 被拒绝后改为 `false` 提交、`par task handoff --to workbuddy --json` 输出 `mode: text`。当时的 `par version` 只打印 `1.0.0 (phase RELEASE)`；当前版本额外打印 `release status: untagged; P3 gate partial (Codex automatic + manual hand-off)`。
+2026-11-06 的首次陌生人演练使用 Python 3.13、HEAD `fe3270d`、数据目录 `/tmp/par_fresh_data`，结果包括：`par doctor` 5 PASS、`smoke_codex.py --self-test` 通过、普通 Git 仓库登记成功、夹具任务 `ad_hoc=true` 被拒绝后改为 `false` 提交、`par task handoff --to workbuddy --json` 输出 `mode: text`。当时的 `par version` 只打印 `1.0.0 (phase RELEASE)`；当前版本额外打印 `release status: released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)`。
 
 > 注：`docs/reports/` 里的历史验收报告是**当时那个版本的历史快照**，不是当前版本的支持保证；
 > 当前证据以 `docs/COMPATIBILITY.md`、`docs/SECURITY.md` 与 CI 日志为准。

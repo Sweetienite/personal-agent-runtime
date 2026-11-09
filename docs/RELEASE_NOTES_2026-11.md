@@ -1,23 +1,29 @@
 # 发行审查清单（P3/T16，2026-11-06）
 
-本文是**审查结论**，不是发行公告。实际打 tag / 创建 GitHub Release 需要用户单独批准（任务卡明确要求），本轮没有执行。
+本文是**审查结论**，不是发行公告。正文保留 2026-11-06 至 2026-11-09 的审查历史。
+**2026-11-09 更新**：Maintainer 已明确授权合并、打 tag 与发布，`v1.0.0` 已发布；
+包版本仍为 `1.0.0`，GitHub Release 见
+[releases/tag/v1.0.0](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.0.0)。
+PyPI 发布状态以 [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md) 的
+REL-10 为准，不以本文件推断。
 
 > **2026-11-09 口径修订（审计整改）**：原 P3 Gate 的“新增一个正式自动 Provider”未达成，用户的明确决定是
 > **正式修订 Gate**：P3 的正式自动执行范围收口为 **Codex + 人工交接**，T14 标记为
 > `CLOSED_BY_SCOPE_DECISION`，不再以“新增 Provider”作为发行门槛，也不宣称多厂商自动执行。
-> 逐项 59 项证据见 [acceptance/P0-P3-results.md](../acceptance/P0-P3-results.md)。修订不改变“未打 tag / 未发版”的结论。
+> 逐项 59 项证据见 [acceptance/P0-P3-results.md](../acceptance/P0-P3-results.md)。该修订当时不改变“未打 tag / 未发版”的结论；
+> 2026-11-09 的发布授权已另行取代它（见文首更新）。
 
 > **2026-11-09 产品化冲刺（release candidate 准备）**：Kernel 现在对四种决策强制检查协调者租约，
 > 并在同一写事务内重核；被替换的桥不能再提交/启动/重试/继续/终止/构建候选/rebase。产品入口改为英文
 > [README.md](../README.md) + 中文 [README.zh-CN.md](../README.zh-CN.md)，英文入门页在
 > [docs/en/](en/)，机器可读事实源为 [product-capabilities.json](product-capabilities.json)。
-> `docs_contract` 与升级后的链接/锚点检查已接入 CI。**这仍是未打 tag 的发布候选**：真实 Windows /
-> WSL2、真实 Claude/Codex 决策流、真实取消/额度事故仍未验证；最终状态以
-> [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md) 为准。
+> `docs_contract` 与升级后的链接/锚点检查已接入 CI。**2026-11-09 已发布 `v1.0.0`**；发布范围与
+> 未验证项保持不变。真实 Windows / WSL2、真实 Claude/Codex 决策流、真实取消/额度事故仍未验证；
+> 最终状态以 [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md) 为准。
 
-## 结论：准备范围明确的发布候选；打 tag 仍需 Maintainer 单独批准
+## 结论：范围明确的 `1.0.0` 已发布（`v1.0.0`，2026-11-09）
 
-本轮产品化冲刺后，可以对外准备一个**范围明确、证据可复核**的发布候选；这不等于宣布「所有平台/Provider 正式支持」。理由（按重要性）：
+本轮产品化冲刺后，发布的是一个**范围明确、证据可复核**的版本；这不等于宣布「所有平台/Provider 正式支持」。理由（按重要性）：
 
 1. **正式自动执行路径仍只有 Codex**。T14 已由用户收口为 `CLOSED_BY_SCOPE_DECISION`，产品口径固定为 **Codex 自动 + 人工交接**，不再宣称多厂商自动执行。见 [第一部分](reports/CODEX_REAL_REVALIDATION_20261106.md)、[第二部分](reports/CODEX_REVALIDATION_PART2_20261106.md) 与 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
 2. **`codex-cli 0.166.0-alpha.6` 已完成 §12 版本复核**：离线 8/8 PASS、trust 3/3 PASS、`par health --probe` AVAILABLE、可控分类样本 153/153 PASS、真实 R1/R2 成功；`TESTED_VERSION` 已更新为该版本，`untested version` 提示消除。**默认 `-s read-only|workspace-write` 已于 2026-11-07 在普通终端复核成功**（见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)）。见 [CODEX.md](CODEX.md) §12 / §14 / §15。
@@ -25,8 +31,10 @@
 4. **平台证据分级如实**：macOS `VERIFIED`、Linux `CORE_EXPERIMENTAL`（2026-11-09 CI 实跑核心安全 150 项与进程控制 89 项，但不是完整 E2E 或真实 Provider）、Windows 原生 `NOT_SUPPORTED`、WSL2 `NOT_TESTED`。
 5. **CI 不是全量套件**：2026-11-09 本地全量 1596 项通过（23 skipped，493 s）；CI 只跑四个明确命名的作业。全量结果与 Actions URL 记录在 [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md)。
 
-因此本轮的成果是**可复核的发布候选**；合并、版本号、tag、GitHub Release 与 PyPI 仍由 Maintainer 单独决定。
-`pyproject.toml` / `__version__` 保持 `1.0.0`，本轮未改版本号、未打 tag。
+因此本轮发布的成果是一个**可复核的 `1.0.0`**；版本号、tag、GitHub Release 已按 Maintainer
+2026-11-09 的明确授权执行。`pyproject.toml` / `__version__` 为 `1.0.0`，`RELEASE_STATUS` 为
+`released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)`。PyPI 是否可用取决于
+凭据与 REL-10，不因 tag 存在而自动成立。
 
 ## 已完成的 P0–P3（可核对）
 
@@ -57,7 +65,7 @@
 3. ~~在允许创建嵌套 OS 沙箱的普通终端补跑 PAR 默认 `-s` 模式~~ **已完成（2026-11-07）**：`codex_revalidate.py --yes-use-quota --model gpt-6-luna` exit 0，真实 R1/R2 均使用产品默认沙箱；结果已写入 [CODEX.md](CODEX.md) / [COMPATIBILITY.md](COMPATIBILITY.md)，等级从 `GREEN (scoped)` 升为 `GREEN`。见 [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。
 4. 若要新增（而不是只复核）一个自动 Provider，仍需付费 Gemini API key / 企业许可等**官方允许**的账号路径，并按 [ADAPTERS.md](ADAPTERS.md) 清单实现 + 真实样本；本轮用户已明确决定不新增。
 5. 一个能在干净 Linux 环境跑通 fake CLI 全链路的记录（把 Linux 从 `CORE_EXPERIMENTAL` 升格）。
-6. 用户单独批准打 tag / 发 Release，并确认 `CHANGELOG.md` 的版本号与发行说明。用户本轮明确要求**先不打 tag**。
+6. ~~用户单独批准打 tag / 发 Release，并确认 `CHANGELOG.md` 的版本号与发行说明。~~ **已完成（2026-11-09）**：Maintainer 明确授权合并 PR、打 `v1.0.0` tag、创建 GitHub Release 并尝试 PyPI；`CHANGELOG.md` 已整理为 `1.0.0 — 2026-11-09`。
 
 ## 对外表述的红线
 
