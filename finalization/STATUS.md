@@ -44,4 +44,7 @@ Actions results are recorded in `RELEASE_READINESS.md` when they actually run.
 
 - `6ef1bab` — `fix(auth): enforce the coordinator lease inside the Kernel`
 - `1cedd1c` — `docs: publish the bilingual product entry and one capability fact source`
-- final evidence commit: recorded in `RELEASE_READINESS.md` / PR #28
+- `e473739` — `ci: keep the argv-bound subprocess test on macOS`
+- `67ea705` — final pre-merge evidence tree on the PR branch
+- `0567128` — PR #28 merged into `main`
+- `5a27b66` — `release: bump to 1.1.0 for the productization release` (tag `v1.1.0`)
