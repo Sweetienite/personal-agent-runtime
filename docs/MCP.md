@@ -110,7 +110,9 @@
 
 ## 同一时刻只有一个主控（主控交接）
 
-桥替一个**有名字的主控**说话（`par mcp serve --coordinator claude_desktop`，默认就是它）。如果你之后用 `par takeover confirm … --as codex_manual_takeover` 把主控交给了别人，这个桥再 `submit_task` 或 `run_task` 会被拒绝（`not_the_coordinator`），避免两个主控同时向同一本台账调度；查看和取消不受限制（停下来永远是安全的）。新的主控用 `--coordinator codex_manual_takeover` 启动自己的桥。详见 [HANDOFF.md](HANDOFF.md) 的“主控交接”。
+桥替一个**有名字的主控**说话（`par mcp serve --coordinator claude_desktop`，默认就是它）。如果你之后用 `par coordinator use codex`（或 `par takeover confirm … --as codex_manual_takeover`）把主控交给了别人，这个桥再 `submit_task`、`run_task`、`retry_task`、`resume_task`、`recover_task(terminate=true)`、`create_candidate`、`rebase_task` 都会在 Kernel 里被拒绝（`not_the_coordinator`），四个决策工具（`approve_task`/`reject_task`/`accept_task`/`close_task`）也一样——`coordinator_autonomous` 不是绕过租约的开关。避免两个主控同时向同一本台账调度；查看、`pause_task` 和 `cancel_task` 不受限制（停下来永远是安全的）。新的主控用 `--coordinator codex` 启动自己的桥。详见 [HANDOFF.md](HANDOFF.md) 的“主控交接”。
+
+租约由 Kernel 判定，不是桥的 UI 限制：每次决策在同一个数据库事务内会再核对一次当前主控、`approval_mode` 与 grant，所以“先核验、再撤销/切换、再落盘”的时序不会留下成功记录。未知主控 id 一律拒绝。
 
 ## 运行时的几个事实
 

@@ -128,7 +128,7 @@ class EvidenceOnTheKernel(KernelWorld):
         self.assertEqual((ev["integration"], ev["applied_to_project"]), ("NOT_INTEGRATED", False))
         other = self.queued(r1_contract())
         self.run_task(other)
-        self.kernel.accept(other, by="coordinator", note="kernel checks only")
+        self.kernel.accept(other, by="coordinator", actor="claude_desktop", note="kernel checks only")
         self.assertEqual(self.kernel.evidence(other)["review"], "COORDINATOR_REVIEW")
 
     def test_rejecting_a_result_is_recorded_as_a_review_by_whoever_did_it(self):

@@ -134,6 +134,26 @@ class ApprovalMixin:
             return row
         return None
 
+    def _current_coordinator(self, actor: "str | None", *, action: str) -> str:
+        """The canonical coordinator a decision may be attributed to, or a refusal.
+
+        Approval mode is not identity: every mode, including ``coordinator_autonomous``, requires a
+        known coordinator that still holds the current lease. Otherwise a bridge session kept open
+        from before ``par coordinator use`` could keep deciding after the person switched.
+        """
+        from par.core.kernel import Refused
+        cid = registry.normalize(actor) if actor else None
+        if cid is None:
+            raise Refused("coordinator_identity",
+                          f"{actor!r} is not a known coordinator ({', '.join(sorted(registry.COORDINATORS))}); "
+                          "the bridge must name who it speaks for")
+        holder = self.coordinator_lease()["coordinator"]
+        if holder is not None and cid != holder:
+            raise Refused("not_the_coordinator",
+                          f"{holder} coordinates now, not {cid}; the person confirmed a takeover, so this session "
+                          f"cannot {action} any more")
+        return cid
+
     def _decision_authorization(self, action: str, *, by: str, actor: "str | None", task: "dict[str, Any]",
                                 approval_kind: "str | None" = None) -> "dict[str, Any]":
         """Allow or refuse one decision, and return the audit fields the ledger event must carry."""
@@ -144,15 +164,13 @@ class ApprovalMixin:
         if by != "coordinator":
             raise Refused("decision_actor", f"{by!r} is not a decision actor; people use by='user' and the bridge uses by='coordinator'")
         mode = self.approval_mode()
-        cid = registry.normalize(actor) if actor else None
         if mode == "human_only":
             raise Refused("approval_mode", "approval_mode is human_only: coordinator decisions are refused; "
                                            "run the decision at the CLI, or change the profile after deciding it is safe")
+        cid = self._current_coordinator(actor, action=action)
         if mode == "coordinator_autonomous":
             return {"mode": mode, "allowed": True, "grant_id": None, "coordinator": cid,
                     "reason": "coordinator_autonomous: the person enabled coordinator decisions in this profile"}
-        if cid is None:
-            raise Refused("coordinator_identity", "approval_mode is coordinator_scoped: the bridge must name its coordinator")
         grant = self._matching_grant(cid, action, task, approval_kind)
         if grant is None:
             raise Refused("no_grant", f"approval_mode is coordinator_scoped and {cid} has no live grant for {action}"
@@ -166,12 +184,15 @@ class ApprovalMixin:
         """What this coordinator may decide for one task now, without deciding anything (used by the bridge)."""
         mode = self.approval_mode()
         cid = registry.normalize(coordinator) if coordinator else None
+        holder = self.coordinator_lease()["coordinator"]
         actions: "list[str]" = []
         reasons: "list[str]" = []
         if mode == "human_only":
             reasons.append("human_only: only a person can decide")
-        elif mode == "coordinator_scoped" and cid is None:
-            reasons.append("coordinator_scoped: the bridge has no coordinator identity")
+        elif cid is None:
+            reasons.append("the bridge has no known coordinator identity")
+        elif holder is not None and cid != holder:
+            reasons.append(f"{holder} coordinates now, not {cid}; this session cannot decide")
         else:
             status = T(task["status"])
             pending = self._pending(task["task_id"])
@@ -234,6 +255,7 @@ class ApprovalMixin:
             columns["pinned_worker"] = target["payload"]["to"]
         with self.store.tx():
             task = self._require(task_id)
+            auth = self._decision_authorization("approve", by=by, actor=actor, task=task, approval_kind=kind)
             if not any(a["id"] == target["id"] for a in self._pending(task_id)):
                 raise NotAllowed("already_decided", f"approval #{target['id']} was decided meanwhile")
             self.store.decide_approval(target["id"], "APPROVED", by, note)
@@ -260,6 +282,8 @@ class ApprovalMixin:
         if task["status"] == T.REVIEW_REQUIRED.value and approval_id is None and not self._pending(task_id):
             auth = self._decision_authorization("reject", by=by, actor=actor, task=task)
             with self.store.tx():
+                task = self._require(task_id)
+                auth = self._decision_authorization("reject", by=by, actor=actor, task=task)
                 self.store.add_event("RESULT_REJECTED", task_id=task_id, reason=f"result rejected by {by}",
                                      data={"by": by, "attempt": task["attempt_count"], "note": note[:200],
                                            "decision_mode": auth["mode"], "decision_grant": auth["grant_id"],
@@ -269,6 +293,8 @@ class ApprovalMixin:
         target = self._decide_target(task_id, approval_id)
         auth = self._decision_authorization("reject", by=by, actor=actor, task=task, approval_kind=target["kind"])
         with self.store.tx():
+            task = self._require(task_id)
+            auth = self._decision_authorization("reject", by=by, actor=actor, task=task, approval_kind=target["kind"])
             if not any(a["id"] == target["id"] for a in self._pending(task_id)):
                 raise NotAllowed("already_decided", f"approval #{target['id']} was decided meanwhile")
             self.store.decide_approval(target["id"], "REJECTED", by, note)

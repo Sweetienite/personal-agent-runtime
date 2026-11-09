@@ -101,6 +101,13 @@ class Tools:
         except Exception:
             pass
 
+    def _lease_problem(self) -> "str | None":
+        """Start, resume, retry and terminate are refused to a bridge whose coordinator was replaced; stop/read stay open."""
+        holder = self.kernel.coordinator_lease()["coordinator"]
+        if holder is not None and holder != self.coordinator:
+            return f"{holder} coordinates now, not {self.coordinator}; the person confirmed a takeover"
+        return None
+
     def _t(self, value: Any, limit: int) -> str:
         return scrub(value, self._data_dir, limit)
 
@@ -273,9 +280,9 @@ class Tools:
         return {"task_id": task_id, "status": d["status"]}
 
     def _run_task(self, task_id: str) -> "dict[str, Any]":
-        holder = self.kernel.coordinator_lease()["coordinator"]
-        if holder is not None and holder != self.coordinator:
-            return _refused(task_id, f"{holder} coordinates now, not {self.coordinator}; the person confirmed a takeover")
+        problem = self._lease_problem()
+        if problem:
+            return _refused(task_id, problem)
         try:
             d = self.kernel.describe(task_id)
         except UnknownTask:
@@ -318,9 +325,9 @@ class Tools:
         return {"tasks": tasks, "count": len(tasks), "truncated": len(rows) > limit}
 
     def _retry_task(self, task_id: str, worker: "str | None" = None, fresh: bool = False) -> "dict[str, Any]":
-        holder = self.kernel.coordinator_lease()["coordinator"]            # retry starts new work, same guard as run_task
-        if holder is not None and holder != self.coordinator:
-            raise Refused("not_the_coordinator", f"{holder} coordinates now, not {self.coordinator}; the person confirmed a takeover")
+        problem = self._lease_problem()            # retry starts new work, same guard as run_task
+        if problem:
+            raise Refused("not_the_coordinator", problem)
         d = self.kernel.retry(task_id, worker=worker, by="coordinator", fresh=fresh)
         return {"task_id": task_id, "status": d["status"], "agent_next": self._agent_next(d)}
 
@@ -329,10 +336,17 @@ class Tools:
         return {"task_id": task_id, "status": d["status"]}
 
     def _resume_task(self, task_id: str) -> "dict[str, Any]":
+        problem = self._lease_problem()            # resuming restarts work
+        if problem:
+            raise Refused("not_the_coordinator", problem)
         d = self.kernel.resume(task_id)
         return {"task_id": task_id, "status": d["status"], "agent_next": self._agent_next(d)}
 
     def _recover_task(self, task_id: "str | None" = None, terminate: bool = False) -> "dict[str, Any]":
+        if terminate:
+            problem = self._lease_problem()        # terminating a process group is not a read-only recovery
+            if problem:
+                raise Refused("not_the_coordinator", problem)
         actions = self.kernel.recover(task_id, terminate=terminate)
         return {"actions": [{"task_id": a.task_id, "attempt": a.attempt, "action": a.action, "detail": self._t(a.detail, ISSUE_MAX)}
                             for a in actions], "count": len(actions)}
@@ -354,7 +368,7 @@ class Tools:
         }
 
     def _create_candidate(self, tasks: "list[str]", note: "str | None" = None) -> "dict[str, Any]":
-        d = self.kernel.candidate_create(tasks, note=note or "")
+        d = self.kernel.candidate_create(tasks, note=note or "", actor=self.coordinator)
         return self._candidate_view(d)
 
     def _show_candidate(self, candidate: str) -> "dict[str, Any]":
@@ -369,7 +383,7 @@ class Tools:
         return {"candidates": candidates, "count": len(candidates), "truncated": len(rows) > limit}
 
     def _rebase_task(self, task_id: str, candidate: str, note: "str | None" = None) -> "dict[str, Any]":
-        d = self.kernel.task_rebase(task_id, candidate, note=note or "")
+        d = self.kernel.task_rebase(task_id, candidate, note=note or "", actor=self.coordinator)
         return {"task_id": task_id, "status": d["status"], "candidate": (d.get("base") or {}).get("candidate"),
                 "base_commit": (d.get("base") or {}).get("candidate_commit"),
                 "agent_next": self._agent_next(d)}

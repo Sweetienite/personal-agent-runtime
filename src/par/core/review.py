@@ -50,6 +50,10 @@ class ReviewMixin:
             raise NotAllowed("not_accepted", f"{task_id} is {task['status']}; only ACCEPTED tasks can be closed")
         auth = self._decision_authorization("close", by=by, actor=actor, task=task)
         with self.store.tx():
+            task = self._require(task_id)
+            if task["status"] != T.ACCEPTED.value:
+                raise NotAllowed("not_accepted", f"{task_id} is {task['status']}; only ACCEPTED tasks can be closed")
+            auth = self._decision_authorization("close", by=by, actor=actor, task=task)
             self.store.set_status(task_id, T.CLOSED, expected_version=task["version"], reason="closed")
             self.store.add_event("TASK_CLOSED", task_id=task_id, reason=f"closed by {by}",
                                  data={"decision_mode": auth["mode"], "decision_grant": auth["grant_id"],

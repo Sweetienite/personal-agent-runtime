@@ -75,6 +75,9 @@ def _cmd_init(args: argparse.Namespace) -> int:
         return 1
     where = redact_text(str(status.path), home=str(Path.home()))
     print(f"data directory ready: {where} (mode {status.mode:04o})" if existed else f"created data directory: {where} (mode {status.mode:04o})")
+    print("approval mode: coordinator_autonomous (built-in default) - an MCP coordinator may approve, reject, accept and close "
+          "inside the active coordinator lease; set approval_mode = coordinator_scoped or human_only in profiles.toml to keep "
+          "decisions with a person (see docs/SECURITY.md)")
     return 0
 
 

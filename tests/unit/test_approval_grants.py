@@ -57,7 +57,7 @@ class Grants(KernelWorld):
         for wrong in ("codex",):
             with self.assertRaises(Refused) as ctx:
                 kernel.approve(task, approval["id"], by="coordinator", actor=wrong, note="please")
-            self.assertEqual(ctx.exception.code, "no_grant")
+            self.assertEqual(ctx.exception.code, "not_the_coordinator")
         kernel.grant_revoke(grant["grant_id"])
         wrong_risk = kernel.grant_create("claude_desktop", actions=["approve"], project_id="fixture",
                                          approval_kinds=["WRITE_PERMISSION"], risk_tiers=["R1"], expires_at="2099-01-01T00:00:00Z")

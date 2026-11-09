@@ -34,7 +34,7 @@ par coordinator prompt codex     # 打印：起手提示词（它必须遵守的
    # 然后完全退出 Claude Desktop（⌘Q）：它退出后工具自动写入、自检、并重新打开应用（想撤销：--remove --apply …）
    ```
 3. **Claude Code**：默认不接（接到用户级会让你所有项目的所有会话都多出 21 个工具）。只在需要的项目里，执行 `kit claude_desktop` 打印的 `claude mcp add-json …` 一行命令（不加 `--scope`，默认只对当前项目生效）。
-4. 把 `par coordinator prompt NAME` 的内容作为新聊天的第一条消息（Claude Code：放进该会话的项目说明里）。它告诉主控：有哪 21 个工具、怎么用 `prepare_task` 得到合同、怎么用依赖关系拆大任务、它可以自己决定批准/拒绝/验收/关闭（2026-10-20 起，每次决定都记着是它做的）、Worker 说的话不可信。
+4. 把 `par coordinator prompt NAME` 的内容作为新聊天的第一条消息（Claude Code：放进该会话的项目说明里）。它告诉主控：有哪 21 个工具、怎么用 `prepare_task` 得到合同、怎么用依赖关系拆大任务、它可以在当前租约与 `approval_mode`/grant 允许时自己决定批准/拒绝/验收/关闭（2026-10-20 起；每次决定都记着是它做的）、Worker 说的话不可信。
 5. 验证：让它调用 `list_tasks`，然后运行 `par coordinator status`——它的「最近出现」应是刚刚。
 
 - 片段里的 Python 是**生成它的那个 Python**。请用项目自己的解释器生成（`.venv/bin/par coordinator kit …`，它指向 uv 管理的稳定 Python 3.12），不要用放在「下载」文件夹里的 conda 环境——那个文件夹一清理，桥就悄悄坏了。
@@ -71,7 +71,7 @@ par coordinator use codex        # 写接管包 + 记录这次切换（你敲这
 
 然后：在 Codex 里贴起手提示词，再把它打印出的接管包（`takeover.md`，只含 Kernel 量到的事实：任务树、状态、检查结果、待决批准、Harness 文件的路径与哈希）交给它读。切回来同理：`par coordinator use claude_desktop`。
 
-- **同一时刻只有一个主控**：切换后，被替换的主控再通过桥 `submit_task` 或 `run_task` 会被拒绝（`not_the_coordinator`），避免两个主控向同一本台账同时调度；它仍然可以查看和取消（停下来永远是安全的）。**你自己的命令（`par task …`）永远不被拦。**
+- **同一时刻只有一个主控**：切换后，被替换的主控再通过桥提交、启动、重试、继续、构建候选、rebase，或批准/拒绝/验收/关闭，都会被 Kernel 以 `not_the_coordinator` 拒绝（三种 `approval_mode` 都一样，autonomy 不绕过租约），避免两个主控向同一本台账同时调度；它仍然可以查看、暂停和取消（停下来永远是安全的）。**你自己的命令（`par task …`）永远不被拦。**
 - 已验收的任务不会因为换主控而重跑。
 - 切换是**你的动作**：Kernel 看不到聊天应用的额度，所以不会自己切。`最近出现` 只是心跳（桥每次被调用时记一条，每个主控每分钟最多一条），帮你判断“它是不是还活着”。
 

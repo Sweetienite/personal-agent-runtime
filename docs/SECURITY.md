@@ -168,7 +168,28 @@ CI 有四个作业：`smoke_install`（macOS）、`core_unittests`（macOS，含
 
 Grant 是台账里的只增记录，只能由人在 CLI 创建和撤销：`par coordinator grant NAME --action approve|reject|accept|close --expires 24h [--project ID] [--risk R0 ...] [--approval-kind WRITE_PERMISSION ...]`；`par coordinator grants` 列出活跃项，`par coordinator revoke N` 立即撤销。Grant 的作用域（主控、动作、审批类型、项目、风险、到期）不可修改；改了就是一条新 grant；撤销后不能重新打开。**MCP 桥没有任何创建/撤销 grant 的工具，主控不能给自己授权。**
 
+**租约先于模式。** 三种模式都要求调用者是一个已知的主控 id，并且仍然持有当前协调租约。租约来自最后一次 `par coordinator use` / `takeover confirm`，没有切换时就是 profile 里配置的主控。用 `par coordinator use codex` 切换后，旧 Claude 会话的桥再尝试批准/拒绝/验收/关闭、启动/重试/继续任务、构建候选或 rebase，都会在 Kernel 得到 `not_the_coordinator`；`coordinator_autonomous` 也不例外。每次决策在同一个写事务里会再次核对租约、模式与 grant，撤销或切换不会产生“先核验后落盘”的成功记录。查看、暂停和取消仍然允许：停下来永远是安全的。`recover --terminate` 会终止进程，因此也被租约挡住。
+
 这不是操作系统沙箱：`approval_mode` 约束的是「谁可以向 Kernel 发出决定」，不能限制主控会话本身做什么；Worker/检查命令仍以你的用户身份运行（见「已知限制」）。
+
+`human_only` / CLI 的 `by="user"` **不是不可伪造的人类身份鉴别**。它只约束经过 PAR CLI 或 MCP 的调用路径；一个已经获得同一 OS 用户 shell 执行权的进程（包括被模型驱动的终端）可以直接运行 `par task approve`，也可以绕开 PAR 直接改文件。需要真正的隔离时，限制该 Agent 的 shell 能力，或用独立 OS 用户/虚拟机运行。PAR 不声称 `human_only` 能抵御本机同用户攻击。
+
+### 主控可触发的副作用动作（action policy matrix）
+
+| 动作 | 主控可经 MCP 触发 | 会执行仓库代码 | 规则 |
+|---|---|---|---|
+| `submit_task` | 是 | 否（只校验与入账） | 必须持有当前租约；写任务进入 `PERMISSION_WAIT`，是否自动批准由 `approval_mode` 决定 |
+| `run_task` | 是 | 是（启动 Worker） | 必须持有当前租约；只接受 `QUEUED` 且无可待批准项 |
+| `retry_task` | 是 | 是（启动新 attempt） | 必须持有当前租约；不绕过额度/登录冷却或权限 |
+| `resume_task` | 是 | 否（回到队列） | 必须持有当前租约；后续运行仍需正常闸门 |
+| `pause_task` / `cancel_task` | 是 | 否（停止） | 被替换的旧主控仍可停止（停下来是安全的） |
+| `recover_task` | 是 | 否 | 结清孤儿 attempt；`terminate=true` 会终止进程组，必须持有当前租约 |
+| `create_candidate` | 是 | **是**（重跑各任务 `acceptance.checks`） | 必须持有当前租约；命令以本机用户身份执行、无 OS 沙箱；台账记录 `actor` |
+| `rebase_task` | 是 | 否（改基线指针） | 必须持有当前租约；只接受未运行过的 `QUEUED`/`PAUSED` 任务 |
+| `approve` / `reject` / `accept` / `close` | 是 | 否 | 租约 + `approval_mode` + 有效 grant；事务内重核 |
+| 清除健康记录 / 探测 Provider / 改配置 / 创建或撤销 grant | **否** | — | 桥里不存在这些工具，只能人用 CLI |
+
+`create_candidate` 是桥里唯一会在主控调用下重新执行仓库检查命令的动作：它的执行范围是一次性候选副本，日志与哈希入账，真实项目不被写入；但它不是沙箱，只应对你信任的仓库和检查命令使用。
 
 ## 脱敏
 
