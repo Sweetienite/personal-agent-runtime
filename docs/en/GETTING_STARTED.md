@@ -49,7 +49,7 @@ Expected:
   the current coordinator lease; set `approval_mode = coordinator_scoped` or `human_only` in
   `profiles.toml` if you want decisions to stay with a person.
 - `par doctor` ends with `PASS 5 | WARN 0 | FAIL 0` and reports every provider as disabled.
-- `par version` prints `par 1.0.0 (phase RELEASE)` and
+- `par version` prints `par 1.1.0 (phase RELEASE)` and
   `release status: released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)`.
 
 `par doctor` runs no external program and writes nothing.

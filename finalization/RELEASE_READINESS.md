@@ -38,7 +38,7 @@ CI runs for PR #28:
 
 | ID | Journey | Status | Evidence |
 |---|---|---|---|
-| UAT-00 | Fresh clone + wheel install; doctor/version; providers disabled | PASS | fresh clone of `1cedd1c` in `/tmp/par_final_clone`: `uv pip install -e .`, `par init`, `doctor` 5 PASS, fake smoke exit 0; wheel `personal_agent_runtime-1.0.0-py3-none-any.whl` installed in `/tmp/par_wheel_final`, `par version --json` correct |
+| UAT-00 | Fresh clone + wheel install; doctor/version; providers disabled | PASS | fresh clone of `1cedd1c` in `/tmp/par_final_clone`: `uv pip install -e .`, `par init`, `doctor` 5 PASS, fake smoke exit 0; release wheel `personal_agent_runtime-1.1.0-py3-none-any.whl` installed in `/tmp/par_release_wheel`, `par version --json` → `1.1.0` released 2026-11-09 |
 | UAT-01 | No account, isolated data dir, fake R1/R2 smoke | PASS | `smoke_codex.py --self-test` exit 0 (manual path also verified); full output in final run log |
 | UAT-02 | Ordinary Git project with no AGENTS/STATE | PASS (registration/readiness), R2 real run NOT_RUN | `par project add myrepo` generic, writes blocked; real R2 documented from 2026-11-07 evidence, not re-run |
 | UAT-03 | Draft → contract → R2 → diff/review/accept | PASS | `UAT_LOG.md` UAT-A (manual hand-off; full lifecycle) |
@@ -78,11 +78,11 @@ CI runs for PR #28:
 | REL-03 | Mutation tests | PASS | full run: **352/352 mutations detected, problems: 0**; M921–M926 and M227/M620 verified KILLED |
 | REL-04 | macOS + Linux matrix | PASS for the claimed levels | Local macOS; Linux `linux_security_core` + `linux_process_control` PASS; no Linux real-provider claim |
 | REL-05 | wheel + sdist clean install | PASS | `/tmp/par_dist_final` built from the clean clone; wheel installed in a fresh venv; `par version`/`doctor` OK; sdist contains docs (49 entries) |
-| REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.0.0`, `released 2026-11-09; P3 gate partial`; CHANGELOG heading, README status lines, compatibility page and release notes use the same wording |
+| REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.1.0`, `released 2026-11-09; P3 gate partial`; CHANGELOG heading, README status lines, compatibility page and release notes use the same wording |
 | REL-07 | Open-source governance | PASS | LICENSE, SECURITY, CONTRIBUTING, SUPPORT, CODE_OF_CONDUCT, issue/PR templates |
 | REL-08 | Clean restore/uninstall | PASS (documented + fixture check) | `GETTING_STARTED.md` §6; fixture `git status` empty after accept |
 | REL-09 | Rollback | PASS (existing procedure) | `docs/ROLLBACK.md`; no destructive migration |
-| REL-10 | Maintainer release decision | PASS for tag/Release; PyPI BLOCKED by missing credentials | Maintainer authorized merge/tag/Release/PyPI on 2026-11-09. `v1.0.0` tag and GitHub Release created. PyPI upload could not run: no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN` credentials, no `twine` binary. Recorded as BLOCKED, not PASS. |
+| REL-10 | Maintainer release decision | PASS for tag/Release; PyPI BLOCKED by missing credentials | Maintainer authorized merge/tag/Release/PyPI on 2026-11-09. The existing `v1.0.0` tag (2026-11-03) was left untouched; this release is `v1.1.0`. PyPI upload could not run: no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN` credentials, no `twine` binary. Recorded as BLOCKED, not PASS. |
 
 ## Five-question readability check
 

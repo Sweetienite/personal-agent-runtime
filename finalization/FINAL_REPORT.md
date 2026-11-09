@@ -1,7 +1,8 @@
 # Final report — 2026-11-09 productization round
 
-Status: **released as `1.0.0` (`v1.0.0`) on 2026-11-09** under the Maintainer's explicit
-authorization: PR #28 merged, tag and GitHub Release created. PyPI upload is `BLOCKED` on missing
+Status: **released as `1.1.0` (`v1.1.0`) on 2026-11-09** under the Maintainer's explicit
+authorization: PR #28 merged, tag and GitHub Release created. The `v1.0.0` tag already existed on
+2026-11-03, so this productization release is a minor version. PyPI upload is `BLOCKED` on missing
 credentials and was not fabricated as a success.
 
 ## 1. What was delivered
@@ -60,7 +61,7 @@ credentials and was not fabricated as a success.
 
 ## 5. Release recommendation
 
-**Released as a scoped, honest `1.0.0`**, with these non-negotiable claims:
+**Released as a scoped, honest `1.1.0`**, with these non-negotiable claims:
 
 - Codex is the only formal automatic worker, tied to `codex-cli 0.166.0-alpha.6`, macOS, ChatGPT
   login, 2026-11-07.
@@ -79,7 +80,8 @@ action without the Maintainer's explicit approval.**
    both READMEs, compatibility page, getting-started, quickstart, CHANGELOG, release notes and this
    ledger all say `released 2026-11-09; P3 gate partial`.
 3. `docs_contract.py` was re-run after the metadata change.
-4. Tag `v1.0.0` and the GitHub Release were created from the merged `main`.
+4. Tag `v1.1.0` and the GitHub Release were created from the merged `main`; the existing `v1.0.0`
+   tag (2026-11-03) was left untouched.
 5. PyPI upload was attempted only as far as the environment allowed: no credentials and no `twine`
    are present, so it is recorded as `BLOCKED`, not PASS.
 6. Any further independent-reader feedback belongs in `finalization/UAT_LOG.md`; do not upgrade

@@ -21,7 +21,7 @@ has a code/test/doc change; `OPEN` means it still blocks or limits the release.
 | G14 | Real cancellation/timeout/quota incidents were not forced | OPEN by evidence scope; documented | `docs/COMPATIBILITY.md` |
 | G15 | Real Claude/Codex MCP sessions only exercised read-only `list_tasks`; submit/decision tools are scripted-tested | OPEN by evidence scope; documented | `docs/en/COMPATIBILITY.md` |
 | G16 | `state.md`/plans referenced old SHAs; the local private `main` is not the public history | CHECKED; branch based on the real public-origin HEAD | `.ai/STATE.md` read-only |
-| G17 | Version `1.0.0` could be misread as a published release | FIXED: released as `v1.0.0` on 2026-11-09; `par version`/`doctor` print `released 2026-11-09; P3 gate partial` | README, `docs/en/COMPATIBILITY.md` |
+| G17 | Version `1.0.0` could be misread as a published release | FIXED: released as `v1.1.0` on 2026-11-09; `par version`/`doctor` print `released 2026-11-09; P3 gate partial` | README, `docs/en/COMPATIBILITY.md` |
 | G18 | The old README command table was the main product page | FIXED: moved to `docs/en/USER_GUIDE.md` / `docs/OPERATIONS.md` | README |
 | G19 | No governance files (support, conduct, issue/PR templates, root security pointer) | FIXED | `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md` |
 | G20 | No non-editable wheel/sdist install verification | FIXED: wheel installed in a fresh venv, sdist inspected | `finalization/RELEASE_READINESS.md` REL-05 |

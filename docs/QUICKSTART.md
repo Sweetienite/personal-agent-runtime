@@ -31,7 +31,7 @@ python3 -m venv .venv && .venv/bin/pip install -e .     # 或 uv venv --python 3
 export PAR_DATA_DIR="$(mktemp -d)"                      # 换成你自己的空目录也可以
 .venv/bin/par init                                      # 创建 0700 的数据目录
 .venv/bin/par doctor                                    # 期望 PASS 5 | WARN 0 | FAIL 0
-.venv/bin/par version                                   # par 1.0.0 (phase RELEASE) + release status
+.venv/bin/par version                                   # par 1.1.0 (phase RELEASE) + release status
 ```
 
 `par init` 会打印内置默认审批模式 `coordinator_autonomous` 的提示：MCP 主控可在当前租约内批准、拒绝、验收、关闭；要让人独占决定权，请在 `profiles.toml` 里设为 `coordinator_scoped` 或 `human_only`。

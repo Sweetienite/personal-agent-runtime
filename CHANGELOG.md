@@ -2,12 +2,12 @@
 
 User-facing summary of real changes. The detailed, line-by-line engineering log this project keeps for its own development (every behavior change, why it was made, what test proves it) is not part of this public repository — this file is the readable summary of that history.
 
-## 1.0.0 — 2026-11-09
+## 1.1.0 — 2026-11-09
 
-First tagged release, `v1.0.0`. The release scope is Codex automatic execution plus manual
-hand-off; it does not claim multi-vendor automation. Release evidence is in
-[finalization/RELEASE_READINESS.md](finalization/RELEASE_READINESS.md); scope notes and the
-PyPI status are in [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md).
+Productization release, `v1.1.0`; it follows the initial `1.0.0` tag from 2026-11-03. The release
+scope is Codex automatic execution plus manual hand-off; it does not claim multi-vendor automation.
+Release evidence is in [finalization/RELEASE_READINESS.md](finalization/RELEASE_READINESS.md);
+scope notes and the PyPI status are in [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md).
 
 - **2026-11-09 final productization: coordinator lease enforcement, one capability fact source, and a bilingual product entry.** The Kernel now refuses every coordinator decision (approve/reject/accept/close) unless the caller is a known coordinator that still holds the current lease, and re-checks the lease, mode and grant inside the same write transaction. A replaced bridge also cannot submit, run, retry, resume, terminate, create a candidate or rebase; viewing, pausing and cancelling stay open. `par init` states the default `approval_mode` out loud. The product pages are now English [README.md](README.md) with a Chinese [README.zh-CN.md](README.zh-CN.md); [README.en.md](README.en.md) is a compatibility pointer. New English onboarding and reference pages live under [docs/en/](docs/en/), the machine-readable facts are in [docs/product-capabilities.json](docs/product-capabilities.json), and `tests/tools/docs_contract.py` fails the build when the READMEs, adapter manifests, MCP tool count, CI job list or approval default drift. `tests/tools/link_check.py` now also checks heading anchors and path case. No automatic provider, GUI, auto-supervisor or automatic repository apply was added.
 
@@ -98,10 +98,10 @@ PyPI status are in [docs/RELEASE_NOTES_2026-11.md](docs/RELEASE_NOTES_2026-11.md
   README / README.en / CONTRIBUTING / AGENTS were aligned: ~1558 tests at that point, three named CI jobs, a badge that
   does not mean the full suite, no stale private paths, and honest historical-report framing.
 
-## 1.0.0 pre-release draft — 2026-11 (superseded)
+## 1.0.0 — 2026-11-03 (initial tagged release)
 
-Earlier untagged draft of the first-release summary, kept for history. The tagged release is the
-`1.0.0 — 2026-11-09` section above. Highlights at that draft stage:
+Initial tagged public snapshot, kept for history. The productization release is the
+`1.1.0 — 2026-11-09` section above. Highlights at that snapshot:
 
 - **Kernel-enforced re-verification**: `acceptance.checks` are commands the Kernel itself runs in a scratch clone after a Worker finishes — never a claim the Worker makes. A write task with no checks configured is a known edge case: the Kernel refuses to let an automated coordinator accept it blind, since there's nothing of its own to measure in that case. A human can still review the diff directly and accept it from the terminal.
 - **MCP bridge with 16 tools** for any MCP-capable coordinator (Claude Desktop, Codex) to submit, inspect, approve, and accept tasks — including `get_task_diff`, which lets a coordinator read a result's redacted, size-capped diff content (not just file/line counts) before deciding how to advise a human on an edge case like the one above.

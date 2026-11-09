@@ -231,7 +231,7 @@ python -B tests/tools/codex_revalidate.py --check-only   # 一键跑 §12 离线
    **始终不创建新的正式自动适配器、不合并空实现、不把 YELLOW 写成「已支持」**。
 3. 第二次真实运行的 `-s danger-full-access` **只在一次性临时 worktree 副本**，主干适配器未改、
    未新增配置开关；没有把任何提权参数写进产品代码或默认配置。未使用个人 Google 账号；
-   未接受 Gemma 条款下载本地模型；当时未打 tag / 发 Release（2026-11-09 已发布 `v1.0.0`）。
+   未接受 Gemma 条款下载本地模型；当时未打 tag / 发 Release（2026-11-09 已发布 `v1.1.0`）。
 4. `TESTED_VERSION` 更新为 `0.166.0-alpha.6`，`par health --probe` 不再提示 `untested version`。
    **2026-11-07 已在允许创建嵌套沙箱的普通终端补跑产品默认 `-s` 模式，取得成功的真实 R1/R2，
    等级从 `GREEN (scoped)` 升为 `GREEN`** → [第三部分](reports/CODEX_DEFAULT_SANDBOX_REVALIDATION_20261107.md)。

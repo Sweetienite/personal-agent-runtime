@@ -1,6 +1,6 @@
 # Security Policy
 
-This is a solo-maintained personal project (pre-1.0 maturity in practice, even though the version string says `1.0.0`), used by its author on their own machine. There is no SLA, but real reports are read and taken seriously.
+This is a solo-maintained personal project (pre-1.0 maturity in practice, even though the version string says `1.1.0`), used by its author on their own machine. There is no SLA, but real reports are read and taken seriously.
 
 ## Reporting a vulnerability
 

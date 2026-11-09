@@ -39,9 +39,10 @@ class VersionTests(unittest.TestCase):
         self.assertIn("P3 gate partial", data["release_status"])
 
     def test_phase_matches_dev_number(self):
-        # 1.0.0.devN <-> phase PN, so the two can never drift apart silently; the final release is "1.0.0" / "RELEASE", nothing else.
-        if par.__version__ == "1.0.0":
-            self.assertEqual(par.PHASE, "RELEASE")
+        # 1.0.0.devN <-> phase PN, so the two can never drift apart silently; a final release is
+        # a plain x.y.z version with PHASE == "RELEASE".
+        if par.PHASE == "RELEASE":
+            self.assertRegex(par.__version__, r"^\d+\.\d+\.\d+$")
         else:
             self.assertEqual(par.__version__, f"1.0.0.dev{par.PHASE[1:]}")
 
