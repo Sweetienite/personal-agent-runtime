@@ -20,6 +20,7 @@ import shutil
 import signal
 import subprocess
 import stat
+import sys
 import tempfile
 import threading
 import time
@@ -199,7 +200,9 @@ class CopilotAdapter:
             return problem
         if not Path(self.copilot_home).is_dir():
             return (f"the Copilot home {self.copilot_home} does not exist: run "
-                    f"`HOME={self.copilot_home} COPILOT_HOME={self.copilot_home} copilot --no-auto-update login` once first")
+                    f"`COPILOT_HOME={self.copilot_home} copilot --no-auto-update login` once first")
+        if sys.platform == "darwin" and not (Path.home() / "Library" / "Keychains").is_dir():
+            return "the macOS keychain directory is missing: the Copilot CLI cannot find a saved sign-in"
         if not _MODEL.match(request.model or ""):
             return f"{request.model!r} is not a usable model slug; check `copilot --no-auto-update --help`"
         if request.allow_write:
@@ -220,9 +223,7 @@ class CopilotAdapter:
         return argv
 
     def environment(self, request: RunRequest) -> "dict[str, str]":
-        # The CLI's credential lookup is scoped by HOME; a per-attempt HOME cannot see the login.
-        # Both are pinned to the same stable Copilot directory, which the person logs into once.
-        env = {"HOME": self.copilot_home, "COPILOT_HOME": self.copilot_home, "NO_COLOR": "1", "CI": "1"}
+        env = {"COPILOT_HOME": self.copilot_home, "NO_COLOR": "1", "CI": "1"}
         env.update({k: self.environ[k] for k in PASSTHROUGH if k in self.environ})
         return env
 
@@ -234,8 +235,24 @@ class CopilotAdapter:
         logs.mkdir(mode=0o700, exist_ok=True)
         os.chmod(logs, 0o700)
         self._log_dir = logs
+        if sys.platform == "darwin":
+            source = Path.home() / "Library" / "Keychains"
+            if source.is_dir():
+                library = Path(home) / "Library"
+                library.mkdir(mode=0o700, exist_ok=True)
+                link = library / "Keychains"
+                if not os.path.lexists(link):
+                    os.symlink(source, link)
 
     def cleanup(self, request: RunRequest, home: Path, tmp: Path) -> None:
+        if sys.platform == "darwin" and Path(home).resolve() != Path.home().resolve():
+            link = Path(home) / "Library" / "Keychains"
+            try:
+                if link.is_symlink():
+                    os.unlink(link)
+                link.parent.rmdir()
+            except OSError:
+                pass
         log_dir = Path(tmp) / "copilot-logs"
         if log_dir.is_dir() and not log_dir.is_symlink() and log_dir.parent == Path(tmp):
             shutil.rmtree(log_dir, ignore_errors=True)
@@ -313,12 +330,12 @@ class CopilotAdapter:
     def persistence_report(self) -> "dict[str, Any]":
         home = self.copilot_home
         return {
-            "sessions": f"the CLI runs with HOME=COPILOT_HOME={home}; prompt-mode session state may be written there",
+            "sessions": f"the attempt HOME carries a Library/Keychains link; prompt-mode state may also be written under {home}",
             "logs": "CLI logs are directed to the attempt's private log directory and removed when the attempt ends; "
                     "the Kernel keeps its own stdout/stderr copies",
             "memory": "off: --enable-memory is never passed",
             "paths": [home],
-            "credentials": f"{home} and the system credential store belong to the CLI; the Runtime never opens or copies them",
+            "credentials": f"{home} and the system keychain belong to the CLI; the Runtime never opens or copies them",
             "telemetry": "this adapter does not disable server-side telemetry; the bundled build has no client-telemetry flag",
             "downloads": "--no-auto-update pins the bundled engine and prevents CLI downloads",
         }

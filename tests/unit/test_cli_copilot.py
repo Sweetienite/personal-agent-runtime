@@ -77,7 +77,8 @@ class Protocol(unittest.TestCase):
         for bad in ("-p", "--prompt", "--allow-all-paths", "--allow-all-urls", "--trust-folder", "--yolo", "--allow-all"):
             self.assertNotIn(bad, argv)
         env = adapter.environment(request(self.workspace))
-        self.assertEqual((env["HOME"], env["COPILOT_HOME"]), (str(self.fake.home), str(self.fake.home)))
+        self.assertNotIn("HOME", env)
+        self.assertEqual(env["COPILOT_HOME"], str(self.fake.home))
         self.assertNotIn("GITHUB_TOKEN", env)
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("COPILOT_GITHUB_TOKEN", env)
@@ -190,8 +191,9 @@ class TextAnswer(World):
         self.assertNotIn("GH_TOKEN", call["env"])
         self.assertNotIn("COPILOT_GITHUB_TOKEN", call["env"])
         self.assertTrue(str(call["cwd"]).startswith(str(self.data)))
-        self.assertEqual(call["env"]["HOME"], str(self.fake.home))
+        self.assertNotEqual(call["env"]["HOME"], str(self.fake.home))
         self.assertFalse((self.attempt_dir(tid, 1) / "tmp" / "copilot-logs").exists())
+        self.assertFalse((self.attempt_dir(tid, 1) / "home" / "Library" / "Keychains").exists())
 
     def test_a_write_task_is_not_routed_to_copilot(self):
         config = self.kernel.config

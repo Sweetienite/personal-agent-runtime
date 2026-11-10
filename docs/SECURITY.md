@@ -211,11 +211,11 @@ Grant 是台账里的只增记录，只能由人在 CLI 创建和撤销：`par c
 
 - 不传 `--allow-all-paths`、`--allow-all-urls`、`--trust-folder`、`--yolo`、`--allow-all`；
 - 提示词走 stdin，不出现在进程参数里；
-- 子进程收到干净环境 + `HOME=COPILOT_HOME` + 代理/证书变量，绝不继承 `GITHUB_TOKEN` / `GH_TOKEN` / `COPILOT_GITHUB_TOKEN`；
-- `HOME` 与 `COPILOT_HOME` 固定为同一个稳定目录（默认 `~/.copilot`），TMPDIR/工作副本仍由 Kernel 按 attempt 私有生成；Runtime 不打开/复制该目录内容；
+- 子进程收到干净环境 + 代理/证书变量，绝不继承 `GITHUB_TOKEN` / `GH_TOKEN` / `COPILOT_GITHUB_TOKEN`；
+- Worker 的 HOME 是 Kernel 的临时私有目录；`prepare()` 把其中的 `Library/Keychains` 链接到真实钥匙串（只链接，不复制），`cleanup()` 删除链接；`COPILOT_HOME` 指向稳定的 `~/.copilot`；TMPDIR/工作副本仍按 attempt 私有生成；
 - `--no-auto-update` 锁定 bundled 1.0.5；不声明厂商签名或 OS 沙箱。
 
-残留风险：Copilot 是 npm 安装的 Node script，没有厂商代码签名；它仍以当前用户身份运行，可能加载用户级 Copilot 配置/插件，且 prompt-mode 会话状态可能写到该稳定目录。因此默认 disabled、标记 `EXPERIMENTAL`。真实 HOME 下的一次受控调用已成功（回答 `PAR-COPILOT-OK`、`exitCode=0`、`session.info` 列出全部工具禁用、无文件改动）；稳定 HOME 下的最终验证仍需完成，所以尚不作为 `VERIFIED_AUTO`。临时 HOME 下的同一调用会在模型事件之前以 `No authentication information found` 失败，未产生回答、补丁或项目写入。
+残留风险：Copilot 是 npm 安装的 Node script，没有厂商代码签名；它仍以当前用户身份运行，可能加载用户级 Copilot 配置/插件，且 prompt-mode 会话状态可能写到 `COPILOT_HOME`。因此默认 disabled、标记 `EXPERIMENTAL`。带钥匙串链接的私有 HOME 下的一次受控调用已成功（回答 `PAR-COPILOT-OK`、`exitCode=0`、`session.info` 列出全部工具禁用、无文件改动）；没有链接的临时 HOME 会在模型事件之前以 `No authentication information found` 失败，未产生回答、补丁或项目写入。这是一次文本答题，不是完整的 R1/R2 真实验收，所以尚不作为 `VERIFIED_AUTO`。
 
 ## 检查命令的威胁模型（2026-11-09 审计补充）
 

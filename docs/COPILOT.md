@@ -9,17 +9,17 @@ Provider 默认 `enabled = false`，在明确配置绝对路径并启用之前�
 
 - GitHub Copilot CLI 已安装，且 `copilot --version` 可用。本适配器锁定 npm 包自带的
   **1.0.5** 引擎；每次运行都加 `--no-auto-update`，避免 launcher 下载/切换到缓存的新版本。
-- Copilot CLI 的凭据查找按 **HOME** 作用域；适配器把子进程的 `HOME` 和 `COPILOT_HOME`
-  都固定到同一个稳定目录（默认 `~/.copilot`），因此要用这个 HOME 登录一次
-  （Runtime 不读取、不复制凭据）：
+- 用正常 HOME 登录一次（Runtime 不读取、不复制凭据）：
 
   ```bash
-  HOME="$HOME/.copilot" COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
+  COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
   ```
 
-  只用临时 HOME 运行而不这样登录，会看到 `No authentication information found`；
-  这不是账号问题，而是 CLI 找不到你登录时那个 HOME 下的凭据。launcher 的
-  `copilot --version` 可能报 1.0.105，但 prompt 引擎仍是 bundled 1.0.5；
+  Copilot 的凭据查找是 HOME 相对的。Worker 的 HOME 是 Kernel 的临时私有目录，适配器在
+  `prepare()` 里把 `HOME/Library/Keychains` 链接到真实钥匙串（与 Antigravity 适配器同一
+  做法），所以 CLI 能找到你正常登录的凭据；链接只存在于本次 attempt，结束后删除，绝不
+  复制钥匙串内容。不要把 HOME 指到 `~/.copilot` 登录，也不要把 token 存成明文。
+  launcher 的 `copilot --version` 可能报 1.0.105，但 prompt 引擎仍是 bundled 1.0.5；
   `--disable-client-telemetry` 这类 1.0.105 flag 在 prompt 模式下不可用。
 - 在 `<data dir>/config/providers.toml` 里启用并写明绝对路径：
 
@@ -48,9 +48,10 @@ Provider 默认 `enabled = false`，在明确配置绝对路径并启用之前�
 1. Kernel 准备私有工作副本、私有 HOME 和 TMPDIR；提示词由 Kernel 生成。
 2. 适配器在 `preflight` 检查：绝对路径、文件归属/权限、`COPILOT_HOME` 存在、模型 slug、
    提示词大小、CLI 帮助里是否仍有必需的安全 flag；写任务直接拒绝。
-3. 子进程收到干净环境：`HOME=COPILOT_HOME=<稳定目录>`、代理/证书变量、`NO_COLOR`、`CI`；
-   没有 `GITHUB_TOKEN` / `GH_TOKEN` / `COPILOT_GITHUB_TOKEN`。TMPDIR 和工作副本仍由 Kernel
-   按 attempt 私有生成。
+3. 子进程收到干净环境：临时私有 `HOME`（内含指向真实钥匙串的 `Library/Keychains` 链接）、
+   `COPILOT_HOME=<稳定目录>`、代理/证书变量、`NO_COLOR`、`CI`；没有 `GITHUB_TOKEN` /
+   `GH_TOKEN` / `COPILOT_GITHUB_TOKEN`。TMPDIR 和工作副本同样按 attempt 私有生成；链接在
+   `cleanup()` 中删除。
 4. 参数固定为：
 
    ```text
@@ -85,16 +86,16 @@ Provider 默认 `enabled = false`，在明确配置绝对路径并启用之前�
 
 - 离线 probe 已在真实安装上跑过：可执行文件归属/权限检查通过，`--no-auto-update --version`
   报告 **1.0.5**，帮助里 13 个必需安全 flag 全部存在；登录状态仍无法离线确认。
-- 2026-11-10 用真实 HOME 的受控调用成功：`--model claude-haiku-4.5`、临时工作目录、
-  `assistant.message` 内容为 `PAR-COPILOT-OK`，`result.exitCode = 0`，
+- 2026-11-10 的受控调用在**带钥匙串链接的私有 HOME** 下成功：`--model claude-haiku-4.5`、
+  临时工作目录、`assistant.message` 内容为 `PAR-COPILOT-OK`，`result.exitCode = 0`，
   `usage.premiumRequests = 1`，`codeChanges.filesModified = []`；`session.info` 明确列出
   `bash/create/edit/glob/grep/...` 全部被禁用。这证明 stdin 提示词、JSONL 事件、空工具
-  allowlist 和“无写入”路径可用。
-- 同一命令在**临时 HOME** 下仍返回 `No authentication information found`；因此适配器现在
-  固定 `HOME=COPILOT_HOME`，并要求用同一个稳定 HOME 登录一次。稳定 HOME 下的最终受控调用
-  仍需在你完成登录后补一次；当前证据等级仍是 `EXPERIMENTAL`，不是 `VERIFIED_AUTO`。
-- 本适配器的行为由 fake CLI 测试、真实 JSONL 样本和厂商帮助共同约束；它还没有完整的
-  R1/R2 真实验收证据。
+  allowlist、钥匙串链接和“无写入”路径可用。
+- 同样的私有 HOME 在**没有钥匙串链接**时返回 `No authentication information found`；
+  真实 HOME 下也能成功。适配器的 `prepare()`/`cleanup()` 正是复现“链接真实钥匙串、运行后
+  删除链接”这条已验证路径。
+- 当前证据等级仍是 `EXPERIMENTAL`，不是 `VERIFIED_AUTO`：这是一次文本答题，不是完整的
+  R1/R2 真实验收。本适配器的行为由 fake CLI 测试、真实 JSONL 样本和厂商帮助共同约束。
 
 ## 失败分类
 
