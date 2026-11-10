@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -248,9 +249,11 @@ def row_dict(row: "sqlite3.Row | None") -> "dict[str, Any] | None":
 
 
 class Store:
-    def __init__(self, data_dir: "str | os.PathLike[str]", clock: "Clock | None" = None, filename: str = DB_NAME) -> None:
+    def __init__(self, data_dir: "str | os.PathLike[str]", clock: "Clock | None" = None, filename: str = DB_NAME,
+                 *, read_only: bool = False) -> None:
         self.path = Path(data_dir) / filename
         self.clock = clock or Clock()
+        self.read_only = read_only
         self._conn: "sqlite3.Connection | None" = None
         self._depth = 0
 
@@ -258,6 +261,9 @@ class Store:
     @property
     def conn(self) -> sqlite3.Connection:
         if self._conn is None:
+            if self.read_only:
+                self._conn = self._read_only_connection()
+                return self._conn
             # Never open and close the database file outside SQLite: on POSIX, closing any descriptor of a file drops the
             # advisory locks every other connection in this process holds on it, and a closing connection elsewhere would then
             # believe it is the last one and delete the WAL under us. (SQLite creates the file; chmod is path-based, no descriptor.)
@@ -277,6 +283,27 @@ class Store:
                 raise
             self._conn = conn
         return self._conn
+
+    def _read_only_connection(self) -> sqlite3.Connection:
+        try:
+            path_stat = self.path.lstat()
+        except OSError:
+            path_stat = None
+        if path_stat is None or not stat.S_ISREG(path_stat.st_mode):
+            raise LedgerError("the ledger does not exist; read-only inspection cannot create it")
+        conn = sqlite3.connect(Path(os.path.abspath(self.path)).as_uri() + "?mode=ro", uri=True, isolation_level=None,
+                               timeout=10.0, check_same_thread=False)
+        try:
+            conn.row_factory = sqlite3.Row
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if version <= 0 or version > SCHEMA_VERSION:
+                raise LedgerError(f"the ledger schema {version} cannot be inspected by this build")
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.execute("PRAGMA busy_timeout=10000")
+            return conn
+        except BaseException:
+            conn.close()
+            raise
 
     def close(self) -> None:
         if self._conn is not None:
@@ -328,6 +355,8 @@ class Store:
 
         A nested ``tx()`` is a SAVEPOINT, so an inner block that fails undoes only its own work.
         """
+        if self.read_only:
+            raise LedgerError("the ledger is open read-only")
         conn = self.conn
         if self._depth:
             name = f"sp{self._depth}"

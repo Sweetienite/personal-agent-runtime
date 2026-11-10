@@ -2,6 +2,13 @@
 
 User-facing summary of real changes. The detailed, line-by-line engineering log this project keeps for its own development (every behavior change, why it was made, what test proves it) is not part of this public repository — this file is the readable summary of that history.
 
+## Unreleased
+
+- **Invalid worker configuration no longer blocks ledger inspection.** The listed task-read CLI
+  commands and MCP read tools use a SQLite read-only connection without migrations, advertise no
+  action affordances, and refuse other MCP calls without a heartbeat. Adapter manifests marked
+  non-automatic are no longer registered, even if enabled in a hand-built config.
+
 ## 1.1.1 — 2026-11-10
 
 Post-release audit fixes (UX, docs and release metadata only; no architecture change, no security

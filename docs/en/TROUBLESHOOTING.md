@@ -12,6 +12,7 @@ widening `allowed_paths`, or using vendor bypass flags.
 | `ModuleNotFoundError: par` | Ran a different interpreter | Run commands through `.venv/bin/python` / `.venv/bin/par` |
 | `par doctor` reports an unsafe data directory | The directory exists but is not `0700`, has the wrong owner, or is a symlink | Point `PAR_DATA_DIR` at a new empty directory; PAR never chmods an existing directory it did not create |
 | `par doctor` shows a config error | `providers.toml`/`profiles.toml` has an unknown field or provider kind | Read the exact `path: message` line; fix or move the file aside. `par doctor` is read-only |
+| `task list/status/events/result/diff` says inspection-only | Worker configuration is invalid, but the existing ledger can still be inspected safely | Run `par doctor`, repair `profiles.toml` or `providers.toml`, then use task actions again. In this mode MCP exposes only list/status/result/diff and refuses all other calls |
 | Git-related error on submit | `git` is missing or the project is not a repository | Install `git`; an R1/R2 task needs a Git base commit and an ordinary repository |
 | `404` / clone fails | Wrong URL or no network at clone time | Clone from the canonical URL once; after installation PAR itself needs no network |
 

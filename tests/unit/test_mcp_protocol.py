@@ -58,9 +58,23 @@ class Framing(unittest.TestCase):
         self.assertEqual(replies[0]["jsonrpc"], "2.0")
         self.assertEqual(result["capabilities"], {"tools": {}})
         self.assertEqual(result["serverInfo"], {"name": "par-bridge", "version": par.__version__})
+        self.assertEqual(result["instructions"], S.INSTRUCTIONS)
         self.assertIn("unverified", result["instructions"])
         self.assertIn("coordinator", result["instructions"])
         self.assertLessEqual(result["instructions"].count(". "), 2, "two or three sentences")
+
+    def test_initialize_uses_read_only_guidance_in_inspection_mode(self):
+        self.tools.kernel.inspection_only = True
+        _, replies, _ = self.exchange(self.request("initialize", {}))
+        instructions = replies[0]["result"]["instructions"]
+        self.assertEqual(instructions, S.INSPECTION_INSTRUCTIONS)
+        self.assertIn("inspection-only", instructions)
+        self.assertIn("par doctor", instructions)
+        self.assertIn("repair", instructions)
+        self.assertIn("restart", instructions)
+        self.assertIn("unverified worker text", instructions)
+        for action in ("approve", "reject", "accept", "close"):
+            self.assertNotIn(action, instructions)
 
     def test_the_client_version_is_echoed_when_supported_otherwise_the_latest_is_offered(self):
         cases = {"2024-11-05": "2024-11-05", "2025-03-26": "2025-03-26", "2025-06-18": "2025-06-18",

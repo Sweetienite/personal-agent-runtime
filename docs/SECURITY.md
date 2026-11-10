@@ -199,6 +199,8 @@ Grant 是台账里的只增记录，只能由人在 CLI 创建和撤销：`par c
 
 校验器（`config.py`）拒绝：密钥形状的键名或值、`gemini_legacy` 启用或充当 Worker、`claude_host` 充当 Worker、`additional_paid_credits` 不为 `false`、`max_parallel_workers` 不为 1、相对路径的可执行文件。
 
+当 `profiles.toml` 或 `providers.toml` 无效时，指定的 CLI 台账查看命令与 MCP 桥进入显式只读检查模式：仅开放任务列表、状态、结果和 diff；SQLite 以 `mode=ro` 打开，不创建缺失台账、不运行迁移。MCP 仅公布这四个读取工具，直接调用其他方法仍被拒绝且不记录 coordinator heartbeat。输出会提示运行 `par doctor`；修复配置后，正常操作恢复。只读连接的写入也由 SQLite 本身拒绝。
+
 ## Provider
 
 所有外部 Provider 默认 disabled，适配器注册表默认为空。P3/P4 起只有一种情况会注册适配器：配置里启用了 `codex` 或 `antigravity` **并且**写明了绝对路径的可执行文件（`gemini_legacy` 永远不会，有测试连「绕过校验手工构造的配置」也覆盖）；其余 Provider 即使写成 `enabled = true` 也只会停在 `BLOCKED_NO_WORKER`。测试替身 `ScriptedProvider` 不能通过配置文件注册，生产 Profile 不可能把任务路由给它。有测试检查：源码不导入任何网络库、整条任务流在拦截了 `socket` 的情况下照常完成、只有预期的几个模块会启动进程、测试套件从不运行真实的 Codex 或 `agy`（只有显式设置 `PAR_REAL_CODEX=1` / `PAR_REAL_AGY=1` 的离线探测，和需要批准才会运行的 `tests/tools/smoke_codex.py`、`smoke_agy.py`）。
