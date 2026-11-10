@@ -106,23 +106,29 @@ CI runs for PR #28:
 
 ## Final run records
 
-- Merged `main`: `0567128` (PR #28), then the `1.1.0` release commit `5a27b66`.
-- Tag: annotated `v1.1.0` → `5a27b66`; GitHub Release
-  [v1.1.0](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.0) with wheel
-  and sdist assets. The earlier `v1.0.0` tag (2026-11-03) was not moved.
-- Full suite: 1596 tests OK, 23 skipped, 504.5 s at `4865201` (tree-identical to `5a27b66`);
-  macOS 15.6.1 arm64, Python 3.12.12.
-- Mutation: **352/352 detected, 0 problems** (full run, exit 0).
-- link_check: 0 broken relative links or anchors.
-- docs_contract: OK at `1.1.0`.
-- Release wheel: `personal_agent_runtime-1.1.0-py3-none-any.whl` installed in a clean venv;
-  `par version --json` → `1.1.0`, `released 2026-11-09; P3 gate partial`.
-- GitHub Actions on `main` at `5a27b66`: run
-  [42597954521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42597954521) —
+- Merged `main`: `86c4b5c` (PR #29, `1.1.1`); previous release `v1.1.0` at `5a27b66`.
+- Tag: annotated `v1.1.1` → `86c4b5c`; GitHub Release
+  [v1.1.1](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1) with wheel
+  and sdist assets. The `v1.0.0` (2026-11-03) and `v1.1.0` (2026-11-09) tags were not moved.
+- Full suite at `1.1.1`: **1599 tests OK, 23 skipped, 521.2 s** at `01119ce` (tree-identical to
+  `86c4b5c`); macOS 15.6.1 arm64, Python 3.12.12.
+- Mutation: **352/352 detected, 0 problems** (full run at `1.1.0`; no safety-relevant line changed in
+  `1.1.1`).
+- link_check: 0 broken relative links or anchors. docs_contract: OK at `1.1.1`.
+- docs_cli_examples: 121 documented commands accepted by the real parser.
+- Release wheel: `personal_agent_runtime-1.1.1-py3-none-any.whl` installed in a clean venv;
+  `par version --json` → `1.1.1`, `released 2026-11-09`, `support_tier=scoped`, routes
+  `codex_native`/`manual_handoff`.
+- GitHub Actions on PR #29 at `01119ce`: run
+  [42741039811](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42741039811) —
   all four jobs PASS.
+- GitHub Actions on `main` at `86c4b5c`: run
+  [42741328439](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42741328439).
 - PyPI: **BLOCKED** — no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN`, no `twine` binary; no upload
   was attempted and no success is claimed.
-- Earlier PR evidence: runs [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521),
-  [42593601356](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42593601356) and
-  [42595564719](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42595564719) —
+- Earlier release evidence: `c421760` (1.1.0 evidence), `5a27b66` (1.1.0), PR runs
+  [42591934521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42591934521),
+  [42593601356](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42593601356),
+  [42595564719](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42595564719) and
+  [42597954521](https://github.com/Sweetienite/personal-agent-runtime/actions/runs/42597954521) —
   all four jobs PASS.

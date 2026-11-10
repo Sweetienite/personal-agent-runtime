@@ -1,7 +1,8 @@
 # Finalization status
 
-Branch: `release/final-productization`, based on `fix/p0-p3-audit-20261109` @ `c796981`
-(which is one commit on top of `public-origin/main` @ `bc9cb0c`).
+Branch: `main` at `86c4b5c` (PR #29). The original productization branch was
+`release/final-productization`, based on `fix/p0-p3-audit-20261109` @ `c796981`; both are merged and
+removed after release.
 
 Release: PR #28 merged to `main`, tag `v1.1.1` and GitHub Release created on 2026-11-10 under the
 Maintainer's explicit authorization (the `v1.0.0` tag already existed on 2026-11-03, so the
@@ -53,3 +54,5 @@ Actions results are recorded in `RELEASE_READINESS.md` when they actually run.
 - `67ea705` — final pre-merge evidence tree on the PR branch
 - `0567128` — PR #28 merged into `main`
 - `5a27b66` — `release: bump to 1.1.0 for the productization release` (tag `v1.1.0`)
+- `01119ce` — `fix: address the 2026-11-10 post-release audit (1.1.1)`
+- `86c4b5c` — PR #29 merged into `main` (tag `v1.1.1`)
