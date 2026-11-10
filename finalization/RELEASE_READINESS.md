@@ -38,7 +38,7 @@ CI runs for PR #28:
 
 | ID | Journey | Status | Evidence |
 |---|---|---|---|
-| UAT-00 | Fresh clone + wheel install; doctor/version; providers disabled | PASS | fresh clone of `1cedd1c` in `/tmp/par_final_clone`: `uv pip install -e .`, `par init`, `doctor` 5 PASS, fake smoke exit 0; release wheel `personal_agent_runtime-1.1.0-py3-none-any.whl` installed in `/tmp/par_release_wheel`, `par version --json` → `1.1.0` released 2026-11-09 |
+| UAT-00 | Fresh clone + wheel install; doctor/version; providers disabled | PASS | fresh clone of `1cedd1c` in `/tmp/par_final_clone`: `uv pip install -e .`, `par init`, `doctor` 5 PASS, fake smoke exit 0; release wheel `personal_agent_runtime-1.1.1-py3-none-any.whl` installed in `/tmp/par_release_wheel`, `par version --json` → `1.1.1` released 2026-11-09 |
 | UAT-01 | No account, isolated data dir, fake R1/R2 smoke | PASS | `smoke_codex.py --self-test` exit 0 (manual path also verified); full output in final run log |
 | UAT-02 | Ordinary Git project with no AGENTS/STATE | PASS (registration/readiness), R2 real run NOT_RUN | `par project add myrepo` generic, writes blocked; real R2 documented from 2026-11-07 evidence, not re-run |
 | UAT-03 | Draft → contract → R2 → diff/review/accept | PASS | `UAT_LOG.md` UAT-A (manual hand-off; full lifecycle) |
@@ -78,11 +78,22 @@ CI runs for PR #28:
 | REL-03 | Mutation tests | PASS | full run: **352/352 mutations detected, problems: 0**; M921–M926 and M227/M620 verified KILLED |
 | REL-04 | macOS + Linux matrix | PASS for the claimed levels | Local macOS; Linux `linux_security_core` + `linux_process_control` PASS; no Linux real-provider claim |
 | REL-05 | wheel + sdist clean install | PASS | `/tmp/par_dist_final` built from the clean clone; wheel installed in a fresh venv; `par version`/`doctor` OK; sdist contains docs (49 entries) |
-| REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.1.0`, `released 2026-11-09; P3 gate partial`; CHANGELOG heading, README status lines, compatibility page and release notes use the same wording |
+| REL-06 | version/CLI/changelog/release notes agree | PASS | `par version` → `1.1.1`, `released 2026-11-09`, `support_tier=scoped`, routes `codex_native`/`manual_handoff`; CHANGELOG, READMEs, compatibility page and release notes use the same wording |
 | REL-07 | Open-source governance | PASS | LICENSE, SECURITY, CONTRIBUTING, SUPPORT, CODE_OF_CONDUCT, issue/PR templates |
 | REL-08 | Clean restore/uninstall | PASS (documented + fixture check) | `GETTING_STARTED.md` §6; fixture `git status` empty after accept |
 | REL-09 | Rollback | PASS (existing procedure) | `docs/ROLLBACK.md`; no destructive migration |
-| REL-10 | Maintainer release decision | PASS for tag/Release; PyPI BLOCKED by missing credentials | Maintainer authorized merge/tag/Release/PyPI on 2026-11-09. The existing `v1.0.0` tag (2026-11-03) was left untouched; this release is `v1.1.0`. PyPI upload could not run: no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN` credentials, no `twine` binary. Recorded as BLOCKED, not PASS. |
+| REL-10 | Maintainer release decision | PASS for tag/Release; PyPI BLOCKED by missing credentials | Maintainer authorized merge/tag/Release/PyPI on 2026-11-09. `v1.1.0` was released on 2026-11-09 and `v1.1.1` on 2026-11-10; the existing `v1.0.0` tag (2026-11-03) and `v1.1.0` tag were left untouched. PyPI upload could not run: no `~/.pypirc`, no `TWINE_*`/`UV_PUBLISH_TOKEN` credentials, no `twine` binary. Recorded as BLOCKED, not PASS. |
+
+## Gate E — post-release audit fixes (2026-11-10)
+
+| ID | Finding | Status | Evidence |
+|---|---|---|---|
+| AUD-01 | UX-01 example contract found 0 tests | PASS | `test_example_project.py`: fails with 1 test before, passes with 1 test after |
+| AUD-02 | UX-02 Codex walkthrough reused the manual demo | PASS | offline temp data dir + repo: §5 config parses, contract passes `submit --check`, approval would be `WRITE_PERMISSION` |
+| AUD-03 | DOC-01 mandatory-reason wording | PASS | README / `docs/en/USER_GUIDE.md` / `docs/en/SECURITY.md` distinguish MCP reason from CLI `--note` |
+| AUD-04 | DOC-02 CLI example drift | PASS | `tests/tools/docs_cli_examples.py`: 120 documented commands accepted by the real parser; CI step added |
+| AUD-05 | PRODUCT-01 internal P3 wording in `par version` | PASS | `test_cli_version.py`, `docs_contract.py`, `docs/product-capabilities.json` |
+| AUD-06 | OPS-01 `main` branch protection | PASS after the ruleset is applied | GitHub repository ruleset: PR + four required checks, no force-push/deletion |
 
 ## Five-question readability check
 

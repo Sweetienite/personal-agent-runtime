@@ -49,8 +49,9 @@ Expected:
   the current coordinator lease; set `approval_mode = coordinator_scoped` or `human_only` in
   `profiles.toml` if you want decisions to stay with a person.
 - `par doctor` ends with `PASS 5 | WARN 0 | FAIL 0` and reports every provider as disabled.
-- `par version` prints `par 1.1.0 (phase RELEASE)` and
-  `release status: released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)`.
+- `par version` prints `par 1.1.1 (phase RELEASE)`,
+  `release status: released 2026-11-09` and
+  `support: scoped; routes: codex_native, manual_handoff`.
 
 `par doctor` runs no external program and writes nothing.
 
@@ -148,46 +149,113 @@ checks the task id, base commit and the packet it wrote.
 ## 5. Your first real Codex task (optional, uses quota)
 
 Only do this after you have read [SECURITY.md](SECURITY.md). Codex must be installed and signed in
-with a ChatGPT subscription; the adapter refuses API-key login and unverified binaries.
+with a ChatGPT subscription; the adapter refuses API-key login and unverified binaries. This section
+does **not** reuse the `demo` fixture or the manual-only profile from §4.
 
-1. Configure the provider in `$PAR_DATA_DIR/config/providers.toml` with an **absolute** path to the
-   signed binary, then enable it and probe without spending quota:
+1. Enable the provider in `$PAR_DATA_DIR/config/providers.toml` with an **absolute** path to the
+   signed binary, then probe without spending quota:
 
    ```bash
+   cat > "$PAR_DATA_DIR/config/providers.toml" <<'TOML'
+   schema_version = 1
+
+   [providers.codex]
+   kind = "codex"
+   enabled = true
+   executable = "/absolute/path/to/the/signed/codex"
+   TOML
    .venv/bin/par health --probe
    ```
 
-   `--probe` runs version/login/model-list checks only; it does not call a model.
+   `--probe` runs version/login/model-list checks only; it does not call a model. Copy one model
+   slug from `probes[0].facts.models_in_catalog` for the next step.
 
-2. Register an ordinary Git repository (no `AGENTS.md` or `.ai/STATE.md` needed):
+2. Replace the manual-only profile from §4 with a Codex profile. Changing `active_profile` also
+   changes `default_worker`, so the next task goes to Codex and not to `w_manual`:
+
+   ```bash
+   cat > "$PAR_DATA_DIR/config/profiles.toml" <<'TOML'
+   schema_version = 1
+   active_profile = "codex_local"
+
+   [profiles.codex_local]
+   coordinator = "codex"
+   default_worker = "w_codex"
+   max_parallel_workers = 1
+   worker_failure_policy = "ask"
+   additional_paid_credits = false
+   approval_mode = "human_only"
+
+   [profiles.codex_local.roles.code]
+   primary = "w_codex"
+   fallback = []
+
+   [workers.w_codex]
+   provider = "codex"
+   model = "<model slug from par health --probe>"
+   capabilities = ["read", "edit"]
+   TOML
+   .venv/bin/par doctor
+   ```
+
+   `human_only` keeps the write approval at the CLI for this walkthrough. The model slug is yours
+   to choose; the Runtime never picks one.
+
+3. Register an ordinary Git repository (no `AGENTS.md` or `.ai/STATE.md` needed):
 
    ```bash
    .venv/bin/par project add myproject /absolute/path/to/repo
    .venv/bin/par project show myproject
-   .venv/bin/par project enable-write myproject          # checks readiness, then asks you to type the id
+   .venv/bin/par project enable-write myproject                 # readiness check only
+   .venv/bin/par project enable-write myproject --confirm myproject
    ```
 
-   A real project stays read-only until you run `enable-write`, and even then each write task needs
-   its own approval.
+   The first `enable-write` call lists what is missing and changes nothing. The second one, with the
+   id typed again, switches writes on. Even then each write task needs its own approval.
 
-3. Submit a small R2 task with a check that is cheap and offline, run one attempt, and review:
+4. Submit a **new** contract for `myproject`. The §4 contract still points at `demo`, and resubmitting
+   it would be deduplicated instead of creating `myproject-0001`:
 
    ```bash
-   .venv/bin/par task submit --contract task.json
+   cat > codex-task.json <<'JSON'
+   {
+     "schema_version": 1,
+     "project_id": "myproject",
+     "title": "Fix add()",
+     "description": "Make add() return the sum of its two arguments.",
+     "role": "code",
+     "risk": "R2",
+     "allowed_paths": ["app/"],
+     "acceptance": {
+       "criteria": ["the repository's unit test passes"],
+       "checks": [
+         {"name": "unit", "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-q"], "timeout": 60}
+       ]
+     },
+     "dependencies": [],
+     "ad_hoc": true,
+     "idempotency_key": "getting-started-codex-1"
+   }
+   JSON
+   .venv/bin/par task submit --contract codex-task.json
    .venv/bin/par task approve myproject-0001
    .venv/bin/par task run myproject-0001
    .venv/bin/par task result myproject-0001
    .venv/bin/par task diff myproject-0001
    ```
 
-   A real call uses your subscription quota. If the task ends `REVIEW_REQUIRED`, the Kernel's checks
-   passed and the patch is waiting for your review. If it ends `FAILED`, read `par task result` for
-   the Kernel's own failure classification; do not retry blindly and do not add
-   `--dangerously-bypass-approvals-and-sandbox` or similar flags.
+   `ad_hoc` is `true` because an ordinary Git project has no parent contract: this task's JSON is
+   the execution contract. If you registered another project id or your paths differ, change
+   `project_id` and `allowed_paths`. The check must be a command that exits non-zero before the fix
+   and zero after it. A real call uses your subscription quota. If the task ends `REVIEW_REQUIRED`,
+   the Kernel's checks passed and the patch is waiting for your review. If it ends `FAILED`, read
+   `par task result` for the Kernel's own failure classification; do not retry blindly and do not
+   add `--dangerously-bypass-approvals-and-sandbox` or similar flags.
 
-4. `accept` records the result. Apply the patch yourself:
+5. `accept` records the result. Apply the patch yourself:
 
    ```bash
+   .venv/bin/par task accept myproject-0001
    .venv/bin/par task diff myproject-0001 > change.patch
    git -C /absolute/path/to/repo apply --check change.patch
    git -C /absolute/path/to/repo apply change.patch

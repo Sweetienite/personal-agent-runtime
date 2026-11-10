@@ -2,6 +2,33 @@
 
 User-facing summary of real changes. The detailed, line-by-line engineering log this project keeps for its own development (every behavior change, why it was made, what test proves it) is not part of this public repository — this file is the readable summary of that history.
 
+## 1.1.1 — 2026-11-10
+
+Post-release audit fixes (UX, docs and release metadata only; no architecture change, no security
+relaxation, and the `v1.1.0` tag is not moved).
+
+- **The public example now really runs a test.** `examples/ordinary-git-project/tests/` has an
+  `__init__.py`, and the example contract uses `python3 -m unittest discover -s tests -p "test_*.py" -q`.
+  A new `tests/unit/test_example_project.py` copies the public example, proves the check fails before
+  the fix and passes after it, and requires `Ran 1 test` (never `Ran 0 tests`). Python 3.13 returns
+  exit 5 when discovery finds nothing, which the Kernel would correctly treat as a failure.
+- **The real-Codex walkthrough no longer inherits the manual demo.** `docs/en/GETTING_STARTED.md` §5
+  now replaces the manual-only profile with a Codex profile (`active_profile`, `default_worker`), shows
+  the `--confirm` form of `enable-write`, and submits a separate `myproject` contract with
+  `ad_hoc=true` and its own idempotency key. The config and contract were validated offline.
+- **CLI docs match the parser.** `par task approve TASK --id N` replaces the positional
+  `[APPROVAL_ID]`; optional flags are shown as literal commands. A new
+  `tests/tools/docs_cli_examples.py` runs every fenced `par ...` line through the real CLI parser and
+  fails on an unknown subcommand, flag or extra positional. It runs in CI.
+- **Approval reasons are described accurately.** MCP decision tools require a reason; the CLI's
+  `--note` is optional and may be empty. README, the English user guide and security page say so.
+- **`par version` is product-facing.** It now prints `release status: released 2026-11-09` plus
+  `support: scoped; routes: codex_native, manual_handoff`. The P3 gate wording stays in release notes
+  and acceptance records; `docs/product-capabilities.json`, `docs_contract.py` and the version tests
+  carry the same fields.
+- PyPI is still not published; no credentials were available. The wheel and sdist are attached to the
+  GitHub Release.
+
 ## 1.1.0 — 2026-11-09
 
 Productization release, `v1.1.0`; it follows the initial `1.0.0` tag from 2026-11-03. The release

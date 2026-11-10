@@ -58,7 +58,7 @@ unless you deliberately chose that account path, or by disabling the check.
 
 | Status | Meaning | Recovery |
 |---|---|---|
-| `PERMISSION_WAIT` | An approval item is pending | `par task status` then `par task approve TASK [ID]` or `reject` |
+| `PERMISSION_WAIT` | An approval item is pending | `par task status` then `par task approve TASK --id N` (or `reject`) |
 | `REVIEW_REQUIRED` | Checks passed, result awaits review | `par task diff`, `par task result`, then accept/reject |
 | `FAILED` | Check failed, boundary violated or result rejected | Read `failure_class`/`stage`; fix the contract/check and retry |
 | `INTERRUPTED` | The attempt stopped mid-run | `par task recover TASK`, then retry |

@@ -1,6 +1,12 @@
 # 发行审查清单（P3/T16，2026-11-06）
 
 本文是**审查结论**，不是发行公告。正文保留 2026-11-06 至 2026-11-09 的审查历史。
+**2026-11-10 更新**：发布后的独立审计提出的 UX-01、UX-02、DOC-01、DOC-02、PRODUCT-01 已修复，
+版本标记为 **`1.1.1`**（不移动 `v1.1.0` tag）。`par version` 现在只向用户显示
+`released 2026-11-09`、`support: scoped` 与两条受支持路线；P3 Gate 的说明保留在本文件与
+`acceptance/P0-P3-results.md`，不再进入用户可见版本状态。示例、入门流程与 CLI 文档漂移的修复见
+[CHANGELOG](../CHANGELOG.md) 的 `1.1.1` 小节。
+
 **2026-11-09 更新**：Maintainer 已明确授权合并、打 tag 与发布。仓库已有 2026-11-03 的
 `v1.0.0` tag，因此本次产品化版本按语义版本标记为 **`1.1.0`**，GitHub Release 见
 [releases/tag/v1.1.0](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.0)。
@@ -31,9 +37,9 @@ REL-10 为准，不以本文件推断。
 4. **平台证据分级如实**：macOS `VERIFIED`、Linux `CORE_EXPERIMENTAL`（2026-11-09 CI 实跑核心安全 150 项与进程控制 89 项，但不是完整 E2E 或真实 Provider）、Windows 原生 `NOT_SUPPORTED`、WSL2 `NOT_TESTED`。
 5. **CI 不是全量套件**：2026-11-09 本地全量 1596 项通过（23 skipped，493 s）；CI 只跑四个明确命名的作业。全量结果与 Actions URL 记录在 [finalization/RELEASE_READINESS.md](../finalization/RELEASE_READINESS.md)。
 
-因此本轮发布的成果是一个**可复核的 `1.1.0`**；版本号、tag、GitHub Release 已按 Maintainer
-2026-11-09 的明确授权执行。`pyproject.toml` / `__version__` 为 `1.1.0`，`RELEASE_STATUS` 为
-`released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)`。PyPI 是否可用取决于
+因此本轮发布的成果是一个**可复核的 `1.1.0`**，随后由 `1.1.1` 修复审计提出的 UX/文档问题；版本号、
+tag、GitHub Release 已按 Maintainer 2026-11-09 的明确授权执行。`pyproject.toml` / `__version__`
+当前为 `1.1.1`，用户可见的 `RELEASE_STATUS` 为 `released 2026-11-09`。PyPI 是否可用取决于
 凭据与 REL-10，不因 tag 存在而自动成立。
 
 ## 已完成的 P0–P3（可核对）

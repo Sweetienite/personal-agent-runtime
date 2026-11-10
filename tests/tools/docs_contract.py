@@ -24,7 +24,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from par import RELEASE_STATUS, __version__  # noqa: E402
+from par import RELEASE_STATUS, SUPPORTED_ROUTES, SUPPORT_TIER, __version__  # noqa: E402
 from par.config import DEFAULT_APPROVAL_MODE  # noqa: E402
 from par.mcp.catalog import TOOL_NAMES  # noqa: E402
 from par.providers.manifests import BUILTIN_MANIFESTS  # noqa: E402
@@ -65,6 +65,10 @@ def check_identity(facts: dict) -> None:
         raise Problem(f"product-capabilities.version is {facts.get('version')!r}, code says {__version__!r}")
     if facts.get("release_status") != RELEASE_STATUS:
         raise Problem(f"release_status is {facts.get('release_status')!r}, code says {RELEASE_STATUS!r}")
+    if facts.get("support_tier") != SUPPORT_TIER:
+        raise Problem(f"support_tier is {facts.get('support_tier')!r}, code says {SUPPORT_TIER!r}")
+    if list(facts.get("supported_routes") or []) != list(SUPPORTED_ROUTES):
+        raise Problem(f"supported_routes are {facts.get('supported_routes')!r}, code says {list(SUPPORTED_ROUTES)!r}")
     runtime = facts.get("runtime") or {}
     if runtime.get("mcp_tools") != len(TOOL_NAMES):
         raise Problem(f"mcp_tools is {runtime.get('mcp_tools')!r}, catalog has {len(TOOL_NAMES)}")

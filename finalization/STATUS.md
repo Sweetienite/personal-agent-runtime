@@ -3,10 +3,15 @@
 Branch: `release/final-productization`, based on `fix/p0-p3-audit-20261109` @ `c796981`
 (which is one commit on top of `public-origin/main` @ `bc9cb0c`).
 
-Release: PR #28 merged to `main`, tag `v1.1.0` and GitHub Release created on 2026-11-09 under the
-Maintainer's explicit authorization (the `v1.0.0` tag already existed on 2026-11-03, so this
-productization release is a minor version). PyPI is `BLOCKED` on missing credentials; see
+Release: PR #28 merged to `main`, tag `v1.1.1` and GitHub Release created on 2026-11-10 under the
+Maintainer's explicit authorization (the `v1.0.0` tag already existed on 2026-11-03, so the
+productization release is a minor version and the post-release audit fix is a patch). The `v1.0.0`
+and `v1.1.0` tags are not moved. PyPI is `BLOCKED` on missing credentials; see
 `RELEASE_READINESS.md` REL-10.
+
+A post-release independent audit (2026-11-10) found UX-01, UX-02, DOC-01, DOC-02, PRODUCT-01 and
+OPS-01. All code/docs items are fixed in `1.1.1`; OPS-01 (main branch protection) is handled as a
+repository ruleset after the merge.
 
 Working tree baseline for this task: clean except untracked `.ai/`, this package, and the audit
 report. No user work was overwritten, reset or force-pushed.

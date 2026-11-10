@@ -12,7 +12,7 @@
     "checks": [
       {
         "name": "unit",
-        "argv": ["python3", "-m", "unittest", "-q"],
+        "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-q"],
         "timeout": 60,
         "expect_exit": 0
       }

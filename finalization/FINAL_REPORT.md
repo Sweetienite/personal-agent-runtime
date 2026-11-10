@@ -1,9 +1,10 @@
-# Final report — 2026-11-09 productization round
+# Final report — 2026-11-09 productization round (updated for 1.1.1)
 
-Status: **released as `1.1.0` (`v1.1.0`) on 2026-11-09** under the Maintainer's explicit
-authorization: PR #28 merged, tag and GitHub Release created. The `v1.0.0` tag already existed on
-2026-11-03, so this productization release is a minor version. PyPI upload is `BLOCKED` on missing
-credentials and was not fabricated as a success.
+Status: **released as `1.1.1` (`v1.1.1`) on 2026-11-10** under the Maintainer's explicit
+authorization: PR #28 merged, first release `v1.1.0` on 2026-11-09, then the post-release audit fix
+as `v1.1.1`. The `v1.0.0` tag already existed on 2026-11-03, so the productization release was a
+minor version and the audit fix is a patch. PyPI upload is `BLOCKED` on missing credentials and was
+not fabricated as a success.
 
 ## 1. What was delivered
 
@@ -17,6 +18,17 @@ credentials and was not fabricated as a success.
 | Docs quality | Anchor- and case-aware `tests/tools/link_check.py`, `docs_contract`, stable README sections and table checks; deliberate-break proof recorded. |
 | Packaging / governance | Wheel + sdist built and installed in a fresh venv; `MANIFEST.in`; `SUPPORT.md`, `CODE_OF_CONDUCT.md`, root `SECURITY.md`, issue/PR templates, `examples/`, CHANGELOG/release notes. |
 | Evidence ledger | `finalization/STATUS.md`, `KNOWN_GAPS.md`, `UAT_LOG.md`, `RELEASE_READINESS.md`, this report. |
+
+## 1b. Post-release audit fixes (2026-11-10, `1.1.1`)
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| UX-01 example found 0 tests | `tests/__init__.py`, explicit `discover` in the contract, before/after regression | `test_example_project.py` requires `Ran 1 test` |
+| UX-02 Codex walkthrough reused the manual demo | Separate Codex profile/worker/provider, `--confirm` write switch, new `myproject` contract with `ad_hoc=true` and unique key | offline validation: contract accepted, `WRITE_PERMISSION` would be required |
+| DOC-01 "mandatory reason" overstated | MCP reason required, CLI `--note` optional | README, `docs/en/USER_GUIDE.md`, `docs/en/SECURITY.md` |
+| DOC-02 `[APPROVAL_ID]` and bracket syntax | Real flags in examples; parser-based doc check | `tests/tools/docs_cli_examples.py` (120 command lines, CI) |
+| PRODUCT-01 `par version` exposed P3 jargon | `released 2026-11-09` + `support_tier`/`supported_routes` | `test_cli_version.py`, `docs_contract.py` |
+| OPS-01 `main` lacked protection | Repository ruleset: PR + four required checks, no force-push/deletion | GitHub repository ruleset |
 
 ## 2. Traceability: 2026-11-09 audit → this round
 
@@ -61,7 +73,7 @@ credentials and was not fabricated as a success.
 
 ## 5. Release recommendation
 
-**Released as a scoped, honest `1.1.0`**, with these non-negotiable claims:
+**Released as a scoped, honest `1.1.1`**, with these non-negotiable claims:
 
 - Codex is the only formal automatic worker, tied to `codex-cli 0.166.0-alpha.6`, macOS, ChatGPT
   login, 2026-11-07.
@@ -78,10 +90,11 @@ action without the Maintainer's explicit approval.**
 1. PR #28 reviewed and merged to `main` on 2026-11-09 under the Maintainer's explicit authorization.
 2. Release metadata was aligned before the merge: `RELEASE_STATUS`, `product-capabilities.json`,
    both READMEs, compatibility page, getting-started, quickstart, CHANGELOG, release notes and this
-   ledger all say `released 2026-11-09; P3 gate partial`.
+   ledger all use the same release date and support fields.
 3. `docs_contract.py` was re-run after the metadata change.
-4. Tag `v1.1.0` and the GitHub Release were created from the merged `main`; the existing `v1.0.0`
-   tag (2026-11-03) was left untouched.
+4. Tag `v1.1.0` and the GitHub Release were created on 2026-11-09; the post-release audit fixes were
+   released as `v1.1.1` on 2026-11-10. The existing `v1.0.0` (2026-11-03) and `v1.1.0` tags were
+   left untouched.
 5. PyPI upload was attempted only as far as the environment allowed: no credentials and no `twine`
    are present, so it is recorded as `BLOCKED`, not PASS.
 6. Any further independent-reader feedback belongs in `finalization/UAT_LOG.md`; do not upgrade
