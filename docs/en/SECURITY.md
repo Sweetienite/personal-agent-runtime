@@ -30,6 +30,7 @@ and a few offline Codex probe subcommands plus `codesign`.
 | Worker text is never verified | `evidence_summary.claim.verified = false`; every bridge answer labels it untrusted |
 | Unknown vendor events or exit 0 without a terminal event cannot become success | Adapter parsers + `classify_failure` |
 | Approvals are per item and never reused across a worker change | Kernel approval gates + mutation tests |
+| A broken config can inspect, never write, the ledger | SQLite `mode=ro`, `Store.tx` refusal, four-tool MCP allowlist, no heartbeat |
 | `ACCEPTED` is not `APPLIED`; patches are never applied automatically | Only `work.patch` is stored |
 | Append-only ledger, immutable ended attempts, private modes | SQLite triggers + `WriteGuard` |
 
@@ -50,6 +51,15 @@ and a few offline Codex probe subcommands plus `codesign`.
 - **A worker that calls `setsid` escapes the process group** and cannot be tracked or killed.
 - **Account and terms compliance is yours.** Technical isolation does not make a vendor-prohibited
   usage permitted.
+- **Copilot is text-only and has no signature/sandbox claim.** Non-interactive Copilot requires
+  `--allow-all-tools`; the adapter pairs it with `--available-tools=par-no-tools` so no real tool is
+  available, and grants no paths, URLs or folder trust. The npm launcher is a Node script with no
+  vendor code signature, and the CLI may still load user-level Copilot configuration. The Worker
+  keeps the attempt's private HOME; `prepare()` links `Library/Keychains` there to the real keychain
+  (link only, never a copy) and `cleanup()` removes it, so the login made with the normal HOME is
+  found. Log in once with
+  `COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login`. It cannot write files or run R2;
+  see [COPILOT.md](../COPILOT.md).
 
 ## 4. Approvals, approval modes and the coordinator lease
 
@@ -121,6 +131,10 @@ credentials, personal paths or third-party project data. See [.github/SECURITY.m
   the CLI requires re-validation.
 - Antigravity is experimental, disabled by default, and the vendor's consumer terms prohibit
   wrapping it in third-party coding agents.
+- Copilot is experimental and disabled by default; it answers R0/R1 text tasks only. One controlled
+  real call through the private HOME with the real-keychain link succeeded (`PAR-COPILOT-OK`,
+  `exitCode=0`, all tools disabled, no file changes). This is a single text answer, not full R1/R2
+  acceptance evidence.
 - Linux is core-experimental; Windows native is not supported.
 - Real cancellation/timeout/quota incidents were not forced in the recorded evidence; scripted
   workers cover the control paths.

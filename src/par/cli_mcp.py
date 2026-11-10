@@ -41,11 +41,13 @@ def dispatch(args: Any) -> int:
 
 def _serve(args: Any) -> int:
     try:
-        kernel = cli_task.open_kernel(args)
+        kernel = cli_task.open_kernel(args, allow_inspection=True)
     except (PolicyViolation, LedgerError, sqlite3.Error, OSError) as exc:
         _say_error(str(exc), _data_hint(args))
         return 2
     try:
+        if kernel.inspection_diagnostic:
+            _say_error(kernel.inspection_diagnostic, _data_hint(args))
         return serve(Tools(kernel, getattr(args, "coordinator", "claude_desktop")), sys.stdin.buffer, sys.stdout.buffer, sys.stderr)
     except KeyboardInterrupt:
         return 0

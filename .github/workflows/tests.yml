@@ -55,6 +55,8 @@ jobs:
           tests.unit.test_p3_security_audit
           tests.unit.test_approval_grants
           tests.unit.test_authorization_lease
+          tests.unit.test_config_inspection
+          tests.unit.test_cli_copilot
           tests.unit.test_acceptance_matrix
       - name: Documentation contract, relative links and CLI examples
         run: |
@@ -116,4 +118,6 @@ jobs:
           tests.unit.test_example_project
           tests.unit.test_approval_grants
           tests.unit.test_authorization_lease
+          tests.unit.test_config_inspection
+          tests.unit.test_cli_copilot
           tests.unit.test_acceptance_matrix

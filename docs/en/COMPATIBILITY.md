@@ -58,10 +58,13 @@ imply any OS is supported.
 
 | Host | Install | CLI core | Fake smoke | Real provider | Cancel/timeout | Sandbox |
 |---|---|---|---|---|---|---|
-| macOS 15.6.1 arm64 | Verified (`pip install -e .`, clean venv) | Verified | Verified (`smoke_codex.py --self-test`, `smoke_agy.py --self-test`) | Codex `VERIFIED_AUTO`; Antigravity `EXPERIMENTAL` | Verified with scripted workers | No OS sandbox; private clone only |
+| macOS 15.6.1 arm64 | Verified (`pip install -e .`, clean venv) | Verified | Verified (`smoke_codex.py --self-test`, `smoke_agy.py --self-test`) | Codex `VERIFIED_AUTO`; Antigravity and Copilot `EXPERIMENTAL` | Verified with scripted workers | No OS sandbox; private clone only |
 | Linux (`ubuntu-latest`, GitHub Actions) | `pip install -e .` in CI | `linux_security_core` (platform-independent security regressions) | Not run | Not supported (adapters are macOS-specific) | `linux_process_control` job | No OS sandbox |
 | Windows WSL2 | `NOT_TESTED` | `NOT_TESTED` | Not run | Not run | `NOT_TESTED` | `NOT_TESTED` |
 | Windows native | `NOT_SUPPORTED` | `STATIC_GAP` | Not run | `NOT_SUPPORTED` | `NOT_SUPPORTED` | `NOT_SUPPORTED` |
+
+Copilot is text-answer only (R0/R1), disabled by default and has no real answer evidence yet: one
+controlled call failed with `AUTH_REQUIRED` before any model event. See [COPILOT.md](../COPILOT.md).
 
 The Linux jobs ran on 2026-11-09 (run 42591934521): `linux_security_core` passed 150 tests plus the
 docs checks, and `linux_process_control` passed 102 cancellation/timeout/process-group/recovery

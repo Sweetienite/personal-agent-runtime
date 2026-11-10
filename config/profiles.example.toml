@@ -50,3 +50,11 @@ capabilities = ["read", "edit", "review"]
 provider = "antigravity"
 model = "<RUN-TIME-VERIFIED-SLUG>"
 capabilities = ["read", "edit"]
+
+# Copilot is an experimental text-answer adapter: it can only take R0/R1 tasks, never writes files
+# and is disabled by default. Uncomment and verify the model slug with
+# `copilot --no-auto-update --help` before enabling the provider.
+# [workers.copilot_answer]
+# provider = "copilot"
+# model = "claude-haiku-4.5"
+# capabilities = ["read"]

@@ -41,6 +41,8 @@ def build_adapters(config: "RuntimeConfig | None" = None) -> AdapterRegistry:
     registry = default_registry()
     for entry in (config.providers.values() if config is not None else ()):
         manifest = manifest_for(entry.kind)
+        if manifest is not None and not manifest.automatic:
+            continue
         if manifest is not None and entry.enabled and entry.executable:
             models = tuple(w.model for w in config.workers.values() if w.provider == entry.id)
             registry.register(entry.id, lambda entry=entry, models=models, manifest=manifest: manifest.adapter_cls.from_entry(
@@ -58,7 +60,7 @@ def _error(message: str) -> None:
     _cli()._say_error(message)
 
 
-def open_kernel(args: argparse.Namespace) -> Kernel:
+def open_kernel(args: argparse.Namespace, *, allow_inspection: bool = False) -> Kernel:
     cli = _cli()
     data = cli._data_dir(args)
     status = inspect_data_dir(data)
@@ -70,15 +72,20 @@ def open_kernel(args: argparse.Namespace) -> Kernel:
     profiles = config_dir / "profiles.toml"
     providers = config_dir / "providers.toml"
     loaded = load_config(profiles if profiles.is_file() else None, providers if providers.is_file() else None)
-    if loaded.errors:
+    inspection_only = bool(loaded.errors and allow_inspection)
+    if loaded.errors and not inspection_only:
         raise PolicyViolation("configuration: " + "; ".join(f"{i.where}: {i.message}" for i in loaded.errors))
-    return Kernel(data, config=loaded.config, projects=registry.projects, adapters=build_adapters(loaded.config), home=Path.home())
+    diagnostic = "worker configuration is invalid; inspection-only mode is active; run `par doctor` to review it"
+    adapters = default_registry() if inspection_only else build_adapters(loaded.config)
+    return Kernel(data, config=loaded.config, projects=registry.projects, adapters=adapters, home=Path.home(),
+                  inspection_only=inspection_only,
+                  inspection_diagnostic=diagnostic if inspection_only else None)
 
 
 @contextlib.contextmanager
-def session(args: argparse.Namespace):
+def session(args: argparse.Namespace, *, allow_inspection: bool = False):
     """Open the Kernel for one command and always close its ledger connection."""
-    kernel = open_kernel(args)
+    kernel = open_kernel(args, allow_inspection=allow_inspection)
     try:
         yield kernel
     finally:
@@ -119,7 +126,7 @@ def _short(value, n=12) -> str:
     return (value or "-")[:n]
 
 
-def render_status(d: dict) -> str:
+def render_status(d: dict, *, inspection_only: bool = False) -> str:
     base = d["base"] or {}
     worker = d["pinned_worker"] or d["worker_requested"] or (f"by role {d['role']}" if d["role"] else "default")
     lines = [f"{d['task_id']}  {d['status']}  {d['risk']}  {d['title']}",
@@ -153,7 +160,8 @@ def render_status(d: dict) -> str:
         lines.append(f"  APPROVAL #{p['id']} {p['kind']}  {text}")
     if d["lock"]:
         lines.append(f"  project lock held by {d['lock']['task_id']}#{d['lock']['attempt_n']} ({d['lock']['kernel_id']})")
-    lines.append("  next: " + (" | ".join(d["next_actions"]) or "nothing - this task is finished"))
+    lines.append("  next: inspection-only; actions unavailable" if inspection_only else
+                 "  next: " + (" | ".join(d["next_actions"]) or "nothing - this task is finished"))
     return "\n".join(lines)
 
 
@@ -163,7 +171,7 @@ def render_event(e: dict) -> str:
     return f"{e['id']:>5}  {e['ts']}  {e['type']:<20} {att:<3} {move}  {e['reason'] or ''}".rstrip()
 
 
-def render_result(res: dict, evidence: "dict | None" = None) -> str:
+def render_result(res: dict, evidence: "dict | None" = None, *, inspection_only: bool = False) -> str:
     lines = [f"{res['task_id']} attempt {res['attempt']}: {res['outcome']}"
              + (f" ({res['failure_class']} at {res['stage']})" if res["failure_class"] else "")]
     if evidence:
@@ -191,7 +199,7 @@ def render_result(res: dict, evidence: "dict | None" = None) -> str:
         lines.append(f"  check {t['name']}: {t['status']} (exit {t['exit_code']}, {t['duration_s']}s)")
     for issue in res["remaining_issues"]:
         lines.append(f"  note: {clean(issue)}")
-    lines.append(f"  next: {res['next_action']}")
+    lines.append("  next: inspection-only; actions unavailable" if inspection_only else f"  next: {res['next_action']}")
     return "\n".join(lines)
 
 
@@ -283,50 +291,83 @@ def cmd_draft(args):
 
 @handled
 def cmd_list(args):
-    with session(args) as kernel:
+    with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         tasks = kernel.list_tasks(args.status, args.project)
     if args.waiting:
         tasks = [t for t in tasks if t["status"] in NEEDS_YOU]
-    print(_dump(tasks) if args.json else ("\n".join(_task_line(t) for t in tasks) or "no tasks"))
+    if args.json:
+        out = {"inspection_only": True, "diagnostic": diagnostic, "tasks": tasks} if inspection else tasks
+        print(_dump(out))
+    else:
+        print("\n".join(_task_line(t) for t in tasks) or "no tasks")
     return 0
 
 
 @handled
 def cmd_status(args):
-    with session(args) as kernel:
+    with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         d = kernel.describe(args.task)
-    print(_dump(d) if args.json else render_status(d))
+        if inspection:
+            d["next_actions"] = []
+            d["inspection_only"] = True
+            d["diagnostic"] = diagnostic
+    print(_dump(d) if args.json else render_status(d, inspection_only=inspection))
     return 0
 
 
 @handled
 def cmd_events(args):
-    with session(args) as kernel:
+    with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         events = kernel.events(args.task, args.after, args.limit)
-    print(_dump(events) if args.json else ("\n".join(render_event(e) for e in events) or "no events"))
+    if args.json:
+        out = {"inspection_only": True, "diagnostic": diagnostic, "events": events} if inspection else events
+        print(_dump(out))
+    else:
+        print("\n".join(render_event(e) for e in events) or "no events")
     return 0
 
 
 @handled
 def cmd_result(args):
-    with session(args) as kernel:
+    with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         res = kernel.result(args.task, args.attempt)
         evidence = kernel.evidence(args.task, args.attempt) if res is not None else None
+        if res is not None and inspection:
+            res = dict(res)
+            res["next_action"] = "inspection-only; actions unavailable"
     if res is None:
         print("no result yet: the task has no finished attempt")
         return 1
     if args.json:
         out = dict(res)
         out["evidence_summary"] = evidence
+        if inspection:
+            out["inspection_only"] = True
+            out["diagnostic"] = diagnostic
         print(_dump(out))
     else:
-        print(render_result(res, evidence))
+        print(render_result(res, evidence, inspection_only=inspection))
     return 0
 
 
 @handled
 def cmd_diff(args):
-    with session(args) as kernel:
+    with session(args, allow_inspection=True) as kernel:
+        _, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         patch = kernel.diff(args.task, args.attempt)
     if patch is None:
         print("this attempt produced no patch", file=sys.stderr)

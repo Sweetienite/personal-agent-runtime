@@ -68,7 +68,7 @@ class StatusTests(DoctorCase):
     def test_every_provider_is_disabled_by_default(self):
         c = self.checks()
         providers = {k: v for k, v in c.items() if k.startswith("provider:")}
-        self.assertEqual(len(providers), 5)
+        self.assertEqual(len(providers), 6)
         self.assertTrue(all(v.status == D.INFO and "disabled" in v.detail for v in providers.values()))
         self.assertIn("never a fallback for agy", providers["provider:gemini_legacy"].detail)
 

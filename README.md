@@ -88,7 +88,7 @@ MCP means **coordinator access**. It does not turn an arbitrary MCP server into 
 
 | Route | What it is | Who does the work | Evidence status |
 |---|---|---|---|
-| **Native worker** | A built-in adapter starts a CLI agent non-interactively and collects structured events. | Codex CLI (verified version/OS/account); Antigravity is experimental and disabled by default. | `VERIFIED_AUTO` for Codex only |
+| **Native worker** | A built-in adapter starts a CLI agent non-interactively and collects structured events. | Codex CLI (verified version/OS/account); Antigravity and Copilot are experimental and disabled by default. Copilot answers text questions only. | `VERIFIED_AUTO` for Codex only |
 | **Protocol coordinator** | An MCP-capable client calls PAR's 21 tools over stdio to submit, follow and review tasks. | The client you already chat with. | `VERIFIED_COORDINATOR` for Claude Desktop and Codex on the recorded 2026-10-16 read-only sample; other clients are unverified |
 | **Manual hand-off** | PAR exports a private workspace and `PROMPT.md`; a person runs any GUI/web/mobile tool and imports the result. | You plus the external tool. | `VERIFIED_MANUAL` for WorkBuddy (2026-11-07); other brands are a conditional generic path |
 

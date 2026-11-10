@@ -81,14 +81,14 @@ class NothingReal(unittest.TestCase):
 
     def test_only_the_expected_modules_start_processes(self):
         users = sorted(str(p.relative_to(SRC)) for p in SRC.rglob("*.py") if "subprocess" in imported_modules(p))
-        # git, the process runner, the read-only Harness check, the Codex and Antigravity adapters (offline probes + the signature
-        # check; the model-calling process itself is started by the runner), the scripted provider, and the CLI module for ONE command:
+        # git, the process runner, the read-only Harness check, the Codex, Antigravity and Copilot adapters (offline probes;
+        # the model-calling process itself is started by the runner), the scripted provider, and the CLI module for ONE command:
         # `par provider login antigravity` (now in cli_health.py) starts the vendor's own sign-in as a child (so it can remove the
         # keychain link afterwards) - nothing else
         # P5: the MCP bridge's `run_task` starts ONE thing - `python -m par task run TASK` in its own session
         self.assertEqual(users, ["cli_health.py", "cli_task.py", "execution/gitops.py", "execution/subprocesses.py", "harness/check.py",
                                  "mcp/tools.py", "providers/antigravity.py", "providers/base.py", "providers/codex.py",
-                                 "providers/fake.py", "providers/fake_cli.py"])
+                                 "providers/copilot.py", "providers/fake.py", "providers/fake_cli.py"])
 
     def test_a_config_cannot_register_the_scripted_provider(self):
         providers = {"schema_version": 1, "providers": {"fake": {"kind": "fake", "enabled": True}}}

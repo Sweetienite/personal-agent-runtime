@@ -24,7 +24,7 @@ MCP bridge  ─┘      │
 | Ledger | `core/store.py`, `core/states.py`, `schemas/` | Append-only events, transition triggers, task/attempt/approval/grant/candidate rows |
 | Policy | `core/policy.py`, `core/contract.py`, `core/redact.py` | Path allowlists, protected names, symlink resolution, secret refusal, redaction |
 | Execution | `execution/workspace.py`, `gitops.py`, `subprocesses.py`, `validation.py`, `results.py` | Private clone, file comparison, patch creation, argv checks, process groups, result envelope |
-| Providers | `providers/base.py`, `manifests.py`, `registry.py`, `codex.py`, `antigravity.py`, `fake.py` | Adapter protocol, static adapter facts, routing, scripted test doubles |
+| Providers | `providers/base.py`, `manifests.py`, `registry.py`, `codex.py`, `antigravity.py`, `copilot.py`, `fake.py` | Adapter protocol, static adapter facts, routing, scripted test doubles |
 | Context | `context/` | Generic Git context or optional Harness context; manifest and write readiness |
 | MCP | `mcp/protocol.py`, `tools.py`, `catalog.py`, `output.py`, `server.py` | JSON-RPC over stdio, 21 tools, argument validation, redacted output |
 | Coordination | `coordinators.py`, `core/takeover.py` | Known coordinator registry, lease, takeover packet and confirmation |

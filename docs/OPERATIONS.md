@@ -86,7 +86,7 @@ chmod 600 "$D"/*.toml
 .venv/bin/par health                                    # 看每个 Worker 现在能不能跑、为什么不能
 ```
 
-- **适配器只在两个条件同时满足时才存在**：Provider 写成 `enabled = true` **并且**给了绝对路径的 `executable`（现在有 `codex`（P3）与 `antigravity`（P4））。其余（`claude_host`、`manual_handoff`、`gemini_legacy`）即使启用，`par health` 也显示 `no adapter is registered`，任务停在 `BLOCKED_NO_WORKER`；`gemini_legacy` 永远不能启用。
+- **适配器只在两个条件同时满足时才存在**：Provider 写成 `enabled = true` **并且**给了绝对路径的 `executable`（现在有 `codex`（P3）、`antigravity`（P4）与 `copilot`（2026-11-10，仅 R0/R1 文本答题））。其余（`claude_host`、`manual_handoff`、`gemini_legacy`）即使启用，`par health` 也显示 `no adapter is registered`，任务停在 `BLOCKED_NO_WORKER`；`gemini_legacy` 永远不能启用。
 - 模型 slug 保持 `<RUN-TIME-VERIFIED-SLUG>` 占位符时该 Worker 不会被使用，必须等适配器探测出真实可用的名字。
 - `worker_failure_policy`：`ask`（默认）、`pause`、`safe_auto`（只对 R0/R1 自动重试暂时性错误一次、自动换 Worker 一次；R2 永不自动）。
 - `approval_mode`：`coordinator_autonomous`（默认，主控可自行批准/验收，台账记录范围）、`coordinator_scoped`（需要人在 CLI 用 `par coordinator grant` 创建限定 grant）、`human_only`（只有人能决定）。

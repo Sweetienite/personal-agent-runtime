@@ -166,4 +166,40 @@ starter prompt; it does not dump schemas.
 | `QUOTA_EXHAUSTED` / `AUTH_REQUIRED` | Vendor-side stop | Wait/fix login; never bypass |
 | `FAILED` with boundary violations | The worker changed something outside scope | Read the paths in `result`; do not accept |
 
+## 10. GitHub Copilot CLI (experimental, text answers only)
+
+PAR has a native adapter for the GitHub Copilot CLI, but only for **R0/R1 text answers**. It never
+writes files, never produces a patch and is refused for R2. It is disabled by default and marked
+`EXPERIMENTAL`; see [COPILOT.md](../COPILOT.md) for the exact evidence and limits.
+
+```toml
+[providers.copilot]
+kind = "copilot"
+enabled = true
+executable = "/opt/homebrew/bin/copilot"
+
+[workers.copilot_answer]
+provider = "copilot"
+model = "claude-haiku-4.5"   # check `copilot --no-auto-update --help`
+capabilities = ["read"]
+```
+
+Log in once with the same bundled engine, then use a normal text task:
+
+```bash
+COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
+par task run TASK
+par task result TASK
+```
+
+The adapter pins `--no-auto-update`, sends the prompt on stdin, uses JSONL output, disables built-in
+MCP servers, and pairs the vendor-required `--allow-all-tools` with an empty tool allowlist. It does
+not pass `--allow-all-paths`, `--allow-all-urls` or `--trust-folder`, and it never forwards a GitHub
+token. One controlled real call failed with `AUTH_REQUIRED` before any model event, so no real
+answer evidence exists yet.
+
+For a person-driven text answer, the manual route still works and does not need a provider adapter:
+`par task handoff TASK --to copilot`, paste `PROMPT.md` into Copilot, then
+`par task import TASK --text answer.txt`.
+
 Evidence levels for every tool are in [COMPATIBILITY.md](COMPATIBILITY.md).

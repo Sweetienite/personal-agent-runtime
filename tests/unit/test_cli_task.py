@@ -280,9 +280,9 @@ class Failures(CliWorld):
         self.assertEqual(code, 2)
         self.assertIn("par init", err)
 
-    def test_a_broken_config_stops_everything_with_the_reason(self):
+    def test_a_broken_config_refuses_execution_with_the_reason(self):
         write_config(self.data, profiles=PROFILES.replace("max_parallel_workers = 1", "max_parallel_workers = 4"))
-        code, _, err = self.par("task", "list")
+        code, _, err = self.par("task", "run", "--next")
         self.assertEqual(code, 2)
         self.assertIn("max_parallel_workers", err)
 

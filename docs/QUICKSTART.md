@@ -130,7 +130,7 @@ cd -  # 回到 personal-agent-runtime
 
 ## 5. 真实 Provider 之前先看这里
 
-- 默认**没有任何适配器**。只有配置里启用 `codex` / `antigravity` 并写明绝对路径的 `executable` 才会注册。
+- 默认**没有任何适配器**。只有配置里启用 `codex` / `antigravity` / `copilot` 并写明绝对路径的 `executable` 才会注册；Copilot 只支持 R0/R1 文本答题。
 - Google Antigravity 官方 FAQ 明确禁止把 `agy` 封装在第三方编码 Agent/应用中；Gemini CLI 自 2026-06-18 起停止为免费层 / AI Pro / Ultra 用户服务。**技术可行 ≠ 条款许可**，见 [COMPATIBILITY.md](COMPATIBILITY.md)。
 - 真实项目写入要你亲自 `par project enable-write ID`（先体检、再敲一遍 id 确认），且**每个写任务**仍逐项批准；补丁永远不会自动应用到项目，要你自己 `git apply`。见 [SECURITY.md](SECURITY.md)。
 - 真实 Codex 需要 ChatGPT 订阅登录、签名二进制与绝对路径；模型调用会消耗你的订阅额度。`par health --probe` 是离线检查，不调用模型。

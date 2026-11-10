@@ -104,7 +104,8 @@ class Kernel(SubmissionMixin, ApprovalMixin, ReviewMixin, RecoveryMixin, Reading
     def __init__(self, data_dir: "str | os.PathLike[str]", *, config: RuntimeConfig, projects: "Mapping[str, ProjectEntry]",
                  adapters: AdapterRegistry, clock: "Clock | None" = None, home: "str | os.PathLike[str] | None" = None,
                  settings: "KernelSettings | None" = None, kernel_id: "str | None" = None,
-                 context_factory: "Optional[Callable[[ProjectEntry], Context]]" = None) -> None:
+                 context_factory: "Optional[Callable[[ProjectEntry], Context]]" = None,
+                 inspection_only: bool = False, inspection_diagnostic: str | None = None) -> None:
         self.data_dir = Path(data_dir)
         self.clock = clock or Clock()
         self.settings = settings or KernelSettings()
@@ -112,11 +113,20 @@ class Kernel(SubmissionMixin, ApprovalMixin, ReviewMixin, RecoveryMixin, Reading
         self.home = Path(home) if home is not None else Path.home()
         self.kernel_id = kernel_id or f"k{os.getpid()}-{secrets.token_hex(4)}"
         self._context_factory = context_factory
-        for sub in ("scratch", "tasks"):
-            (self.data_dir / sub).mkdir(mode=0o700, exist_ok=True)
-        self.store = Store(self.data_dir, self.clock)
+        self.inspection_only = inspection_only
+        self.inspection_diagnostic = inspection_diagnostic
+        if not inspection_only:
+            for sub in ("scratch", "tasks"):
+                (self.data_dir / sub).mkdir(mode=0o700, exist_ok=True)
+        self.store = Store(self.data_dir, self.clock, read_only=inspection_only)
+        if inspection_only:
+            self.store.conn                       # validate the ledger before the bridge starts; fail cleanly if it cannot be read
+            if self.store.read_only_gaps and inspection_diagnostic:
+                self.inspection_diagnostic = inspection_diagnostic + "; " + "; ".join(self.store.read_only_gaps)
         self.health = Health(self.store, rate_limit_cooldown=self.settings.rate_limit_cooldown)
         try:
+            if inspection_only:
+                raise gitops.GitError("inspection-only mode does not initialize Git")
             self.git: Any = gitops.Git(self.data_dir / "scratch", timeout=self.settings.git_timeout)
         except gitops.GitError as exc:
             self.git = _MissingGit(str(exc))
@@ -125,6 +135,11 @@ class Kernel(SubmissionMixin, ApprovalMixin, ReviewMixin, RecoveryMixin, Reading
 
     def close(self) -> None:
         self.store.close()
+
+    def next_actions(self, task: "dict[str, Any]") -> "list[str]":
+        if self.inspection_only:
+            return []
+        return super().next_actions(task)
 
     # ------------------------------------------------------------------------------------------------------
     # helpers

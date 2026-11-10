@@ -104,6 +104,8 @@ Add one fixed sentence in `get_task_result`: `"note": "Worker text is unverified
 `par mcp config [--data-dir DIR]` **prints** (never writes) a JSON snippet for the `mcpServers` section of Claude Desktop's config:
 `{"par": {"command": "<sys.executable>", "args": ["-B", "-m", "par", "mcp", "serve", "--data-dir", "<dir>"]}}` plus 3 lines of plain instructions. It touches no file.
 
+If `profiles.toml` or `providers.toml` is invalid, `par mcp serve` starts an inspection-only session using the existing ledger through SQLite URI `mode=ro`; it does not migrate or create the database. `tools/list` then exposes only `get_task_status`, `get_task_result`, `get_task_diff`, and `list_tasks`. Direct calls to any other tool are unknown-tool errors and do not emit coordinator heartbeats. Read responses carry `inspection_only: true` and a sanitized diagnostic directing the operator to `par doctor`; status affordances are empty, and `decisions` keeps the normal `mode`/`coordinator`/`allowed_actions`/`reason` keys with an empty action list. Missing or unsupported ledgers fail cleanly. A valid configuration retains the normal tool list and behavior.
+
 ## Tests you must write (at least)
 
 Protocol: handshake; version negotiation; `tools/list` equals the 7 names with the schemas; unknown method; malformed JSON; batch array; oversize line; notification gets no reply; EOF exits 0; stdout contains only JSON lines (run it as a real child process with pipes in `test_mcp_process.py`).

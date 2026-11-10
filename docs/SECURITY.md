@@ -199,9 +199,23 @@ Grant 是台账里的只增记录，只能由人在 CLI 创建和撤销：`par c
 
 校验器（`config.py`）拒绝：密钥形状的键名或值、`gemini_legacy` 启用或充当 Worker、`claude_host` 充当 Worker、`additional_paid_credits` 不为 `false`、`max_parallel_workers` 不为 1、相对路径的可执行文件。
 
+当 `profiles.toml` 或 `providers.toml` 无效时，指定的 CLI 台账查看命令与 MCP 桥进入显式只读检查模式：仅开放任务列表、状态、结果和 diff；SQLite 以 `mode=ro` 打开，不创建缺失台账、不运行迁移。SQLite 仍可能按标准行为创建 `-wal`/`-shm` sidecar（0600）；主库内容不变，测试同时校验哈希和 sidecar 权限。CLI 的 `--json` 输出在降级模式下带 `inspection_only: true` 与 `diagnostic`；`list`/`events` 用 `{tasks|events, ...}` 包一层，`status`/`result` 在字段里带标记，正常配置的输出形状不变。旧 v1 台账若早于 `candidates` 等附加表，候选信息会缺失并写进诊断，但任务列表/状态/事件/结果仍可读，不再抛裸 `no such table`。MCP 仅公布这四个读取工具，直接调用其他方法仍被拒绝且不记录 coordinator heartbeat；`decisions` 保留 `mode`/`coordinator`/`allowed_actions`/`reason` 四个键，只是动作列表为空。输出会提示运行 `par doctor`；修复配置后，正常操作恢复。只读连接的写入也由 SQLite 本身拒绝。
+
 ## Provider
 
-所有外部 Provider 默认 disabled，适配器注册表默认为空。P3/P4 起只有一种情况会注册适配器：配置里启用了 `codex` 或 `antigravity` **并且**写明了绝对路径的可执行文件（`gemini_legacy` 永远不会，有测试连「绕过校验手工构造的配置」也覆盖）；其余 Provider 即使写成 `enabled = true` 也只会停在 `BLOCKED_NO_WORKER`。测试替身 `ScriptedProvider` 不能通过配置文件注册，生产 Profile 不可能把任务路由给它。有测试检查：源码不导入任何网络库、整条任务流在拦截了 `socket` 的情况下照常完成、只有预期的几个模块会启动进程、测试套件从不运行真实的 Codex 或 `agy`（只有显式设置 `PAR_REAL_CODEX=1` / `PAR_REAL_AGY=1` 的离线探测，和需要批准才会运行的 `tests/tools/smoke_codex.py`、`smoke_agy.py`）。
+所有外部 Provider 默认 disabled，适配器注册表默认为空。P3/P4/2026-11-10 起只有一种情况会注册适配器：配置里启用了 `codex`、`antigravity` 或 `copilot` **并且**写明了绝对路径的可执行文件（`gemini_legacy` 永远不会，有测试连「绕过校验手工构造的配置」也覆盖）；其余 Provider 即使写成 `enabled = true` 也只会停在 `BLOCKED_NO_WORKER`。测试替身 `ScriptedProvider` 不能通过配置文件注册，生产 Profile 不可能把任务路由给它。有测试检查：源码不导入任何网络库、整条任务流在拦截了 `socket` 的情况下照常完成、只有预期的几个模块会启动进程、测试套件从不运行真实的 Codex、`agy` 或 `copilot`（只有显式设置 `PAR_REAL_CODEX=1` / `PAR_REAL_AGY=1` 的离线探测，和需要批准才会运行的 `tests/tools/smoke_codex.py`、`smoke_agy.py`）。
+
+### GitHub Copilot 适配器的权限例外
+
+`providers/copilot.py` 只做 **R0/R1 文本答题**，`can_write=no`，R2 在路由层和 `preflight` 两处被拒绝。Copilot CLI 的非交互模式要求 `--allow-all-tools`；适配器同时传 `--available-tools=par-no-tools`，让模型实际没有任何可用工具，并且：
+
+- 不传 `--allow-all-paths`、`--allow-all-urls`、`--trust-folder`、`--yolo`、`--allow-all`；
+- 提示词走 stdin，不出现在进程参数里；
+- 子进程收到干净环境 + 代理/证书变量，绝不继承 `GITHUB_TOKEN` / `GH_TOKEN` / `COPILOT_GITHUB_TOKEN`；
+- Worker 的 HOME 是 Kernel 的临时私有目录；`prepare()` 把其中的 `Library/Keychains` 链接到真实钥匙串（只链接，不复制），`cleanup()` 删除链接；`COPILOT_HOME` 指向稳定的 `~/.copilot`；TMPDIR/工作副本仍按 attempt 私有生成；
+- `--no-auto-update` 锁定 bundled 1.0.5；不声明厂商签名或 OS 沙箱。
+
+残留风险：Copilot 是 npm 安装的 Node script，没有厂商代码签名；它仍以当前用户身份运行，可能加载用户级 Copilot 配置/插件，且 prompt-mode 会话状态可能写到 `COPILOT_HOME`。因此默认 disabled、标记 `EXPERIMENTAL`。带钥匙串链接的私有 HOME 下的一次受控调用已成功（回答 `PAR-COPILOT-OK`、`exitCode=0`、`session.info` 列出全部工具禁用、无文件改动）；没有链接的临时 HOME 会在模型事件之前以 `No authentication information found` 失败，未产生回答、补丁或项目写入。这是一次文本答题，不是完整的 R1/R2 真实验收，所以尚不作为 `VERIFIED_AUTO`。
 
 ## 检查命令的威胁模型（2026-11-09 审计补充）
 

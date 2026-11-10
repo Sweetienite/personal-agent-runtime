@@ -97,7 +97,7 @@ JSON，由 `task.schema.json` 加语义规则校验（`core/contract.py`）。�
 
 ## 路由与失败策略
 
-链条是确定的：合同显式 `worker` → 只用它（不会悄悄换别人）；否则 `role` 的 primary 再依次是 fallback；否则 Profile 的 `default_worker`。每个候选逐项检查：Profile 快照里有无定义、Provider 是否启用且为自动类型（`codex` `antigravity`）、模型 slug 不是占位符、能力与风险等级匹配（R2 需要 `edit`）、**注册了适配器**、没有健康记录挡着。
+链条是确定的：合同显式 `worker` → 只用它（不会悄悄换别人）；否则 `role` 的 primary 再依次是 fallback；否则 Profile 的 `default_worker`。每个候选逐项检查：Profile 快照里有无定义、Provider 是否启用且为自动类型（`codex` `antigravity` `copilot`；Copilot 仅 R0/R1 文本）、模型 slug 不是占位符、能力与风险等级匹配（R2 需要 `edit`）、**注册了适配器**、没有健康记录挡着。
 
 **角色与厂商解耦（T12）**：role 只是一个名字，映射到 worker primary/fallback；它不隐含「Claude 主控 + Codex Worker」。`WorkerEntry.surface` 与 `ProviderEntry.surface` 由 provider `kind` 派生（`native_cli` / `manual` / `programmatic_session` / `acp` 为描述，不改配置 schema），出现在配置快照里；旧 profiles.toml/providers.toml 与 `codex_manual_takeover` 别名照常可用。同一个软件可以同时是主控和 Worker：两者通过同一座 MCP 桥，但 Worker 使用 Kernel 新建的私有 HOME/TMPDIR，绝不继承主控的 MCP 配置或凭据。
 

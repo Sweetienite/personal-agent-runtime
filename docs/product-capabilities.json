@@ -75,6 +75,19 @@
       "last_verified": "2026-10-15",
       "evidence_url": "docs/AGY.md",
       "limitations": "Disabled by default. The vendor FAQ prohibits wrapping agy in third-party coding agents under consumer plans; not a recommended automatic path."
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot CLI",
+      "role": "native worker (text answers only)",
+      "interface": "native_adapter",
+      "status": "EXPERIMENTAL",
+      "tested_version": "GitHub Copilot CLI 1.0.5 (bundled; the launcher reports 1.0.105)",
+      "os": "macOS 15.6.1 arm64",
+      "auth": "GitHub Copilot subscription login through the CLI",
+      "last_verified": null,
+      "evidence_url": "docs/COPILOT.md",
+      "limitations": "Disabled by default. Text-answer tasks only (R0/R1); never writes files and cannot be used for R2. The npm launcher is a Node script with no vendor code signature. Non-interactive mode requires --allow-all-tools, paired with an empty tool allowlist; no OS sandbox is claimed. One controlled real call through the private HOME with the real-keychain link succeeded (PAR-COPILOT-OK, exitCode 0, all tools disabled, no file changes). This is a single text answer, not full R1/R2 acceptance evidence."
     }
   ],
   "coordinator_clients": [

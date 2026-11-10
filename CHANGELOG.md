@@ -2,6 +2,28 @@
 
 User-facing summary of real changes. The detailed, line-by-line engineering log this project keeps for its own development (every behavior change, why it was made, what test proves it) is not part of this public repository — this file is the readable summary of that history.
 
+## Unreleased
+
+- **Experimental GitHub Copilot text-answer adapter.** A new `kind = "copilot"` provider runs the
+  bundled Copilot CLI 1.0.5 (pinned with `--no-auto-update`) for R0/R1 text tasks only. The prompt
+  goes through stdin, output is parsed from JSONL, and the vendor-required `--allow-all-tools` is
+  paired with an empty tool allowlist; no file writes, no `--allow-all-paths`/URLs/trust, and no
+  token environment variables. It is disabled by default and remains `EXPERIMENTAL`. A controlled
+  real call with the real HOME succeeded (`PAR-COPILOT-OK`, `exitCode=0`, all tools disabled, no file
+  changes); because the CLI's credential lookup is HOME-scoped, the adapter now links the real
+  keychain into the attempt's private HOME (link only, removed afterwards) and uses the normal-HOME
+  login. Full R1/R2 acceptance evidence is still missing.
+- **Read-only inspection is complete.** CLI `--json` output now carries `inspection_only` and the
+  diagnostic; `task list/events` use an envelope while normal-config output stays unchanged. Older
+  v1 ledgers that predate additive candidate tables keep reporting task results instead of a raw
+  `no such table` error; MCP `decisions` keeps its `mode`/`coordinator`/`allowed_actions`/`reason`
+  shape; SQLite's `-wal`/`-shm` sidecars are documented and tested. CI and mutation entries cover
+  the new boundaries.
+- **Invalid worker configuration no longer blocks ledger inspection.** The listed task-read CLI
+  commands and MCP read tools use a SQLite read-only connection without migrations, advertise no
+  action affordances, and refuse other MCP calls without a heartbeat. Non-automatic manifests are
+  never registered (none exist in this build).
+
 ## 1.1.1 — 2026-11-10
 
 Post-release audit fixes (UX, docs and release metadata only; no architecture change, no security

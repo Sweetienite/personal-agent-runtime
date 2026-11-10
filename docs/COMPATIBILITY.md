@@ -241,6 +241,6 @@ python -B tests/tools/codex_revalidate.py --check-only   # 一键跑 §12 离线
 若将来要**新增**（而不是只复核）一个自动 Provider，还需付费 Gemini API key / 企业许可等官方允许路径
 与新的真实证据，而不是一个配置开关。
 
-P3 的发布范围仍只包含：已有的 Codex（`GREEN`，默认沙箱已复核）、实验性的 Antigravity（默认禁用、带条款风险提示）、
+2026-11-10 追加实验性的 **GitHub Copilot CLI 文本答题适配器**（bundled 1.0.5，R0/R1 only，不写文件，默认禁用）。它没有真实回答证据：唯一一次受控调用在模型事件之前以 `AUTH_REQUIRED` 失败；详见 [COPILOT.md](COPILOT.md)。P3 的发布范围仍只包含：已有的 Codex（`GREEN`，默认沙箱已复核）、实验性的 Antigravity（默认禁用、带条款风险提示）、
 通用人工交接，以及本文的研究与真实复核结论。**不宣称已实现自动 Supervisor、同项目多个 Worker 并行或
 自动真实仓库写入。**

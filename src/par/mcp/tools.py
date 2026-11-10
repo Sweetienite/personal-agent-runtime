@@ -57,6 +57,7 @@ _HANDLERS = {"prepare_task": "_prepare_task", "submit_task": "_submit_task", "ge
 _AGENT_ACTIONS = {"run": "run_task", "cancel": "cancel_task", "retry": "retry_task", "pause": "pause_task",
                   "resume": "resume_task", "recover": "recover_task", "approve": "approve_task",
                   "reject": "reject_task", "accept": "accept_task", "close": "close_task"}
+_INSPECTION_TOOLS = frozenset({"get_task_status", "get_task_result", "get_task_diff", "list_tasks"})
 
 
 # ---- the tools ---------------------------------------------------------------------------------------------------------
@@ -70,9 +71,12 @@ class Tools:
         self._children: "list[tuple[str, Any]]" = []        # (task_id, process) started by this bridge
 
     def list_tools(self) -> "list[dict[str, Any]]":
-        return [{"name": name, "description": description, "inputSchema": schema} for name, description, schema in _TOOLS]
+        return [{"name": name, "description": description, "inputSchema": schema} for name, description, schema in _TOOLS
+                if not getattr(self.kernel, "inspection_only", False) or name in _INSPECTION_TOOLS]
 
     def call(self, name: str, arguments: Mapping[str, Any]) -> "dict[str, Any]":
+        if getattr(self.kernel, "inspection_only", False) and name not in _INSPECTION_TOOLS:
+            raise UnknownTool(name)
         method = _HANDLERS.get(name)
         if method is None:
             raise UnknownTool(name)
@@ -89,11 +93,16 @@ class Tools:
         except Exception as exc:                            # one bad call must not end the session
             sys.stderr.write(f"par-bridge: {name} failed internally ({type(exc).__name__})\n")
             return _tool_error("internal error; the bridge's log has the error type")
+        if getattr(self.kernel, "inspection_only", False):
+            payload["inspection_only"] = True
+            payload["diagnostic"] = self.kernel.inspection_diagnostic
         return _ok(payload, _SHRINK.get(name, ()))
 
     # ---- helpers ------------------------------------------------------------------------------------------------
     def _seen(self) -> None:
         """A heartbeat for the console and `par coordinator status` (at most one ledger event a minute); it never fails a call."""
+        if getattr(self.kernel, "inspection_only", False):
+            return
         if self.kernel is None:
             return
         try:
@@ -182,6 +191,7 @@ class Tools:
 
     def _get_task_status(self, task_id: str) -> "dict[str, Any]":
         d = self.kernel.describe(task_id)
+        inspection = getattr(self.kernel, "inspection_only", False)
         return {
             "task_id": task_id,
             "title": self._t(d["title"], TITLE_MAX),
@@ -192,8 +202,9 @@ class Tools:
             "worker": self._worker(d),
             "candidate": d["base"].get("candidate"),
             "pending_approvals": [{"id": a["id"], "kind": a["kind"]} for a in d["pending_approvals"]],
-            "decisions": self.kernel.decision_view(self.coordinator, d),
-            "agent_next": self._agent_next(d),
+            "decisions": ({"mode": None, "coordinator": self.coordinator, "allowed_actions": [], "reason": "inspection-only"}
+                          if inspection else self.kernel.decision_view(self.coordinator, d)),
+            "agent_next": [] if inspection else self._agent_next(d),
             "last_problem": self._t(d["last_failure"], PROBLEM_MAX) if d["last_failure"] else None,
         }
 

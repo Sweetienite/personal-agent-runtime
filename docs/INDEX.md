@@ -27,7 +27,7 @@
 | [MCP.md](MCP.md) | MCP bridge, 21 tools, lease and action policy |
 | [HANDOFF.md](HANDOFF.md) | Manual relay, hand-off packets, takeover |
 | [COORDINATORS.md](COORDINATORS.md) | Coordinator setup, grants, switching |
-| [CODEX.md](CODEX.md) · [AGY.md](AGY.md) · [ADAPTERS.md](ADAPTERS.md) | Adapter details, versions, evidence |
+| [CODEX.md](CODEX.md) · [AGY.md](AGY.md) · [COPILOT.md](COPILOT.md) · [ADAPTERS.md](ADAPTERS.md) | Adapter details, versions, evidence |
 | [CONTEXT.md](CONTEXT.md) | Generic vs Harness project context |
 | [ROLLBACK.md](ROLLBACK.md) | Non-destructive rollback and restore drills |
 | [specs/COMMON_RULES.md](specs/COMMON_RULES.md) · [specs/MCP_BRIDGE_SPEC.md](specs/MCP_BRIDGE_SPEC.md) | Exact module contracts |
