@@ -56,10 +56,11 @@ jobs:
           tests.unit.test_approval_grants
           tests.unit.test_authorization_lease
           tests.unit.test_acceptance_matrix
-      - name: Documentation contract and relative links
+      - name: Documentation contract, relative links and CLI examples
         run: |
           python -B tests/tools/link_check.py
           python -B tests/tools/docs_contract.py
+          python -B tests/tools/docs_cli_examples.py
 
   # The cancellation/timeout paths depend on POSIX signals and process groups, which is exactly
   # where a platform drift hides. Scripted fake workers only: no vendor binary, no model call.
@@ -112,6 +113,7 @@ jobs:
           tests.unit.test_role_provider_caps
           tests.unit.test_provider_probe
           tests.unit.test_p3_security_audit
+          tests.unit.test_example_project
           tests.unit.test_approval_grants
           tests.unit.test_authorization_lease
           tests.unit.test_acceptance_matrix

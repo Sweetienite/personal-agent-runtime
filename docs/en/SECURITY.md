@@ -10,8 +10,9 @@ source of truth and this page is the summary.
 The Runtime writes only its own data directory. A real project starts read-only; a person must run
 `par project enable-write` (after readiness checks and typing the project id again). Workers run in
 a private per-attempt clone and never see the real project as their working directory. Every write
-permission, worker override, base-drift confirmation and permission retry is a Kernel approval with
-a mandatory reason. The Kernel runs the acceptance checks itself. No code path applies a patch to
+permission, worker override, base-drift confirmation and permission retry is a Kernel approval.
+MCP decision tools require a reason; the CLI's optional `--note` may be empty. The Kernel runs the
+acceptance checks itself. No code path applies a patch to
 your repository, pushes, or deploys. The only external programs the Runtime starts are git (in its
 own directories, with a clean environment), the configured vendor CLI, the Kernel's check commands,
 and a few offline Codex probe subcommands plus `codesign`.

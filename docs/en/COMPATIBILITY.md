@@ -4,9 +4,9 @@ This page is the human-readable form of [docs/product-capabilities.json](../prod
 The JSON is deliberately conservative; the tables below explain what each label means and which
 dated evidence supports it.
 
-**Product status:** `1.1.0`, released 2026-11-09 ([tag `v1.1.0`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.0)).
-Release status reported by `par version`:
-`released 2026-11-09; P3 gate partial (Codex automatic + manual hand-off)`.
+**Product status:** `1.1.1`, released 2026-11-09 ([tag `v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)).
+Release status reported by `par version`: `released 2026-11-09`, support tier `scoped`, routes
+`codex_native` and `manual_handoff`.
 
 ## 1. Evidence levels
 

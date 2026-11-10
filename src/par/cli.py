@@ -8,7 +8,7 @@ import platform
 import sys
 from pathlib import Path
 
-from par import PHASE, RELEASE_STATUS, __version__
+from par import PHASE, RELEASE_STATUS, SUPPORTED_ROUTES, SUPPORT_TIER, __version__
 from par.config import PROJECT_CONTEXT_MODES, PROJECT_VCS, HarnessSettings, load_harness_settings
 from par.context.harness import ContextManifest, ProjectView, WriteReadiness
 from par.context.resolver import default_context
@@ -40,6 +40,8 @@ def _cmd_version(args: argparse.Namespace) -> int:
         "version": __version__,
         "phase": PHASE,
         "release_status": RELEASE_STATUS,
+        "support_tier": SUPPORT_TIER,
+        "supported_routes": list(SUPPORTED_ROUTES),
         "python": platform.python_version(),
         "platform": platform.platform(),
     }
@@ -48,6 +50,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
     else:
         print(f"par {info['version']} (phase {info['phase']})")
         print(f"release status: {info['release_status']}")
+        print(f"support: {info['support_tier']}; routes: {', '.join(info['supported_routes'])}")
         print(f"python {info['python']} on {info['platform']}")
     return 0
 

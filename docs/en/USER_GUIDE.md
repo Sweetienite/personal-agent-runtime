@@ -25,7 +25,7 @@ par project list                       # what is registered and whether writes a
 par task draft --draft draft.json      # optional: assemble a strict contract from a short draft
 par task submit --contract task.json
 par task status TASK
-par task approve TASK [APPROVAL_ID]     # when a permission is pending
+par task approve TASK --id N             # when several items are pending; --id is optional
 par task run TASK                      # foreground; Ctrl-C stops it cleanly
 par task result TASK
 par task diff TASK
@@ -57,8 +57,9 @@ dependent task must be based on it (see §5).
 
 ## 3. Approvals, modes and the coordinator lease
 
-Every write, worker override, base-drift confirmation and permission retry is an approval item with
-a mandatory reason. Who may decide is set by `approval_mode` in `profiles.toml`:
+Every write, worker override, base-drift confirmation and permission retry is an approval item.
+MCP decision tools require a reason; the CLI accepts an optional `--note` and records an empty
+reason when it is omitted. Who may decide is set by `approval_mode` in `profiles.toml`:
 
 | Mode | A coordinator may decide | Use when |
 |---|---|---|
@@ -121,7 +122,7 @@ When task A changed files and B depends on A, "A is accepted" is not enough. Bui
 baseline:
 
 ```bash
-par candidate create --task A [--task B ...]
+par candidate create --task A --task B    # repeat --task in dependency order
 par candidate show cand-myproject-ab12cd34
 par task submit --contract b.json --candidate cand-myproject-ab12cd34
 # or, for an already queued task that never ran:
@@ -160,8 +161,8 @@ real sample.
 ```bash
 par task pause TASK
 par task resume TASK
-par task retry TASK [--worker W] [--fresh]
-par task recover TASK [--terminate]
+par task retry TASK --worker W --fresh    # both flags are optional
+par task recover TASK --terminate         # only when the Kernel can verify the process
 par task cancel TASK
 ```
 

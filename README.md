@@ -11,7 +11,7 @@ English | [简体中文](README.zh-CN.md)
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **Status: `1.1.0`, released 2026-11-09 ([tag `v1.1.0`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.0)).** Codex is the only formal automatic worker (one version/OS/account combination, see the matrix). MCP connects a *coordinator*, not a generic worker. Manual hand-off is a first-class path. macOS is the verified host; Linux is core-experimental; Windows native is not supported.
+> **Status: `1.1.1`, released 2026-11-09 ([tag `v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)).** Codex is the only formal automatic worker (one version/OS/account combination, see the matrix). MCP connects a *coordinator*, not a generic worker. Manual hand-off is a first-class path. macOS is the verified host; Linux is core-experimental; Windows native is not supported.
 
 ## Why PAR?
 
@@ -119,7 +119,7 @@ Full walkthrough, including a plain Git repository and a manual hand-off: [docs/
 - Private per-attempt clone; the Kernel never runs git inside the worker's own `.git`.
 - One explicit state machine, enforced again by database triggers; events are append-only.
 - Path policy: `allowed_paths`, protected names (`.git/`, `.ai/`, `AGENTS.md`, `CLAUDE.md`, credential-shaped paths), symlink and traversal checks.
-- Per-item approvals, each with a mandatory reason and a recorded decision mode, coordinator and grant.
+- Per-item approvals, each with a recorded decision mode, coordinator and grant; MCP decisions require a reason, while the CLI's `--note` is optional.
 - Coordinator lease: after `par coordinator use`, the old bridge can no longer decide, start, resume, retry, build a candidate or rebase.
 - Resumable evidence: attempts, check logs, patches, diffs and a crash-recovery path.
 - Candidate integration: accepted R2 patches on one clean baseline, re-checked there; dependent tasks can use a `VERIFIED` candidate.

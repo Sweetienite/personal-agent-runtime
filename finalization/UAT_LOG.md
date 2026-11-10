@@ -51,6 +51,17 @@ The following are covered by automated tests rather than by hand:
 | wheel install | fresh `uv` venv + wheel | `par version --json` → 1.0.0; `doctor` 5 PASS |
 | sdist | `tar -tzf` | includes docs (49 entries), examples, tests; no private data |
 
+## UAT-E: post-release audit verification (2026-11-10, `1.1.1`)
+
+| Check | Command | Result |
+|---|---|---|
+| example, pre-fix | contract `argv` in a copy of `examples/ordinary-git-project` | exit non-zero, `Ran 1 test` (not `Ran 0 tests`) |
+| example, post-fix | same command after `return a + b` | exit 0, `Ran 1 test` |
+| onboarding config | temporary data dir + §5 `profiles.toml`/`providers.toml` | `par doctor` reads the Codex profile; no model call |
+| onboarding contract | temporary Git repo + `myproject`, `ad_hoc=true`, unique key | `task submit --check` → `contract passes validation; nothing was submitted` |
+| CLI docs | `docs_cli_examples.py` | 120 documented `par` lines accepted by the real parser |
+| version output | `par version --json` | `1.1.1`, `released 2026-11-09`, `support_tier=scoped`, routes `codex_native`/`manual_handoff` |
+
 ## UAT-D: not run or not claimed
 
 - Linux install/fake run/process control on a real GitHub runner: install + security + process
