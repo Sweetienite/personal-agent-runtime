@@ -4,10 +4,23 @@ User-facing summary of real changes. The detailed, line-by-line engineering log 
 
 ## Unreleased
 
+- **Experimental GitHub Copilot text-answer adapter.** A new `kind = "copilot"` provider runs the
+  bundled Copilot CLI 1.0.5 (pinned with `--no-auto-update`) for R0/R1 text tasks only. The prompt
+  goes through stdin, output is parsed from JSONL, and the vendor-required `--allow-all-tools` is
+  paired with an empty tool allowlist; no file writes, no `--allow-all-paths`/URLs/trust, and no
+  token environment variables. It is disabled by default and remains `EXPERIMENTAL`: the one
+  controlled real call failed with `AUTH_REQUIRED` before any model event, so there is no real
+  answer evidence yet.
+- **Read-only inspection is complete.** CLI `--json` output now carries `inspection_only` and the
+  diagnostic; `task list/events` use an envelope while normal-config output stays unchanged. Older
+  v1 ledgers that predate additive candidate tables keep reporting task results instead of a raw
+  `no such table` error; MCP `decisions` keeps its `mode`/`coordinator`/`allowed_actions`/`reason`
+  shape; SQLite's `-wal`/`-shm` sidecars are documented and tested. CI and mutation entries cover
+  the new boundaries.
 - **Invalid worker configuration no longer blocks ledger inspection.** The listed task-read CLI
   commands and MCP read tools use a SQLite read-only connection without migrations, advertise no
-  action affordances, and refuse other MCP calls without a heartbeat. Adapter manifests marked
-  non-automatic are no longer registered, even if enabled in a hand-built config.
+  action affordances, and refuse other MCP calls without a heartbeat. Non-automatic manifests are
+  never registered (none exist in this build).
 
 ## 1.1.1 — 2026-11-10
 

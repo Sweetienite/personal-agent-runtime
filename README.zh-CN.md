@@ -45,7 +45,7 @@ MCP 只表示**主控接入**，不会把任意 MCP 服务变成 Worker。`人�
 
 | 路径 | 是什么 | 谁干活 | 证据状态 |
 |---|---|---|---|
-| **原生 Worker** | 内置适配器非交互启动 CLI Agent 并解析结构化事件。 | Codex CLI（限定版本/OS/账号）；Antigravity 为实验性、默认禁用。 | 仅 Codex 为 `VERIFIED_AUTO` |
+| **原生 Worker** | 内置适配器非交互启动 CLI Agent 并解析结构化事件。 | Codex CLI（限定版本/OS/账号）；Antigravity 与 Copilot 为实验性、默认禁用，Copilot 只做文字答题。 | 仅 Codex 为 `VERIFIED_AUTO` |
 | **协议主控** | 支持 MCP 的客户端通过 stdio 调用 PAR 的 21 个工具。 | 你平时对话的客户端。 | Claude Desktop 与 Codex 在 2026-10-16 的只读样本为 `VERIFIED_COORDINATOR`；其他客户端未验证 |
 | **人工交接** | PAR 导出私有 workspace 与 `PROMPT.md`，人用 GUI/网页/手机工具完成并导入。 | 你与外部工具。 | WorkBuddy 2026-11-07 为 `VERIFIED_MANUAL`；其他品牌是条件性通用路径 |
 

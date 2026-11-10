@@ -21,7 +21,7 @@
 | [HANDOFF.md](HANDOFF.md) | 接力、人工交接、主控交接 |
 | [COORDINATORS.md](COORDINATORS.md) | 主控接入、grant、切换 |
 | [CONTEXT.md](CONTEXT.md) | generic 与 Harness 上下文 |
-| [CODEX.md](CODEX.md) · [AGY.md](AGY.md) · [ADAPTERS.md](ADAPTERS.md) | 适配器细节、版本与证据 |
+| [CODEX.md](CODEX.md) · [AGY.md](AGY.md) · [COPILOT.md](COPILOT.md) · [ADAPTERS.md](ADAPTERS.md) | 适配器细节、版本与证据 |
 | [ROLLBACK.md](ROLLBACK.md) | 非破坏性回滚与恢复演练 |
 | [specs/](specs/) | 模块级精确契约 |
 

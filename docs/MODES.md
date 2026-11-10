@@ -21,7 +21,7 @@ Kernel 给每次 attempt 新建私有 HOME/TMPDIR 与干净环境，不继承主
 你 / 主控 --(MCP 桥或 par 命令)--> Kernel --> 私有克隆 --> 自动 Worker --> Kernel 自己验收 --> 待你审阅
 ```
 
-- 适配器注册表默认为空；只有配置启用 `codex` 或 `antigravity` 且写明绝对路径的 `executable` 才注册。
+- 适配器注册表默认为空；只有配置启用 `codex`、`antigravity` 或 `copilot` 且写明绝对路径的 `executable` 才注册（Copilot 仅 R0/R1 文本答题）。
 - 任务在 `PERMISSION_WAIT` 等逐项批准，`run` 只启动一次 attempt；Kernel 自己比对文件、跑检查、生成补丁。
 - 能力闸门：适配器必须静态声明 `headless=yes`，R2 还需 `write=yes`；Kernel 在运行前用真实实例复核。
 - Codex 的 `codex exec --json` 是官方支持的非交互接口；`agy` 因官方条款风险保持实验性、默认禁用。

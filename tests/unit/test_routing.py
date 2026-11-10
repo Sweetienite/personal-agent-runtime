@@ -55,7 +55,7 @@ class Registry(unittest.TestCase):
 
     def test_the_automatic_kinds_come_from_one_manifest_table(self):
         self.assertEqual(AUTOMATIC_KINDS, MANIFEST_KINDS)
-        self.assertEqual(MANIFEST_KINDS, frozenset({"codex", "antigravity"}))
+        self.assertEqual(MANIFEST_KINDS, frozenset({"codex", "antigravity", "copilot"}))
         for kind, manifest in BUILTIN_MANIFESTS.items():
             self.assertEqual(manifest.kind, kind)
             self.assertTrue(manifest.automatic)
@@ -313,8 +313,8 @@ class Routing(HealthCase):
         r = self.route(adapters=default_registry())
         self.assertIsNone(r.chosen)
 
-    def test_only_codex_and_antigravity_kinds_run_automatically(self):
-        self.assertEqual(AUTOMATIC_KINDS, {"codex", "antigravity"})
+    def test_only_declared_automatic_kinds_run_automatically(self):
+        self.assertEqual(AUTOMATIC_KINDS, {"codex", "antigravity", "copilot"})
         snap = config_snapshot(self.cfg)
         snap["providers"]["codex"]["kind"] = "manual_handoff"
         cand = evaluate(snap, "w_code", risk="R1", adapters=self.reg, health=self.health)

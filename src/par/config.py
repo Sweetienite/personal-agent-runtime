@@ -18,15 +18,16 @@ from par.core.policy import inside_protected, protected_roots
 from par.core.redact import contains_secret, is_sensitive_key
 
 SUPPORTED_SCHEMA = 1
-PROVIDER_KINDS = frozenset({"codex", "antigravity", "claude_host", "manual_handoff", "gemini_legacy"})
-WORKER_PROVIDER_KINDS = frozenset({"codex", "antigravity", "manual_handoff"})
-DEFAULT_PROVIDER_IDS = ("codex", "antigravity", "claude_host", "manual_handoff", "gemini_legacy")
+PROVIDER_KINDS = frozenset({"codex", "antigravity", "copilot", "claude_host", "manual_handoff", "gemini_legacy"})
+WORKER_PROVIDER_KINDS = frozenset({"codex", "antigravity", "copilot", "manual_handoff"})
+DEFAULT_PROVIDER_IDS = ("codex", "antigravity", "copilot", "claude_host", "manual_handoff", "gemini_legacy")
 CAPABILITIES = frozenset({"read", "edit", "review"})
 # How a role is reached. The role name is not tied to a vendor: a worker id names a provider/model pair, and the
 # surface says which mechanism reaches it. "acp" is accepted in descriptors but has no adapter yet.
 SURFACES = frozenset({"native_cli", "acp", "manual", "programmatic_session"})
-PROVIDER_SURFACE = {"codex": "native_cli", "antigravity": "native_cli", "manual_handoff": "manual",
-                    "claude_host": "programmatic_session", "gemini_legacy": "native_cli"}
+PROVIDER_SURFACE = {"codex": "native_cli", "antigravity": "native_cli", "copilot": "native_cli",
+                    "manual_handoff": "manual", "claude_host": "programmatic_session",
+                    "gemini_legacy": "native_cli"}
 FAILURE_POLICIES = frozenset({"ask", "pause", "safe_auto"})
 # Who may decide a task's approvals and acceptance. ``coordinator_autonomous`` keeps the 2026-10-20
 # Maintainer decision (the bridge may decide, always recorded); ``coordinator_scoped`` requires a

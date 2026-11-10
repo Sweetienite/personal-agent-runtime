@@ -202,7 +202,8 @@ class Tools:
             "worker": self._worker(d),
             "candidate": d["base"].get("candidate"),
             "pending_approvals": [{"id": a["id"], "kind": a["kind"]} for a in d["pending_approvals"]],
-            "decisions": {"allowed_actions": []} if inspection else self.kernel.decision_view(self.coordinator, d),
+            "decisions": ({"mode": None, "coordinator": self.coordinator, "allowed_actions": [], "reason": "inspection-only"}
+                          if inspection else self.kernel.decision_view(self.coordinator, d)),
             "agent_next": [] if inspection else self._agent_next(d),
             "last_problem": self._t(d["last_failure"], PROBLEM_MAX) if d["last_failure"] else None,
         }

@@ -26,6 +26,17 @@ enabled = false
 # The `agy` CLI. Verified in P4; it is not installed at P0.
 executable = ""
 
+[providers.copilot]
+kind = "copilot"
+enabled = false
+# GitHub Copilot CLI, text-answer tasks only (R0/R1): it never edits files and cannot be used for R2.
+# Use the npm-installed launcher by absolute path. Log in once with the same bundled engine:
+#   COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
+# The adapter pins --no-auto-update (the bundled 1.0.5 is the examined build), passes the prompt on
+# stdin, disables built-in MCP servers, and leaves the model with no available tools through an
+# empty allowlist. It does not pass --allow-all-paths, --allow-all-urls or --trust-folder.
+executable = ""
+
 [providers.claude_host]
 kind = "claude_host"
 enabled = false   # interactive coordinator hosted by Claude Desktop; the Kernel never launches it

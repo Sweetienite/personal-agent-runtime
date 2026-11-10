@@ -292,64 +292,83 @@ def cmd_draft(args):
 @handled
 def cmd_list(args):
     with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         tasks = kernel.list_tasks(args.status, args.project)
-        if kernel.inspection_diagnostic:
-            print(kernel.inspection_diagnostic, file=sys.stderr)
     if args.waiting:
         tasks = [t for t in tasks if t["status"] in NEEDS_YOU]
-    print(_dump(tasks) if args.json else ("\n".join(_task_line(t) for t in tasks) or "no tasks"))
+    if args.json:
+        out = {"inspection_only": True, "diagnostic": diagnostic, "tasks": tasks} if inspection else tasks
+        print(_dump(out))
+    else:
+        print("\n".join(_task_line(t) for t in tasks) or "no tasks")
     return 0
 
 
 @handled
 def cmd_status(args):
     with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         d = kernel.describe(args.task)
-        if kernel.inspection_only:
+        if inspection:
             d["next_actions"] = []
-            print(kernel.inspection_diagnostic, file=sys.stderr)
-    print(_dump(d) if args.json else render_status(d, inspection_only=kernel.inspection_only))
+            d["inspection_only"] = True
+            d["diagnostic"] = diagnostic
+    print(_dump(d) if args.json else render_status(d, inspection_only=inspection))
     return 0
 
 
 @handled
 def cmd_events(args):
     with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         events = kernel.events(args.task, args.after, args.limit)
-        if kernel.inspection_diagnostic:
-            print(kernel.inspection_diagnostic, file=sys.stderr)
-    print(_dump(events) if args.json else ("\n".join(render_event(e) for e in events) or "no events"))
+    if args.json:
+        out = {"inspection_only": True, "diagnostic": diagnostic, "events": events} if inspection else events
+        print(_dump(out))
+    else:
+        print("\n".join(render_event(e) for e in events) or "no events")
     return 0
 
 
 @handled
 def cmd_result(args):
     with session(args, allow_inspection=True) as kernel:
+        inspection, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         res = kernel.result(args.task, args.attempt)
         evidence = kernel.evidence(args.task, args.attempt) if res is not None else None
-        if res is not None and kernel.inspection_only:
+        if res is not None and inspection:
             res = dict(res)
-            res["next_action"] = "none"
-        if kernel.inspection_diagnostic:
-            print(kernel.inspection_diagnostic, file=sys.stderr)
+            res["next_action"] = "inspection-only; actions unavailable"
     if res is None:
         print("no result yet: the task has no finished attempt")
         return 1
     if args.json:
         out = dict(res)
         out["evidence_summary"] = evidence
+        if inspection:
+            out["inspection_only"] = True
+            out["diagnostic"] = diagnostic
         print(_dump(out))
     else:
-        print(render_result(res, evidence, inspection_only=kernel.inspection_only))
+        print(render_result(res, evidence, inspection_only=inspection))
     return 0
 
 
 @handled
 def cmd_diff(args):
     with session(args, allow_inspection=True) as kernel:
+        _, diagnostic = kernel.inspection_only, kernel.inspection_diagnostic
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
         patch = kernel.diff(args.task, args.attempt)
-        if kernel.inspection_diagnostic:
-            print(kernel.inspection_diagnostic, file=sys.stderr)
     if patch is None:
         print("this attempt produced no patch", file=sys.stderr)
         return 1

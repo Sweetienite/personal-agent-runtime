@@ -30,6 +30,7 @@ and a few offline Codex probe subcommands plus `codesign`.
 | Worker text is never verified | `evidence_summary.claim.verified = false`; every bridge answer labels it untrusted |
 | Unknown vendor events or exit 0 without a terminal event cannot become success | Adapter parsers + `classify_failure` |
 | Approvals are per item and never reused across a worker change | Kernel approval gates + mutation tests |
+| A broken config can inspect, never write, the ledger | SQLite `mode=ro`, `Store.tx` refusal, four-tool MCP allowlist, no heartbeat |
 | `ACCEPTED` is not `APPLIED`; patches are never applied automatically | Only `work.patch` is stored |
 | Append-only ledger, immutable ended attempts, private modes | SQLite triggers + `WriteGuard` |
 
@@ -50,6 +51,11 @@ and a few offline Codex probe subcommands plus `codesign`.
 - **A worker that calls `setsid` escapes the process group** and cannot be tracked or killed.
 - **Account and terms compliance is yours.** Technical isolation does not make a vendor-prohibited
   usage permitted.
+- **Copilot is text-only and has no signature/sandbox claim.** Non-interactive Copilot requires
+  `--allow-all-tools`; the adapter pairs it with `--available-tools=par-no-tools` so no real tool is
+  available, and grants no paths, URLs or folder trust. The npm launcher is a Node script with no
+  vendor code signature, and the CLI may still load user-level Copilot configuration. It cannot
+  write files or run R2; see [COPILOT.md](../COPILOT.md).
 
 ## 4. Approvals, approval modes and the coordinator lease
 
@@ -121,6 +127,9 @@ credentials, personal paths or third-party project data. See [.github/SECURITY.m
   the CLI requires re-validation.
 - Antigravity is experimental, disabled by default, and the vendor's consumer terms prohibit
   wrapping it in third-party coding agents.
+- Copilot is experimental and disabled by default; it answers R0/R1 text tasks only. One controlled
+  real call failed with `AUTH_REQUIRED` before any model event, so no real answer evidence exists
+  yet. Its bundled 1.0.5 engine must be logged in with the same `COPILOT_HOME` before use.
 - Linux is core-experimental; Windows native is not supported.
 - Real cancellation/timeout/quota incidents were not forced in the recorded evidence; scripted
   workers cover the control paths.

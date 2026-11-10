@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from par.providers.antigravity import AntigravityAdapter
 from par.providers.codex import CodexAdapter
+from par.providers.copilot import CopilotAdapter
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,12 @@ BUILTIN_MANIFESTS: "dict[str, AdapterManifest]" = {
         kind="antigravity", adapter_cls=AntigravityAdapter, capabilities=getattr(AntigravityAdapter, "CAPABILITIES", None),
         platforms=("darwin",), auth_mode="google_login_via_system_keychain", version_bound="agy 1.3.5",
         automatic=True, note="experimental and disabled by default: the vendor terms prohibit third-party wrapping"),
+    "copilot": AdapterManifest(
+        kind="copilot", adapter_cls=CopilotAdapter, capabilities=getattr(CopilotAdapter, "CAPABILITIES", None),
+        platforms=("darwin",), auth_mode="github_copilot_login", version_bound="GitHub Copilot CLI 1.0.5",
+        automatic=True,
+        note="experimental text-answer only and disabled by default: no file writes, npm Node script with no vendor "
+             "signature, tools disabled through an empty allowlist, no OS sandbox claimed"),
 }
 
 AUTOMATIC_KINDS = frozenset(kind for kind, manifest in BUILTIN_MANIFESTS.items() if manifest.automatic)

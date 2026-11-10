@@ -12,7 +12,10 @@ widening `allowed_paths`, or using vendor bypass flags.
 | `ModuleNotFoundError: par` | Ran a different interpreter | Run commands through `.venv/bin/python` / `.venv/bin/par` |
 | `par doctor` reports an unsafe data directory | The directory exists but is not `0700`, has the wrong owner, or is a symlink | Point `PAR_DATA_DIR` at a new empty directory; PAR never chmods an existing directory it did not create |
 | `par doctor` shows a config error | `providers.toml`/`profiles.toml` has an unknown field or provider kind | Read the exact `path: message` line; fix or move the file aside. `par doctor` is read-only |
-| `task list/status/events/result/diff` says inspection-only | Worker configuration is invalid, but the existing ledger can still be inspected safely | Run `par doctor`, repair `profiles.toml` or `providers.toml`, then use task actions again. In this mode MCP exposes only list/status/result/diff and refuses all other calls |
+| `task list/status/events/result/diff` says inspection-only | Worker configuration is invalid, but the existing ledger can still be inspected safely | Run `par doctor`, repair `profiles.toml` or `providers.toml`, then use task actions again. In this mode MCP exposes only list/status/result/diff and refuses all other calls; CLI `--json` carries `inspection_only` and `diagnostic` |
+| `candidate data is unavailable` during inspection | The ledger predates the additive candidate tables (still schema v1) | The task list/status/events/result stay readable; open the ledger once with a valid configuration to migrate it if candidate history is needed |
+| Copilot says `No authentication information found` | The bundled 1.0.5 engine has no login visible in `COPILOT_HOME` | Run `COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login` once, then retry. PAR never reads or copies credentials |
+| Copilot refuses a task as text-answer only | Copilot cannot write files or run R2 | Use a write-capable adapter or the manual hand-off flow; do not widen the adapter |
 | Git-related error on submit | `git` is missing or the project is not a repository | Install `git`; an R1/R2 task needs a Git base commit and an ordinary repository |
 | `404` / clone fails | Wrong URL or no network at clone time | Clone from the canonical URL once; after installation PAR itself needs no network |
 

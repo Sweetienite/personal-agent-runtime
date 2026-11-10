@@ -119,6 +119,10 @@ class Kernel(SubmissionMixin, ApprovalMixin, ReviewMixin, RecoveryMixin, Reading
             for sub in ("scratch", "tasks"):
                 (self.data_dir / sub).mkdir(mode=0o700, exist_ok=True)
         self.store = Store(self.data_dir, self.clock, read_only=inspection_only)
+        if inspection_only:
+            self.store.conn                       # validate the ledger before the bridge starts; fail cleanly if it cannot be read
+            if self.store.read_only_gaps and inspection_diagnostic:
+                self.inspection_diagnostic = inspection_diagnostic + "; " + "; ".join(self.store.read_only_gaps)
         self.health = Health(self.store, rate_limit_cooldown=self.settings.rate_limit_cooldown)
         try:
             if inspection_only:

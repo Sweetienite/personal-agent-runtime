@@ -1,6 +1,6 @@
 # Provider 适配器
 
-协议在 P0 定义，P2 起由 Kernel 真正驱动它（`execution/subprocesses.py`、`core/attempt.py`）。**P3 接入了第一个真实适配器：Codex**（`providers/codex.py`，细节与证据见 [CODEX.md](CODEX.md)）；**P4 接入第二个：Antigravity**（`providers/antigravity.py`，见 [AGY.md](AGY.md)）。适配器通过 `providers/registry.py` 的注册表接入，**注册表默认为空**。
+协议在 P0 定义，P2 起由 Kernel 真正驱动它（`execution/subprocesses.py`、`core/attempt.py`）。**P3 接入了第一个真实适配器：Codex**（`providers/codex.py`，细节与证据见 [CODEX.md](CODEX.md)）；**P4 接入第二个：Antigravity**（`providers/antigravity.py`，见 [AGY.md](AGY.md)）；**2026-11-10 增加实验性的 GitHub Copilot 文本答题适配器**（`providers/copilot.py`，见 [COPILOT.md](COPILOT.md)）。适配器通过 `providers/registry.py` 的注册表接入，**注册表默认为空**。
 
 每个自动适配器在 **`providers/manifests.py` 的 `AdapterManifest`** 里登记：`kind`、适配器类、静态能力、已验证的平台、登录方式、证据对应的版本、以及 `automatic`（能否不经人启动）。`cli_task.build_adapters(config)` 只从这张表取工厂，`core/router.py` 的 `AUTOMATIC_KINDS` 也由它派生——新增一个自动 Provider 只需增加一条 manifest 和适配器测试，不再需要同时改路由和 CLI 两处白名单。旧的 `gemini_legacy`、`claude_host`、`manual_handoff` 没有适配器 manifest，永远不会自动运行。清单里的平台（目前 `darwin`）是**已验证**范围，不是“能 import 就支持”。
 
@@ -51,6 +51,24 @@ Codex 没有结构化的错误码，所以 `providers/codex.py` 用**随版本�
 ## Antigravity 适配器（`providers/antigravity.py`）
 
 一句话：只翻译，不做别的——但这个 CLI 有一个 Codex 没有的失败模式：**软拒绝**（需要审批的工具被跳过，运行继续、退出码 0，只在 stderr 提示）。它要求绝对路径、Google 签名（团队 `EQHXZ8M8AV`）的二进制；用 `agy --input-format stream-json --output-format stream-json --model <模型> --sandbox --print-timeout 24h` 运行，提示词是标准输入上的一行 stream-json `user` 事件；**Worker 的 HOME 是 attempt 的私有目录，`agy` 看不到你真实的 `~/.gemini`**——`prepare()` 往里写 Runtime 自己的 `settings.json`（只读任务 `strict`，写任务 `request-review` 加合同路径对应的 `write_file(...)` 允许规则；沙箱开、遥测关、不花 AI 积分、不出工作副本），并在 macOS 上链接钥匙串目录以便找到你一次性的 Google 登录；`init` 事件报告的权限模式比请求的宽就让这次运行失败；项目自带的 hooks/MCP/插件一律拒绝；环境里没有任何 API key，且每次都关掉 CLI 的自动更新；取消用 SIGINT。逐项依据、尚未验证的部分、升级复核清单在 [AGY.md](AGY.md)。
+
+## Copilot 适配器（`providers/copilot.py`，文本答题，实验性）
+
+一句话：只把 R0/R1 的文字任务交给 **GitHub Copilot CLI**，把最后一条 `assistant.message`
+作为未验证的 `summary` 交回 Kernel；它**不写文件、不产生补丁、不能跑 R2**。
+
+- 必须用绝对路径配置 npm launcher；每次运行加 `--no-auto-update`，锁定 bundled 1.0.5。
+- 提示词走标准输入；`--output-format json` 的 `assistant.message` / `result` 被解析成
+  `message` / `terminal`；退出码 0 但没有 `result` 不算成功。
+- 非交互模式要求 `--allow-all-tools`，但适配器同时传
+  `--available-tools=par-no-tools`，模型实际没有工具可用；不传
+  `--allow-all-paths`、`--allow-all-urls`、`--trust-folder`、`--yolo`。
+- `COPILOT_HOME` 原样交给 CLI（默认 `~/.copilot`），Runtime 不读取/复制凭据；私有 HOME 和
+  TMPDIR 仍由 Kernel 提供。CLI 的 prompt-mode 会话状态可能写到 `COPILOT_HOME` 下。
+- 没有厂商代码签名（npm Node script），也不声明 OS 沙箱；因此默认 disabled，状态为
+  `EXPERIMENTAL`，需要一次同环境的 `copilot --no-auto-update login` 和真实回答证据后才能升级。
+- 当前真实调用证据只有 `AUTH_REQUIRED`（在模型事件之前失败）；具体见
+  [COPILOT.md](COPILOT.md)。
 
 ## 测试替身（`providers/fake.py` + `fake_cli.py`）
 

@@ -254,6 +254,8 @@ class Store:
         self.path = Path(data_dir) / filename
         self.clock = clock or Clock()
         self.read_only = read_only
+        self.read_only_gaps: "tuple[str, ...]" = ()
+        self.candidates_available = True
         self._conn: "sqlite3.Connection | None" = None
         self._depth = 0
 
@@ -289,8 +291,10 @@ class Store:
             path_stat = self.path.lstat()
         except OSError:
             path_stat = None
-        if path_stat is None or not stat.S_ISREG(path_stat.st_mode):
+        if path_stat is None:
             raise LedgerError("the ledger does not exist; read-only inspection cannot create it")
+        if not stat.S_ISREG(path_stat.st_mode):
+            raise LedgerError("the ledger path is not a regular file; read-only inspection cannot open it")
         conn = sqlite3.connect(Path(os.path.abspath(self.path)).as_uri() + "?mode=ro", uri=True, isolation_level=None,
                                timeout=10.0, check_same_thread=False)
         try:
@@ -298,6 +302,17 @@ class Store:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
             if version <= 0 or version > SCHEMA_VERSION:
                 raise LedgerError(f"the ledger schema {version} cannot be inspected by this build")
+            gaps: "list[str]" = []
+            table = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'candidates'").fetchone()
+            if table is None:
+                self.candidates_available = False
+                gaps.append("candidate data is unavailable: this ledger predates candidate tracking")
+            else:
+                columns = {row[1] for row in conn.execute("PRAGMA table_info(candidates)")}
+                if "requested_json" not in columns:
+                    self.candidates_available = False
+                    gaps.append("candidate request data is unavailable: this ledger predates requested_json")
+            self.read_only_gaps = tuple(gaps)
             conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("PRAGMA busy_timeout=10000")
             return conn
@@ -492,9 +507,13 @@ class Store:
              artifact_dir, reason[:500], now, now if status == "VERIFIED" else None))
 
     def get_candidate(self, candidate_id: str) -> "dict[str, Any] | None":
+        if self.read_only and not self.candidates_available:
+            return None
         return _decode_candidate(row_dict(self.conn.execute("SELECT * FROM candidates WHERE candidate_id = ?", (candidate_id,)).fetchone()))
 
     def list_candidates(self, project_id: "str | None" = None) -> "list[dict[str, Any]]":
+        if self.read_only and not self.candidates_available:
+            return []
         sql, args = "SELECT * FROM candidates WHERE 1=1", []
         if project_id:
             sql += " AND project_id = ?"
