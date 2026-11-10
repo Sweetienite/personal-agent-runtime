@@ -198,8 +198,8 @@ class CopilotAdapter:
         if problem:
             return problem
         if not Path(self.copilot_home).is_dir():
-            return (f"the Copilot home {self.copilot_home} does not exist: run `copilot --no-auto-update login` "
-                    "once with the same COPILOT_HOME first")
+            return (f"the Copilot home {self.copilot_home} does not exist: run "
+                    f"`HOME={self.copilot_home} COPILOT_HOME={self.copilot_home} copilot --no-auto-update login` once first")
         if not _MODEL.match(request.model or ""):
             return f"{request.model!r} is not a usable model slug; check `copilot --no-auto-update --help`"
         if request.allow_write:
@@ -220,7 +220,9 @@ class CopilotAdapter:
         return argv
 
     def environment(self, request: RunRequest) -> "dict[str, str]":
-        env = {"COPILOT_HOME": self.copilot_home, "NO_COLOR": "1", "CI": "1"}
+        # The CLI's credential lookup is scoped by HOME; a per-attempt HOME cannot see the login.
+        # Both are pinned to the same stable Copilot directory, which the person logs into once.
+        env = {"HOME": self.copilot_home, "COPILOT_HOME": self.copilot_home, "NO_COLOR": "1", "CI": "1"}
         env.update({k: self.environ[k] for k in PASSTHROUGH if k in self.environ})
         return env
 
@@ -311,13 +313,14 @@ class CopilotAdapter:
     def persistence_report(self) -> "dict[str, Any]":
         home = self.copilot_home
         return {
-            "sessions": f"prompt-mode session state may be written under {home}; --no-auto-update prevents CLI downloads",
+            "sessions": f"the CLI runs with HOME=COPILOT_HOME={home}; prompt-mode session state may be written there",
             "logs": "CLI logs are directed to the attempt's private log directory and removed when the attempt ends; "
                     "the Kernel keeps its own stdout/stderr copies",
             "memory": "off: --enable-memory is never passed",
             "paths": [home],
-            "credentials": f"{home} or the system credential store belongs to the CLI; the Runtime never opens or copies it",
+            "credentials": f"{home} and the system credential store belong to the CLI; the Runtime never opens or copies them",
             "telemetry": "this adapter does not disable server-side telemetry; the bundled build has no client-telemetry flag",
+            "downloads": "--no-auto-update pins the bundled engine and prevents CLI downloads",
         }
 
     def probe(self) -> ProbeResult:

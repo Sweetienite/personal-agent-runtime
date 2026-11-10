@@ -8,9 +8,11 @@ User-facing summary of real changes. The detailed, line-by-line engineering log 
   bundled Copilot CLI 1.0.5 (pinned with `--no-auto-update`) for R0/R1 text tasks only. The prompt
   goes through stdin, output is parsed from JSONL, and the vendor-required `--allow-all-tools` is
   paired with an empty tool allowlist; no file writes, no `--allow-all-paths`/URLs/trust, and no
-  token environment variables. It is disabled by default and remains `EXPERIMENTAL`: the one
-  controlled real call failed with `AUTH_REQUIRED` before any model event, so there is no real
-  answer evidence yet.
+  token environment variables. It is disabled by default and remains `EXPERIMENTAL`. A controlled
+  real call with the real HOME succeeded (`PAR-COPILOT-OK`, `exitCode=0`, all tools disabled, no file
+  changes); because the CLI's credential lookup is HOME-scoped, the adapter now pins `HOME` and
+  `COPILOT_HOME` to one stable directory and requires a one-time login there. Full R1/R2 acceptance
+  evidence is still missing.
 - **Read-only inspection is complete.** CLI `--json` output now carries `inspection_only` and the
   diagnostic; `task list/events` use an envelope while normal-config output stays unchanged. Older
   v1 ledgers that predate additive candidate tables keep reporting task results instead of a raw

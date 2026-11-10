@@ -77,7 +77,7 @@ class Protocol(unittest.TestCase):
         for bad in ("-p", "--prompt", "--allow-all-paths", "--allow-all-urls", "--trust-folder", "--yolo", "--allow-all"):
             self.assertNotIn(bad, argv)
         env = adapter.environment(request(self.workspace))
-        self.assertEqual(env["COPILOT_HOME"], str(self.fake.home))
+        self.assertEqual((env["HOME"], env["COPILOT_HOME"]), (str(self.fake.home), str(self.fake.home)))
         self.assertNotIn("GITHUB_TOKEN", env)
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("COPILOT_GITHUB_TOKEN", env)
@@ -97,6 +97,22 @@ class Protocol(unittest.TestCase):
         self.assertEqual((terminal.kind, terminal.data["status"]), ("terminal", "SUCCESS"))
         self.assertEqual(terminal.data["usage"], {"input_tokens": 3, "output_tokens": 2})
         self.assertEqual(adapter.parse_event("not json").kind, "unparsed")
+
+    def test_the_real_jsonl_shape_is_parsed(self):
+        adapter = CopilotAdapter(str(self.fake.exe), copilot_home=str(self.fake.home))
+        lines = [
+            {"type": "session.info", "data": {"infoType": "configuration", "message": "Disabled tools: bash, create, edit"}},
+            {"type": "assistant.message_delta", "data": {"messageId": "m1", "deltaContent": "PAR-"}},
+            {"type": "assistant.message", "data": {"messageId": "m1", "content": "PAR-COPILOT-OK", "toolRequests": []}},
+            {"type": "result", "sessionId": "s1", "exitCode": 0,
+             "usage": {"premiumRequests": 1, "codeChanges": {"linesAdded": 0, "filesModified": []}}},
+        ]
+        parsed = [adapter.parse_event(json.dumps(line)) for line in lines]
+        message = next(event for event in parsed if event and event.kind == "message")
+        terminal = next(event for event in parsed if event and event.kind == "terminal")
+        self.assertEqual(message.data["text"], "PAR-COPILOT-OK")
+        self.assertEqual((terminal.data["status"], terminal.data["session_id"], terminal.data["exit_code"]),
+                         ("SUCCESS", "s1", 0))
 
     def test_exit_zero_without_a_terminal_is_not_clean(self):
         adapter = CopilotAdapter(str(self.fake.exe), copilot_home=str(self.fake.home))
@@ -174,7 +190,7 @@ class TextAnswer(World):
         self.assertNotIn("GH_TOKEN", call["env"])
         self.assertNotIn("COPILOT_GITHUB_TOKEN", call["env"])
         self.assertTrue(str(call["cwd"]).startswith(str(self.data)))
-        self.assertNotEqual(call["env"]["HOME"], str(self.fake.home))
+        self.assertEqual(call["env"]["HOME"], str(self.fake.home))
         self.assertFalse((self.attempt_dir(tid, 1) / "tmp" / "copilot-logs").exists())
 
     def test_a_write_task_is_not_routed_to_copilot(self):

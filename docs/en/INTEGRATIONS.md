@@ -187,7 +187,7 @@ capabilities = ["read"]
 Log in once with the same bundled engine, then use a normal text task:
 
 ```bash
-COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
+HOME="$HOME/.copilot" COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
 par task run TASK
 par task result TASK
 ```

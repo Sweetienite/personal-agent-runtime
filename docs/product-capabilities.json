@@ -87,7 +87,7 @@
       "auth": "GitHub Copilot subscription login through the CLI",
       "last_verified": null,
       "evidence_url": "docs/COPILOT.md",
-      "limitations": "Disabled by default. Text-answer tasks only (R0/R1); never writes files and cannot be used for R2. The npm launcher is a Node script with no vendor code signature. Non-interactive mode requires --allow-all-tools, paired with an empty tool allowlist; no OS sandbox is claimed. One controlled real call failed with AUTH_REQUIRED before any model event, so there is no real-run answer evidence yet."
+      "limitations": "Disabled by default. Text-answer tasks only (R0/R1); never writes files and cannot be used for R2. The npm launcher is a Node script with no vendor code signature. Non-interactive mode requires --allow-all-tools, paired with an empty tool allowlist; no OS sandbox is claimed. One controlled real call with the real HOME succeeded (PAR-COPILOT-OK, exitCode 0, all tools disabled, no file changes), but the adapter now pins HOME=COPILOT_HOME to a stable directory and requires a one-time login there; there is no full R1/R2 acceptance evidence yet."
     }
   ],
   "coordinator_clients": [

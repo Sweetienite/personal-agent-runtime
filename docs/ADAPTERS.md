@@ -63,11 +63,18 @@ Codex 没有结构化的错误码，所以 `providers/codex.py` 用**随版本�
 - 非交互模式要求 `--allow-all-tools`，但适配器同时传
   `--available-tools=par-no-tools`，模型实际没有工具可用；不传
   `--allow-all-paths`、`--allow-all-urls`、`--trust-folder`、`--yolo`。
-- `COPILOT_HOME` 原样交给 CLI（默认 `~/.copilot`），Runtime 不读取/复制凭据；私有 HOME 和
-  TMPDIR 仍由 Kernel 提供。CLI 的 prompt-mode 会话状态可能写到 `COPILOT_HOME` 下。
+- CLI 的凭据查找按 HOME 作用域；适配器把子进程的 `HOME` 和 `COPILOT_HOME` 都固定到同一个
+  稳定目录（默认 `~/.copilot`），TMPDIR 和工作副本仍由 Kernel 按 attempt 私有生成。Runtime
+  不读取/复制凭据；CLI 的 prompt-mode 会话状态可能写到该目录下。
+- 登录必须使用同一个稳定 HOME：
+
+  ```bash
+  HOME="$HOME/.copilot" COPILOT_HOME="$HOME/.copilot" copilot --no-auto-update login
+  ```
+
 - 没有厂商代码签名（npm Node script），也不声明 OS 沙箱；因此默认 disabled，状态为
-  `EXPERIMENTAL`，需要一次同环境的 `copilot --no-auto-update login` 和真实回答证据后才能升级。
-- 当前真实调用证据只有 `AUTH_REQUIRED`（在模型事件之前失败）；具体见
+  `EXPERIMENTAL`。真实 HOME 下的一次受控调用已成功（`PAR-COPILOT-OK`、`exitCode=0`、
+  工具全部禁用、无文件改动），但稳定 HOME 下的最终验证仍需完成；具体见
   [COPILOT.md](COPILOT.md)。
 
 ## 测试替身（`providers/fake.py` + `fake_cli.py`）
