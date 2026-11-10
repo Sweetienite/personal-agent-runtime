@@ -1,25 +1,68 @@
 # Personal Agent Runtime (PAR)
 
-**A local, verifiable execution and coordination layer for AI coding agents.**
+### **Your agents. Your workflow. No single vendor in charge.**
 
-PAR keeps the task, its permissions and its evidence outside any chat. It lets a compatible AI tool participate through a native adapter, an MCP coordinator bridge, or a human hand-off — and it re-runs the acceptance checks itself instead of trusting an agent's claim that "tests pass".
+**Bring your own AI coding agents. Give them one shared workflow. Keep the evidence when the conversation ends.**
 
-English | [简体中文](README.zh-CN.md)
+PAR is an open-source, local collaboration runtime for AI coding tools. It connects a coordinator, workers and your existing apps through **native CLI execution, MCP coordination or structured human hand-off**. A persistent Kernel owns task state, scoped permissions, workspaces and verification, so no single model or chat session has to own the entire job.
+
+**Think beyond a model picker.** PAR is about getting independent AI *tools* to cooperate, even when they come from different vendors and do not expose the same API.
+
+[English](README.md) | [简体中文](README.zh-CN.md) · [Quickstart](docs/en/GETTING_STARTED.md) · [How integrations work](docs/en/INTEGRATIONS.md) · [Verified compatibility](docs/en/COMPATIBILITY.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **Status: `1.1.1`, released 2026-11-09 ([tag `v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)).** Codex is the only formal automatic worker (one version/OS/account combination, see the matrix). MCP connects a *coordinator*, not a generic worker. Manual hand-off is a first-class path. macOS is the verified host; Linux is core-experimental; Windows native is not supported.
+> **Current release: `1.1.1`** ([`v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1), 2026-11-10). **The workflow is tool-agnostic; automatic integrations are not universal.** Codex is the only formally verified automatic worker today. WorkBuddy has a verified **manual** hand-off; other tools participate conditionally through MCP or human hand-off. macOS is the verified host. [Exact evidence and limits](docs/en/COMPATIBILITY.md).
+
+## One project. The agents you already have.
+
+Picture this:
+
+```text
+You → Codex (coordinator): "Plan the change and define what passes."
+         │
+         ▼
+       PAR: task contract + scoped workspace + persistent state
+         │
+         ▼
+       WorkBuddy (manual worker): implement it using an existing plan/quota
+         │
+         ▼
+       PAR: import files → inspect diff → independently run checks
+         │
+         ▼
+       You: review the evidence and apply the patch if you choose
+```
+
+That is a **realistic cross-tool workflow**, not a claim that PAR remotely controls WorkBuddy. You open the exported workspace and bring the result back. The same task/evidence model also serves supported native CLI workers.
+
+### **Have unused AI credits? Put them to work.**
+
+Already paying for several subscriptions, or holding free, trial or included credits across AI coding tools? Your best model does not have to execute every bounded edit.
+
+Use a preferred coordinator for the decisions that matter. Delegate compatible tasks through PAR within the quotas you legitimately hold. Then let the Kernel check the result instead of paying another model just to believe the first one.
+
+**No promise of free execution or guaranteed savings.** Each provider's prices, quotas, account rules and terms still apply. PAR neither bypasses limits nor invents an API for a GUI-only product; manual hand-off remains manual.
+
+### **“Any agent” is a workflow promise, not a fake compatibility badge.**
+
+PAR has **no fixed whitelist for human-mediated participation**. In principle, a coding tool can join if you can give it the task and bring back an **edited workspace or valid patch**; a text-only chat can contribute to non-writing tasks. This includes tools and brands not named anywhere in this README.
+
+Automatic execution is narrower and requires a tested, permitted native adapter. An MCP-capable application may act as a **coordinator**; MCP alone does not turn it into an automatic worker. See [Integrations](docs/en/INTEGRATIONS.md) and the [evidence matrix](docs/en/COMPATIBILITY.md) before assuming a specific combination works.
 
 ## Why PAR?
 
-- **The Kernel measures; it does not trust.** A worker's own summary is always marked unverified. `acceptance.checks` are commands the Kernel runs itself in a private clone, and a write task with no checks cannot be accepted by an automated coordinator.
-- **Task state lives outside the chat.** Statuses, approvals, attempts, diffs and the append-only SQLite ledger survive a closed session or a model switch.
-- **Roles are not vendor pairings.** A coordinator is who you talk to; a worker is what edits code. One tool (or a human with a GUI agent) can fill either role without buying a second subscription.
-- **Nothing is applied for you.** PAR never runs `git apply`, `git push` or a deploy against your real project. An accepted result is a diff you review and apply yourself.
-- **Manual work is verifiable too.** A GUI/web/mobile agent can take an exported private workspace and return a workspace, patch or text; the Kernel validates the import exactly like an automated worker's output.
+- **Orchestrate tools, not just model endpoints.** A native CLI, a desktop coding agent and a text-only assistant need not speak the same API to participate in a structured workflow.
+- **Keep your progress when agents change.** A SQLite ledger preserves tasks, approvals, attempts, diffs, results and hand-off state beyond any individual session.
+- **The Kernel measures. The worker reports.** PAR independently re-runs `acceptance.checks` in its own workspace; an agent's “tests passed” claim is not evidence. Automated acceptance of write tasks without checks is blocked.
+- **Delegate without surrendering control.** Task contracts scope allowed paths; permissions, coordinator leases and append-only events make decisions inspectable.
+- **Keep useful work moving.** Verified, accepted patches can be assembled into a candidate and re-checked for dependent tasks. PAR does not silently edit your real repository.
+- **Stay small and local.** A Python standard-library runtime, CLI and a 21-tool MCP coordinator bridge. No PAR account, hosted control plane or additional model subscription is required just to run the runtime.
+
+**PAR is not another IDE, model marketplace or magical fully autonomous team.** It is the layer that keeps independent tools on the same task, with state and evidence you can actually inspect.
 
 ## 60-second view
 
