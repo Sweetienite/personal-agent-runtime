@@ -1,25 +1,68 @@
 # Personal Agent Runtime（PAR）
 
-**面向 AI 编程智能体的本地化、可验证任务执行与协作运行时。**
+### **你的 Agent，你的工作流，不必属于同一家厂商。**
 
-PAR 把任务状态、权限与证据放在任何聊天之外，让可兼容的 AI 工具通过**原生适配器**、**MCP 主控桥**或**人工交接**参与同一套工作流程；验收检查由 PAR 自己重新运行，而不是采信智能体「测试通过」的自述。
+**把手里的 AI 编程工具真正组织起来。任务可以换人做，进度和证据不必从头来。**
 
-[English](README.md) | 简体中文
+PAR 是一个开源、本地运行的 **跨 AI 工具协作 Runtime**。你可以通过**原生 CLI 执行、MCP 主控接入、结构化人工交接**，让不同厂商、不同界面的 AI 工具参与同一条工作流。任务状态、权限、工作副本与验收证据由 PAR Kernel 统一管理，不绑定在某段聊天记录里。
+
+**别只想着换模型。让不同 Agent 工具真正协作。**
+
+[English](README.md) | 简体中文 · [快速上手](docs/QUICKSTART.md) · [人工交接](docs/HANDOFF.md) · [兼容性证据](docs/COMPATIBILITY.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **状态：`1.1.1`，2026-11-09 已发布（[tag `v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)）。** 正式自动执行路径只有 Codex（限定版本/OS/账号组合，见矩阵）；MCP 连接的是**主控**，不是通用自动 Worker；人工交接是一等路径。macOS 是已验证宿主；Linux 为核心实验级；Windows 原生不支持。
+> **当前版本：`1.1.1`**（[`v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)，2026-11-09）。**协作工作流不绑定厂商，不等于所有工具都已自动适配。** 目前正式验证的自动 Worker 只有 Codex；WorkBuddy 验证的是**人工交接**；其他工具按 MCP 或人工交接条件参与。macOS 为已验证宿主，详见[兼容性与实测证据](docs/COMPATIBILITY.md)。
+
+## 同一个项目，调动你已经拥有的 AI 工具
+
+想象一个很实际的组合：
+
+```text
+你 → Codex（主控）：「分析任务、制定修改范围和验收标准」
+          │
+          ▼
+        PAR：任务合同 + 隔离工作副本 + 持久状态
+          │
+          ▼
+        WorkBuddy（人工交接 Worker）：使用已有额度修改代码
+          │
+          ▼
+        PAR：导入结果 → 检查 Diff → 独立重新运行测试
+          │
+          ▼
+        你：查看证据，决定是否将补丁应用到真实仓库
+```
+
+这是一条**可以理解、可以实际操作的跨工具工作流**。它不表示 PAR 能远程自动操控 WorkBuddy：你仍需打开导出的工作目录、将结果交回 PAR。对于已经完成正式验证的原生 CLI Worker，则可以由 PAR 自动启动和收集运行结果。
+
+### **国产 AI 工具的积分羊毛，为什么不薅？**
+
+你可能早就拥有多个 AI 编程工具：有的赠送每日积分，有的会员附带额度，有的模型便宜，有的适合负责困难决策。
+
+没必要让最昂贵的主控模型包办每一个简单修改。**让擅长决策的 Agent 做决策，让其他工具利用你已有的免费积分、试用额度或会员权益完成适合它们的工作，再由 PAR 独立验收。**
+
+这不是绕过厂商限制的「白嫖神器」：**额度是否可用、任务是否计费、是否允许这种使用，都以各家实际规则为准**。PAR 不绕过限流、不规避付费、不保证省钱，更不会凭空给没有程序化接口的 App 变出自动调用能力。
+
+### **理论上兼容几乎任何 Agent，具体靠的是交接协议，而不是宣传 Logo**
+
+PAR 的**人工交接路径不预设厂商白名单**。理论上，只要一个工具能接收任务，并且让你带回**修改后的工作目录或有效补丁**，它就能有条件地参与代码任务。只能返回文字的网页或手机 AI，也可以参与不需要修改文件的分析任务。
+
+所以，这里提到 Codex、WorkBuddy、TRAE、Cursor 等名字，**只是例子，不是兼容范围的上限**。但要分清：能人工交接 ≠ 已验证该品牌 ≠ 支持原生自动执行；MCP 连接的是主控，不会自动把任意 MCP 客户端变成 Worker。具体支持状态请查看[接入说明](docs/HANDOFF.md)和[兼容性矩阵](docs/COMPATIBILITY.md)。
 
 ## 为什么需要 PAR
 
-- **Kernel 自己重新测量，不采信 Worker。** Worker 的总结永远标为未验证；`acceptance.checks` 是 Kernel 在私有副本里亲自运行的命令。没有检查的写任务，自动主控不允许验收。
-- **任务状态独立于聊天。** 状态、审批、尝试、diff 与只增 SQLite 台账不会因为关闭会话或更换模型而丢失。
-- **角色不等于厂商组合。** Coordinator 是你对话的对象，Worker 是改代码的执行者；同一个工具（或人 + GUI Agent）可以兼任两种角色，不需要买两份订阅。
-- **不会替你落地。** PAR 从不对真实项目执行 `git apply`、`git push` 或部署。验收通过的结果仍是一份待你审查、由你应用的补丁。
-- **人工工作同样可验证。** GUI/网页/手机 Agent 可以拿走导出的私有副本，回传 workspace、patch 或文本；Kernel 按与自动 Worker 相同的标准验证导入结果。
+- **连接 Agent 工具，而不仅是切换模型 API。** 原生 CLI、桌面编码 Agent、人工交接工具可以参与同一套任务合同与结果协议，不要求它们属于同一家厂商。
+- **Agent 可以换，已完成的工作不会轻易丢。** SQLite 台账保存任务、审批、尝试、Diff、结果及交接状态，不依赖某一段聊天历史。
+- **Worker 说完成了，不等于完成了。** Kernel 在私有工作副本里亲自运行 `acceptance.checks`；模型的「测试通过」自述不是证据。没有检查的写任务不能由自动主控直接验收。
+- **给主控足够能力，但留下清晰边界。** 合同限制允许路径，审批、主控租约和只增事件让每一次重要动作可审计。
+- **成果可以接力和整合。** 已验收补丁可以汇入候选基线再复检，供有依赖关系的下游任务使用。PAR 不会悄悄改动你的真实项目。
+- **小而本地化。** Python 标准库实现，提供 CLI 与 21 个工具的 MCP 主控桥；运行 PAR 本身不需要另买一个模型订阅或注册 PAR 云端账号。
+
+**PAR 不打算重新发明 IDE，也不承诺一个「自动掌控所有 AI」的魔法按钮。** 它专注解决一件事：让独立工具之间的任务、状态和可核验结果能够延续。
 
 ## 60 秒概念图
 
