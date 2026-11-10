@@ -15,7 +15,7 @@ PAR is an open-source, local collaboration runtime for AI coding tools. It conne
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **Current release: `1.1.1`** ([`v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1), 2026-11-09). **The workflow is tool-agnostic; automatic integrations are not universal.** Codex is the only formally verified automatic worker today. WorkBuddy has a verified **manual** hand-off; other tools participate conditionally through MCP or human hand-off. macOS is the verified host. [Exact evidence and limits](docs/en/COMPATIBILITY.md).
+> **Current release: `1.1.1`** ([`v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1), 2026-11-10). **The workflow is tool-agnostic; automatic integrations are not universal.** Codex is the only formally verified automatic worker today. WorkBuddy has a verified **manual** hand-off; other tools participate conditionally through MCP or human hand-off. macOS is the verified host. [Exact evidence and limits](docs/en/COMPATIBILITY.md).
 
 ## One project. The agents you already have.
 
@@ -41,9 +41,9 @@ That is a **realistic cross-tool workflow**, not a claim that PAR remotely contr
 
 ### **Have unused AI credits? Put them to work.**
 
-Already paying for several subscriptions, or sitting on **free, trial or included credits in Chinese and international AI coding tools**? Your best model does not have to execute every bounded edit.
+Already paying for several subscriptions, or holding free, trial or included credits across AI coding tools? Your best model does not have to execute every bounded edit.
 
-Use a preferred coordinator for the decisions that matter. Delegate compatible tasks through PAR to the other tools and quotas you already legitimately have. Then let the Kernel check the result instead of paying another model just to believe the first one.
+Use a preferred coordinator for the decisions that matter. Delegate compatible tasks through PAR within the quotas you legitimately hold. Then let the Kernel check the result instead of paying another model just to believe the first one.
 
 **No promise of free execution or guaranteed savings.** Each provider's prices, quotas, account rules and terms still apply. PAR neither bypasses limits nor invents an API for a GUI-only product; manual hand-off remains manual.
 

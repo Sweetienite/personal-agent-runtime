@@ -15,7 +15,7 @@ PAR 是一个开源、本地运行的 **跨 AI 工具协作 Runtime**。你可�
 [![macOS verified](https://img.shields.io/badge/macOS-verified%20(Codex)-success.svg)](docs/en/COMPATIBILITY.md)
 [![tests](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml/badge.svg)](https://github.com/Sweetienite/personal-agent-runtime/actions/workflows/tests.yml)
 
-> **当前版本：`1.1.1`**（[`v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)，2026-11-09）。**协作工作流不绑定厂商，不等于所有工具都已自动适配。** 目前正式验证的自动 Worker 只有 Codex；WorkBuddy 验证的是**人工交接**；其他工具按 MCP 或人工交接条件参与。macOS 为已验证宿主，详见[兼容性与实测证据](docs/COMPATIBILITY.md)。
+> **当前版本：`1.1.1`**（[`v1.1.1`](https://github.com/Sweetienite/personal-agent-runtime/releases/tag/v1.1.1)，2026-11-10）。**协作工作流不绑定厂商，不等于所有工具都已自动适配。** 目前正式验证的自动 Worker 只有 Codex；WorkBuddy 验证的是**人工交接**；其他工具按 MCP 或人工交接条件参与。macOS 为已验证宿主，详见[兼容性与实测证据](docs/COMPATIBILITY.md)。
 
 ## 同一个项目，调动你已经拥有的 AI 工具
 
@@ -39,13 +39,13 @@ PAR 是一个开源、本地运行的 **跨 AI 工具协作 Runtime**。你可�
 
 这是一条**可以理解、可以实际操作的跨工具工作流**。它不表示 PAR 能远程自动操控 WorkBuddy：你仍需打开导出的工作目录、将结果交回 PAR。对于已经完成正式验证的原生 CLI Worker，则可以由 PAR 自动启动和收集运行结果。
 
-### **国产 AI 工具的积分羊毛，为什么不薅？**
+### **把已有的额度，用在合适的任务上**
 
-你可能早就拥有多个 AI 编程工具：有的赠送每日积分，有的会员附带额度，有的模型便宜，有的适合负责困难决策。
+你可能早就拥有多个 AI 编程工具：有的附带每日额度，有的会员包含积分，有的模型更便宜，有的适合承担困难决策。
 
-没必要让最昂贵的主控模型包办每一个简单修改。**让擅长决策的 Agent 做决策，让其他工具利用你已有的免费积分、试用额度或会员权益完成适合它们的工作，再由 PAR 独立验收。**
+没必要让最昂贵的主控模型包办每一个简单修改。**让擅长决策的 Agent 做决策，让其他工具在你已经合法拥有的额度范围内完成适合它们的工作，再由 PAR 独立验收。**
 
-这不是绕过厂商限制的「白嫖神器」：**额度是否可用、任务是否计费、是否允许这种使用，都以各家实际规则为准**。PAR 不绕过限流、不规避付费、不保证省钱，更不会凭空给没有程序化接口的 App 变出自动调用能力。
+这不是绕过厂商限制的捷径：**额度是否可用、任务是否计费、是否允许自动化使用，都以各家实际规则为准**。PAR 不绕过限流、不规避付费、不保证省钱，也不会给没有程序化接口的 App 凭空变出自动调用能力。
 
 ### **理论上兼容几乎任何 Agent，具体靠的是交接协议，而不是宣传 Logo**
 
